@@ -1,0 +1,18 @@
+name = "mitch-app"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+assets = { directory = "./dist", binding = "ASSETS" }
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mitch-app-db"
+database_id = "REPLACE_AFTER_CREATION"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "mitch-app-files"
+
+[vars]
+ENVIRONMENT = "development"
