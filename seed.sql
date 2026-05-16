@@ -1,7 +1,7 @@
 -- Default settings
-INSERT OR IGNORE INTO settings (key, value) VALUES ('company_name', 'Your Company Name');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('company_name', 'MSA Logistic');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('currency', 'AED');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('company_logo_url', '');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('company_logo_url', 'branding/logo.png');
 
 -- Default admin user (password: Admin@1234)
 -- Change this immediately via Settings → Users after first login
