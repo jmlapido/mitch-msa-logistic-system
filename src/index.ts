@@ -12,6 +12,8 @@ import tenantsRoutes from './routes/tenants';
 import leasesRoutes from './routes/leases';
 import rentPaymentsRoutes from './routes/rent-payments';
 import rentalDocsRoutes from './routes/rental-documents';
+import dashboardRoutes from './routes/dashboard';
+import reportsRoutes from './routes/reports';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -32,6 +34,8 @@ app.route('/api/tenants', tenantsRoutes);
 app.route('/api/leases', leasesRoutes);
 app.route('/api/rent-payments', rentPaymentsRoutes);
 app.route('/api/rental-documents', rentalDocsRoutes);
+app.route('/api/dashboard', dashboardRoutes);
+app.route('/api/reports', reportsRoutes);
 
 app.get('/api/settings/public', async (c) => {
   const rows = await c.env.DB.prepare(
