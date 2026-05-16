@@ -1,6 +1,6 @@
 module.exports = {
   plugins: {
-    tailwindcss: {},
+    tailwindcss: { config: './client/tailwind.config.js' },
     autoprefixer: {},
   },
 }
