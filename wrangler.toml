@@ -8,7 +8,7 @@ assets = { directory = "./dist", binding = "ASSETS" }
 [[d1_databases]]
 binding = "DB"
 database_name = "mitch-app-db"
-database_id = "REPLACE_AFTER_CREATION"
+database_id = "ee4ba7ec-97c4-4c6b-9f39-72f142b935ef"
 
 [[r2_buckets]]
 binding = "R2"
