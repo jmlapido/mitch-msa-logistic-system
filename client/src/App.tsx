@@ -7,6 +7,7 @@ import { TopNav } from '@/components/layout/TopNav';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Bills from '@/pages/Bills';
+import Rentals from '@/pages/Rentals';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -35,6 +36,7 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/bills" element={<Bills />} />
+                    <Route path="/rentals" element={<Rentals />} />
                   </Routes>
                 </AppLayout>
               </ProtectedRoute>
