@@ -10,6 +10,6 @@
     "jsx": "react-jsx",
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "vite.config.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }
