@@ -14,6 +14,8 @@ import rentPaymentsRoutes from './routes/rent-payments';
 import rentalDocsRoutes from './routes/rental-documents';
 import dashboardRoutes from './routes/dashboard';
 import reportsRoutes from './routes/reports';
+import settingsRoutes from './routes/settings';
+import usersRoutes from './routes/users';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -36,19 +38,8 @@ app.route('/api/rent-payments', rentPaymentsRoutes);
 app.route('/api/rental-documents', rentalDocsRoutes);
 app.route('/api/dashboard', dashboardRoutes);
 app.route('/api/reports', reportsRoutes);
-
-app.get('/api/settings/public', async (c) => {
-  const rows = await c.env.DB.prepare(
-    "SELECT key, value FROM settings WHERE key IN ('company_name','company_logo_url','currency')"
-  ).all<{ key: string; value: string }>();
-  const out: Record<string, string> = {};
-  for (const row of rows.results) out[row.key] = row.value;
-  return c.json({
-    company_name: out['company_name'] ?? 'BillTrack',
-    logo_url: out['company_logo_url'] ?? '',
-    currency: out['currency'] ?? 'AED',
-  });
-});
+app.route('/api/settings', settingsRoutes);
+app.route('/api/users', usersRoutes);
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
