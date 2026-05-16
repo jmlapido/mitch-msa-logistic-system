@@ -5,6 +5,7 @@ import categoriesRoutes from './routes/categories';
 import propertiesRoutes from './routes/properties';
 import billsRoutes from './routes/bills';
 import billEntriesRoutes from './routes/bill-entries';
+import billAttachmentsRoutes from './routes/bill-attachments';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -18,6 +19,7 @@ app.route('/api/categories', categoriesRoutes);
 app.route('/api/properties', propertiesRoutes);
 app.route('/api/bills', billsRoutes);
 app.route('/api/bill-entries', billEntriesRoutes);
+app.route('/api/bill-attachments', billAttachmentsRoutes);
 
 app.get('/api/settings/public', async (c) => {
   const rows = await c.env.DB.prepare(
