@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import authRoutes from './routes/auth';
+import categoriesRoutes from './routes/categories';
+import propertiesRoutes from './routes/properties';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -10,6 +12,8 @@ app.use('*', cors({ origin: '*', credentials: true }));
 app.get('/api/health', (c) => c.json({ ok: true }));
 
 app.route('/api/auth', authRoutes);
+app.route('/api/categories', categoriesRoutes);
+app.route('/api/properties', propertiesRoutes);
 
 app.get('/api/settings/public', async (c) => {
   const rows = await c.env.DB.prepare(
