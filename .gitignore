@@ -3,3 +3,7 @@ dist/
 .wrangler/
 *.local
 .env
+.dev.vars
+.claude/
+.superpowers/
+docs/superpowers/
