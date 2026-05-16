@@ -8,6 +8,8 @@ import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Bills from '@/pages/Bills';
 import Rentals from '@/pages/Rentals';
+import Reports from '@/pages/Reports';
+import { AdminRoute } from '@/components/layout/AdminRoute';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -37,6 +39,7 @@ export default function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/bills" element={<Bills />} />
                     <Route path="/rentals" element={<Rentals />} />
+                    <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
                   </Routes>
                 </AppLayout>
               </ProtectedRoute>

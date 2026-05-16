@@ -1,0 +1,42 @@
+import { formatAED } from '@/lib/utils';
+import type { DashboardData } from '@/lib/hooks/useDashboard';
+
+type Props = { items: DashboardData['priorityPayments'] };
+
+const RANK_LABEL: Record<number, { label: string; cls: string }> = {
+  1: { label: 'Overdue', cls: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+  2: { label: 'Due Soon', cls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+  3: { label: 'High Value', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+};
+
+export function PriorityPaymentsWidget({ items }: Props) {
+  return (
+    <div className="bg-card border rounded-lg p-4">
+      <h3 className="text-sm font-semibold mb-3">Priority Payments</h3>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">All paid — nothing urgent!</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map(item => {
+            const badge = RANK_LABEL[item.priority_rank] ?? RANK_LABEL[3]!;
+            return (
+              <div key={item.entry_id} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm">{item.category_icon}</span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{item.particulars}</p>
+                    {item.property_name && <p className="text-xs text-muted-foreground truncate">{item.property_name}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                  <span className="text-sm font-semibold">{formatAED(item.amount)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
