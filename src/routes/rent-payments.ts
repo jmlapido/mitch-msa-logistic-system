@@ -1,0 +1,64 @@
+import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
+import { requireAuth } from '../middleware/requireAuth';
+import type { AuthVariables } from '../middleware/requireAuth';
+import type { Env } from '../types';
+
+const rentPayments = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+rentPayments.use('*', requireAuth);
+
+rentPayments.get('/', async (c) => {
+  const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
+  const buildingId = c.req.query('building_id');
+
+  await c.env.DB.prepare(`
+    INSERT OR IGNORE INTO rent_payments (lease_id, month, amount, status)
+    SELECT l.id, ?, l.monthly_rent, 'pending'
+    FROM leases l
+    WHERE l.status = 'active'
+      AND l.start_date <= ? || '-28'
+      AND l.end_date >= ? || '-01'
+  `).bind(month, month, month).run();
+
+  let query = `
+    SELECT rp.*, l.monthly_rent as expected_rent,
+      t.name as tenant_name, t.phone as tenant_phone,
+      u.unit_no, u.type as unit_type,
+      b.id as building_id, b.name as building_name
+    FROM rent_payments rp
+    JOIN leases l ON rp.lease_id = l.id
+    JOIN tenants t ON l.tenant_id = t.id
+    JOIN units u ON l.unit_id = u.id
+    JOIN buildings b ON u.building_id = b.id
+    WHERE rp.month = ?
+  `;
+  const binds: unknown[] = [month];
+  if (buildingId) { query += ' AND b.id = ?'; binds.push(Number(buildingId)); }
+  query += ' ORDER BY b.name, u.unit_no';
+
+  const { results } = await c.env.DB.prepare(query).bind(...binds).all();
+  return c.json(results);
+});
+
+const updatePaymentSchema = z.object({
+  amount: z.number().positive().optional(),
+  status: z.enum(['collected', 'pending', 'overdue']).optional(),
+  paid_date: z.string().nullable().optional(),
+  receipt_no: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+rentPayments.put('/:id', zValidator('json', updatePaymentSchema), async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  const d = c.req.valid('json');
+  const now = new Date().toISOString();
+  const entries = [...Object.entries(d), ['recorded_by', user.sub], ['recorded_at', now]];
+  const fields = entries.map(([k]) => `${k} = ?`).join(', ');
+  await c.env.DB.prepare(`UPDATE rent_payments SET ${fields} WHERE id = ?`)
+    .bind(...entries.map(([, v]) => v), id).run();
+  return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
+});
+
+export default rentPayments;

@@ -6,6 +6,12 @@ import propertiesRoutes from './routes/properties';
 import billsRoutes from './routes/bills';
 import billEntriesRoutes from './routes/bill-entries';
 import billAttachmentsRoutes from './routes/bill-attachments';
+import buildingsRoutes from './routes/buildings';
+import unitsRoutes from './routes/units';
+import tenantsRoutes from './routes/tenants';
+import leasesRoutes from './routes/leases';
+import rentPaymentsRoutes from './routes/rent-payments';
+import rentalDocsRoutes from './routes/rental-documents';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -20,6 +26,12 @@ app.route('/api/properties', propertiesRoutes);
 app.route('/api/bills', billsRoutes);
 app.route('/api/bill-entries', billEntriesRoutes);
 app.route('/api/bill-attachments', billAttachmentsRoutes);
+app.route('/api/buildings', buildingsRoutes);
+app.route('/api/units', unitsRoutes);
+app.route('/api/tenants', tenantsRoutes);
+app.route('/api/leases', leasesRoutes);
+app.route('/api/rent-payments', rentPaymentsRoutes);
+app.route('/api/rental-documents', rentalDocsRoutes);
 
 app.get('/api/settings/public', async (c) => {
   const rows = await c.env.DB.prepare(
