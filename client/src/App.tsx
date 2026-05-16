@@ -9,6 +9,8 @@ import Dashboard from '@/pages/Dashboard';
 import Bills from '@/pages/Bills';
 import Rentals from '@/pages/Rentals';
 import Reports from '@/pages/Reports';
+import Settings from '@/pages/Settings';
+import Properties from '@/pages/Properties';
 import { AdminRoute } from '@/components/layout/AdminRoute';
 
 const queryClient = new QueryClient({
@@ -40,6 +42,8 @@ export default function App() {
                     <Route path="/bills" element={<Bills />} />
                     <Route path="/rentals" element={<Rentals />} />
                     <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
+                    <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+                    <Route path="/properties" element={<Properties />} />
                   </Routes>
                 </AppLayout>
               </ProtectedRoute>
