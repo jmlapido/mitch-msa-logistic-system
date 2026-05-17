@@ -13,27 +13,37 @@ rentPayments.get('/', async (c) => {
   const buildingId = c.req.query('building_id');
 
   await c.env.DB.prepare(`
-    INSERT OR IGNORE INTO rent_payments (lease_id, month, amount, status)
-    SELECT l.id, ?, l.monthly_rent, 'pending'
-    FROM leases l
-    WHERE l.status = 'active'
-      AND l.start_date <= ? || '-28'
-      AND l.end_date >= ? || '-01'
+    INSERT OR IGNORE INTO rent_payments (contract_id, month, amount, status)
+    SELECT c.id, ?, ROUND(c.annual_rent / 12, 2), 'pending'
+    FROM contracts c
+    WHERE date(c.start_date) <= ? || '-28'
+      AND date(c.end_date) >= ? || '-01'
   `).bind(month, month, month).run();
 
   let query = `
-    SELECT rp.*, l.monthly_rent as expected_rent,
+    SELECT rp.*, ROUND(c.annual_rent / 12, 2) as expected_rent,
       t.name as tenant_name, t.phone as tenant_phone,
       u.unit_no, u.type as unit_type,
-      b.id as building_id, b.name as building_name
+      b.id as building_id, b.name as building_name,
+      (SELECT COALESCE(SUM(rp2.amount), 0)
+       FROM rent_payments rp2
+       JOIN contracts c2 ON rp2.contract_id = c2.id
+       WHERE c2.tenant_id = t.id
+         AND rp2.status != 'collected'
+         AND rp2.month < ?) as tenant_overdue,
+      (SELECT COALESCE(SUM(rp2.amount), 0)
+       FROM rent_payments rp2
+       JOIN contracts c2 ON rp2.contract_id = c2.id
+       WHERE c2.tenant_id = t.id
+         AND rp2.status != 'collected') as tenant_balance
     FROM rent_payments rp
-    JOIN leases l ON rp.lease_id = l.id
-    JOIN tenants t ON l.tenant_id = t.id
-    JOIN units u ON l.unit_id = u.id
-    JOIN buildings b ON u.building_id = b.id
+    JOIN contracts c ON rp.contract_id = c.id
+    JOIN tenants t ON c.tenant_id = t.id
+    LEFT JOIN units u ON t.unit_id = u.id
+    LEFT JOIN buildings b ON u.building_id = b.id
     WHERE rp.month = ?
   `;
-  const binds: unknown[] = [month];
+  const binds: unknown[] = [month, month];
   if (buildingId) { query += ' AND b.id = ?'; binds.push(Number(buildingId)); }
   query += ' ORDER BY b.name, u.unit_no';
 

@@ -24,7 +24,6 @@ billEntries.get('/', async (c) => {
       be.invoice_no, be.notes as entry_notes, be.updated_at,
       b.id as bill_id, b.particulars, b.account_no, b.due_day,
       c.id as category_id, c.name as category_name, c.color as category_color, c.icon as category_icon,
-      p.id as property_id, p.name as property_name,
       (SELECT COUNT(*) FROM bill_attachments WHERE bill_entry_id = be.id) as attachment_count,
       CASE
         WHEN be.status = 'paid' THEN 'paid'
@@ -37,9 +36,8 @@ billEntries.get('/', async (c) => {
     FROM bill_entries be
     JOIN bills b ON be.bill_id = b.id
     JOIN categories c ON b.category_id = c.id
-    LEFT JOIN properties p ON b.property_id = p.id
     WHERE be.month = ?
-    ORDER BY c.sort_order, c.name, p.name, b.particulars
+    ORDER BY c.sort_order, c.name, b.particulars
   `).bind(month, month).all();
 
   return c.json(results);

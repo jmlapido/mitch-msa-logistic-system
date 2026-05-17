@@ -40,7 +40,7 @@ export default function Bills() {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading bills…</div>
       ) : (
-        <div className="flex gap-6">
+        <div className="flex flex-col-reverse gap-6 md:flex-row">
           <div className="flex-1 min-w-0">
             <BillsTable entries={entries} month={month} onEdit={openEdit} />
           </div>

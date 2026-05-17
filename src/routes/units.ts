@@ -20,18 +20,28 @@ units.get('/', async (c) => {
   const buildingId = c.req.query('building_id');
   let query = `
     SELECT u.*, b.name as building_name, b.type as building_type,
-      l.id as lease_id, l.status as lease_status, l.end_date as lease_end,
-      l.monthly_rent, t.name as tenant_name,
+      c.id as lease_id,
+      CASE WHEN c.id IS NOT NULL THEN
+        CASE WHEN date(c.end_date) <= date('now', '+30 days') THEN 'expiring'
+             ELSE 'active' END
+      ELSE NULL END as lease_status,
+      c.end_date as lease_end,
+      ROUND(c.annual_rent / 12, 2) as monthly_rent,
+      tn.name as tenant_name,
       CASE
-        WHEN l.id IS NULL THEN 'vacant'
-        WHEN l.status = 'active' AND date(l.end_date) <= date('now', '+30 days') THEN 'expiring'
-        WHEN l.status = 'active' THEN 'occupied'
+        WHEN c.id IS NOT NULL AND date(c.end_date) <= date('now', '+30 days') THEN 'expiring'
+        WHEN c.id IS NOT NULL THEN 'occupied'
+        WHEN tn.id IS NOT NULL THEN 'occupied'
         ELSE 'vacant'
       END as occupancy_status
     FROM units u
     JOIN buildings b ON u.building_id = b.id
-    LEFT JOIN leases l ON l.unit_id = u.id AND l.status = 'active'
-    LEFT JOIN tenants t ON l.tenant_id = t.id
+    LEFT JOIN tenants tn ON tn.unit_id = u.id
+    LEFT JOIN contracts c ON c.id = (
+      SELECT id FROM contracts
+      WHERE tenant_id = tn.id AND date(end_date) >= date('now')
+      ORDER BY end_date DESC LIMIT 1
+    )
   `;
   if (buildingId) query += ` WHERE u.building_id = ${Number(buildingId)}`;
   query += ' ORDER BY b.name, u.unit_no';

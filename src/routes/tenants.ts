@@ -14,18 +14,28 @@ const tenantSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   id_number: z.string().optional(),
   notes: z.string().optional(),
+  unit_id: z.number().int().positive().nullable().optional(),
 });
 
 tenants.get('/', async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT t.*,
-      l.id as lease_id, l.status as lease_status,
-      l.start_date, l.end_date, l.monthly_rent,
-      u.unit_no, b.name as building_name
+      c.id as lease_id,
+      CASE WHEN c.id IS NOT NULL THEN
+        CASE WHEN date(c.end_date) <= date('now', '+30 days') THEN 'expiring'
+             ELSE 'active' END
+      ELSE NULL END as lease_status,
+      c.start_date, c.end_date,
+      ROUND(c.annual_rent / 12, 2) as monthly_rent,
+      u.unit_no, bld.name as building_name
     FROM tenants t
-    LEFT JOIN leases l ON l.tenant_id = t.id AND l.status = 'active'
-    LEFT JOIN units u ON l.unit_id = u.id
-    LEFT JOIN buildings b ON u.building_id = b.id
+    LEFT JOIN units u ON t.unit_id = u.id
+    LEFT JOIN buildings bld ON u.building_id = bld.id
+    LEFT JOIN contracts c ON c.id = (
+      SELECT id FROM contracts
+      WHERE tenant_id = t.id AND date(end_date) >= date('now')
+      ORDER BY end_date DESC LIMIT 1
+    )
     ORDER BY t.name
   `).all();
   return c.json(results);
@@ -49,8 +59,8 @@ tenants.get('/:id', async (c) => {
 tenants.post('/', requireAdmin, zValidator('json', tenantSchema), async (c) => {
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
-    'INSERT INTO tenants (name, phone, email, id_number, notes) VALUES (?,?,?,?,?) RETURNING *'
-  ).bind(d.name, d.phone ?? null, d.email || null, d.id_number ?? null, d.notes ?? null).first();
+    'INSERT INTO tenants (name, phone, email, id_number, notes, unit_id) VALUES (?,?,?,?,?,?) RETURNING *'
+  ).bind(d.name, d.phone ?? null, d.email || null, d.id_number ?? null, d.notes ?? null, d.unit_id ?? null).first();
   return c.json(result, 201);
 });
 

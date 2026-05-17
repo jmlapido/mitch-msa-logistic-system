@@ -27,7 +27,7 @@ export function BillsTable({ entries, month, onEdit }: Props) {
   }, [entries]);
 
   const filtered = useMemo(() => entries.filter(e => {
-    if (search && !`${e.particulars} ${e.property_name ?? ''} ${e.account_no ?? ''}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !`${e.particulars} ${e.account_no ?? ''}`.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== 'all' && e.computed_status !== statusFilter) return false;
     if (catFilter !== 'all' && e.category_name !== catFilter) return false;
     return true;
@@ -71,18 +71,17 @@ export function BillsTable({ entries, month, onEdit }: Props) {
           className="w-40 h-7 text-xs ml-auto" />
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground">
             <tr>
               <th className="text-left px-3 py-2 text-xs font-medium uppercase tracking-wide">Category</th>
-              <th className="text-left px-3 py-2 text-xs font-medium uppercase tracking-wide">Property</th>
               <th className="text-left px-3 py-2 text-xs font-medium uppercase tracking-wide">Particulars</th>
-              <th className="text-left px-3 py-2 text-xs font-medium uppercase tracking-wide">Acct No.</th>
+              <th className="hidden sm:table-cell text-left px-3 py-2 text-xs font-medium uppercase tracking-wide">Acct No.</th>
               <th className="text-right px-3 py-2 text-xs font-medium uppercase tracking-wide">Amount</th>
-              <th className="text-center px-3 py-2 text-xs font-medium uppercase tracking-wide">Due</th>
+              <th className="hidden sm:table-cell text-center px-3 py-2 text-xs font-medium uppercase tracking-wide">Due</th>
               <th className="text-center px-3 py-2 text-xs font-medium uppercase tracking-wide">Status</th>
-              <th className="text-center px-3 py-2 text-xs font-medium uppercase tracking-wide">Files</th>
+              <th className="hidden sm:table-cell text-center px-3 py-2 text-xs font-medium uppercase tracking-wide">Files</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
@@ -95,22 +94,21 @@ export function BillsTable({ entries, month, onEdit }: Props) {
                     {entry.category_icon} {entry.category_name}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-sm">{entry.property_name ?? '—'}</td>
                 <td className="px-3 py-2 text-sm font-medium">{entry.particulars}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{entry.account_no ?? '—'}</td>
+                <td className="hidden sm:table-cell px-3 py-2 text-xs text-muted-foreground">{entry.account_no ?? '—'}</td>
                 <td className="px-3 py-2 text-right font-semibold">{formatAED(entry.amount)}</td>
-                <td className="px-3 py-2 text-center text-xs text-muted-foreground">
+                <td className="hidden sm:table-cell px-3 py-2 text-center text-xs text-muted-foreground">
                   {entry.due_day ? `${entry.due_day}th` : '—'}
                 </td>
                 <td className="px-3 py-2 text-center">
                   <MarkPaidPopover entry={entry} month={month} />
                 </td>
-                <td className="px-3 py-2 text-center">
+                <td className="hidden sm:table-cell px-3 py-2 text-center">
                   <AttachmentCell entry={entry} month={month} />
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
-                    <button onClick={() => onEdit({ id: entry.bill_id, category_id: entry.category_id, property_id: entry.property_id, particulars: entry.particulars, account_no: entry.account_no, due_day: entry.due_day, is_recurring: 1, notes: null, category_name: entry.category_name, category_color: entry.category_color, category_icon: entry.category_icon, property_name: entry.property_name })}
+                    <button onClick={() => onEdit({ id: entry.bill_id, category_id: entry.category_id, particulars: entry.particulars, account_no: entry.account_no, due_day: entry.due_day, is_recurring: 1, notes: null, category_name: entry.category_name, category_color: entry.category_color, category_icon: entry.category_icon })}
                       className="text-muted-foreground hover:text-foreground p-1">
                       <Pencil size={13} />
                     </button>
@@ -125,7 +123,7 @@ export function BillsTable({ entries, month, onEdit }: Props) {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={9} className="text-center py-8 text-muted-foreground text-sm">No bills found</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground text-sm">No bills found</td></tr>
             )}
           </tbody>
         </table>

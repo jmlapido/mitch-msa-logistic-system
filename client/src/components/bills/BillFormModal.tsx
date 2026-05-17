@@ -9,13 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCategories } from '@/lib/hooks/useCategories';
-import { useProperties } from '@/lib/hooks/useProperties';
 import { useBillMutations } from '@/lib/hooks/useBills';
 import type { BillTemplate } from '@/lib/hooks/useBills';
 
 const schema = z.object({
   category_id: z.string().min(1, 'Required'),
-  property_id: z.string().optional(),
   particulars: z.string().min(1, 'Required').max(100),
   account_no: z.string().optional(),
   due_day: z.string().optional(),
@@ -34,19 +32,24 @@ type Props = {
 
 export function BillFormModal({ open, onClose, editing, month }: Props) {
   const { data: categories = [] } = useCategories();
-  const { data: properties = [] } = useProperties();
   const { createTemplate, updateTemplate } = useBillMutations(month);
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { is_recurring: true },
+    defaultValues: editing ? {
+      category_id: String(editing.category_id),
+      particulars: editing.particulars,
+      account_no: editing.account_no ?? '',
+      due_day: editing.due_day ? String(editing.due_day) : '',
+      is_recurring: editing.is_recurring === 1,
+      notes: editing.notes ?? '',
+    } : { is_recurring: true },
   });
 
   useEffect(() => {
     if (editing) {
       reset({
         category_id: String(editing.category_id),
-        property_id: editing.property_id ? String(editing.property_id) : '',
         particulars: editing.particulars,
         account_no: editing.account_no ?? '',
         due_day: editing.due_day ? String(editing.due_day) : '',
@@ -61,7 +64,6 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
   async function onSubmit(values: FormValues) {
     const payload = {
       category_id: Number(values.category_id),
-      property_id: values.property_id ? Number(values.property_id) : null,
       particulars: values.particulars,
       account_no: values.account_no || null,
       due_day: values.due_day ? Number(values.due_day) : null,
@@ -100,18 +102,6 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
               </SelectContent>
             </Select>
             {errors.category_id && <p className="text-xs text-destructive mt-1">{errors.category_id.message}</p>}
-          </div>
-          <div>
-            <Label>Property</Label>
-            <Select value={watch('property_id') ?? ''} onValueChange={v => setValue('property_id', v)}>
-              <SelectTrigger><SelectValue placeholder="No property" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">— None —</SelectItem>
-                {properties.map(p => (
-                  <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           <div>
             <Label>Particulars *</Label>

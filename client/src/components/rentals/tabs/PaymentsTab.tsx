@@ -30,13 +30,15 @@ export function PaymentsTab() {
 
   const totalExpected = payments.reduce((s, p) => s + p.expected_rent, 0);
   const totalCollected = payments.filter(p => p.status === 'collected').reduce((s, p) => s + p.amount, 0);
+  const totalPending = totalExpected - totalCollected;
+  const totalOverdue = payments.reduce((s, p) => s + (p.tenant_overdue ?? 0), 0);
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="flex items-center gap-2">
           <button onClick={() => changeMonth(-1)} className="hover:text-primary"><ChevronLeft size={16} /></button>
-          <span className="text-sm font-medium">{monthLabel(month)}</span>
+          <span className="text-sm font-medium w-32 text-center">{monthLabel(month)}</span>
           <button onClick={() => changeMonth(1)} className="hover:text-primary"><ChevronRight size={16} /></button>
         </div>
         <select value={buildingFilter ?? ''} onChange={e => setBuildingFilter(e.target.value ? Number(e.target.value) : undefined)}
@@ -44,50 +46,65 @@ export function PaymentsTab() {
           <option value="">All buildings</option>
           {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
-        <div className="ml-auto flex gap-4 text-sm">
-          <span>Expected: <strong>{formatAED(totalExpected)}</strong></span>
-          <span className="text-green-600">Collected: <strong>{formatAED(totalCollected)}</strong></span>
-          <span className="text-red-600">Pending: <strong>{formatAED(totalExpected - totalCollected)}</strong></span>
-        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <StatCard label="Expected" value={formatAED(totalExpected)} />
+        <StatCard label="Collected" value={formatAED(totalCollected)} valueClass="text-green-600" />
+        <StatCard label="Pending" value={formatAED(totalPending)} valueClass={totalPending > 0 ? 'text-yellow-600' : undefined} />
+        <StatCard label="Total Overdue" value={formatAED(totalOverdue)} valueClass={totalOverdue > 0 ? 'text-red-600' : undefined} />
       </div>
 
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
         <div className="space-y-4">
-          {Object.values(grouped).map(group => {
+          {Object.entries(grouped).map(([bid, group]) => {
             const groupExpected = group.items.reduce((s, p) => s + p.expected_rent, 0);
             const groupCollected = group.items.filter(p => p.status === 'collected').reduce((s, p) => s + p.amount, 0);
             return (
-              <div key={group.name} className="border rounded-lg overflow-hidden">
+              <div key={bid} className="border rounded-lg overflow-hidden">
                 <div className="bg-muted px-3 py-2 flex justify-between items-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   <span>{group.name}</span>
-                  <span>{formatAED(groupCollected)} / {formatAED(groupExpected)}</span>
+                  <span><span className="text-green-600">{formatAED(groupCollected)}</span> / {formatAED(groupExpected)}</span>
                 </div>
-                <table className="w-full text-sm">
-                  <thead className="text-xs text-muted-foreground">
-                    <tr>
-                      <th className="text-left px-3 py-1.5">Unit</th>
-                      <th className="text-left px-3 py-1.5">Tenant</th>
-                      <th className="text-right px-3 py-1.5">Expected</th>
-                      <th className="text-right px-3 py-1.5">Collected</th>
-                      <th className="text-center px-3 py-1.5">Date</th>
-                      <th className="text-center px-3 py-1.5">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {group.items.map(p => (
-                      <tr key={p.id} className="hover:bg-muted/20">
-                        <td className="px-3 py-2 font-medium">{p.unit_no}</td>
-                        <td className="px-3 py-2 text-xs">{p.tenant_name}</td>
-                        <td className="px-3 py-2 text-right text-xs">{formatAED(p.expected_rent)}</td>
-                        <td className="px-3 py-2 text-right">{p.status === 'collected' ? formatAED(p.amount) : '—'}</td>
-                        <td className="px-3 py-2 text-center text-xs">{formatDate(p.paid_date)}</td>
-                        <td className="px-3 py-2 text-center">
-                          <CollectPopover payment={p} onUpdate={updateRentPayment.mutateAsync} />
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs text-muted-foreground">
+                      <tr>
+                        <th className="text-left px-3 py-1.5">Unit</th>
+                        <th className="text-left px-3 py-1.5">Tenant</th>
+                        <th className="text-right px-3 py-1.5">Rent</th>
+                        <th className="hidden sm:table-cell text-right px-3 py-1.5">Collected</th>
+                        <th className="hidden sm:table-cell text-right px-3 py-1.5 text-red-500">Overdue</th>
+                        <th className="hidden sm:table-cell text-right px-3 py-1.5">Balance</th>
+                        <th className="hidden sm:table-cell text-center px-3 py-1.5">Date</th>
+                        <th className="text-center px-3 py-1.5">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {group.items.map(p => {
+                        const shouldHighlight = p.status === 'overdue' || (p.tenant_balance ?? 0) > 0;
+                        return (
+                          <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
+                            <td className="px-3 py-2 font-medium">{p.unit_no}</td>
+                            <td className="px-3 py-2 text-xs">{p.tenant_name}</td>
+                            <td className="px-3 py-2 text-right text-xs">{formatAED(p.expected_rent)}</td>
+                            <td className="hidden sm:table-cell px-3 py-2 text-right">{p.status === 'collected' ? formatAED(p.amount) : '—'}</td>
+                            <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
+                              {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium">{formatAED(p.tenant_overdue)}</span> : '—'}
+                            </td>
+                            <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
+                              {(p.tenant_balance ?? 0) > 0 ? <span className="text-red-600 font-semibold">{formatAED(p.tenant_balance)}</span> : <span className="text-green-600">—</span>}
+                            </td>
+                            <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">{formatDate(p.paid_date)}</td>
+                            <td className="px-3 py-2 text-center">
+                              <CollectPopover payment={p} onUpdate={updateRentPayment.mutateAsync} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             );
           })}
@@ -97,10 +114,19 @@ export function PaymentsTab() {
   );
 }
 
+function StatCard({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+  return (
+    <div className="border rounded-lg px-4 py-3 bg-card">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className={`text-base font-semibold ${valueClass ?? ''}`}>{value}</p>
+    </div>
+  );
+}
+
 function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate: (d: { id: number; status: string; paid_date?: string; receipt_no?: string; amount?: number }) => Promise<unknown> }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(payment.amount));
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(payment.paid_date ?? new Date().toISOString().slice(0, 10));
   const [receipt, setReceipt] = useState(payment.receipt_no ?? '');
 
   const STATUS_STYLE: Record<string, string> = {

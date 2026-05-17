@@ -16,3 +16,6 @@ bucket_name = "mitch-app-files"
 
 [vars]
 ENVIRONMENT = "development"
+
+[dev]
+port = 8787

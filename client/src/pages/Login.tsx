@@ -35,9 +35,9 @@ export default function Login() {
       <Card className="w-full max-w-sm shadow-lg">
         <CardHeader className="text-center pb-2">
           {settings?.logo_url && (
-            <img src={settings.logo_url} alt="Logo" className="h-12 w-12 mx-auto rounded-lg object-contain mb-2" />
+            <img src={settings.logo_url} alt="Logo" className="h-[200px] w-[200px] mx-auto rounded-lg object-contain mb-2" />
           )}
-          <h1 className="text-xl font-bold">{settings?.company_name ?? 'BillTrack'}</h1>
+          <h1 className="text-xl font-bold">{settings?.company_name ?? 'MSA Logistic Bill and Rental Tracking'}</h1>
           <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </CardHeader>
         <CardContent>

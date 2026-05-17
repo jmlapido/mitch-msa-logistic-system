@@ -20,18 +20,16 @@ reports.get('/', async (c) => {
       SELECT
         be.month,
         c.name as category_name, c.color as category_color, c.icon as category_icon,
-        p.name as property_name,
         b.particulars, b.account_no,
         be.amount, be.status, be.paid_date, be.invoice_no
       FROM bill_entries be
       JOIN bills b ON be.bill_id = b.id
       JOIN categories c ON b.category_id = c.id
-      LEFT JOIN properties p ON b.property_id = p.id
       WHERE be.month BETWEEN ? AND ?
     `;
     const binds: unknown[] = [from, to];
     if (categoryId) { billsQuery += ' AND c.id = ?'; binds.push(categoryId); }
-    billsQuery += ' ORDER BY be.month, c.sort_order, p.name, b.particulars';
+    billsQuery += ' ORDER BY be.month, c.sort_order, b.particulars';
 
     const { results: billRows } = await db.prepare(billsQuery).bind(...binds).all();
 
@@ -59,9 +57,9 @@ reports.get('/', async (c) => {
 
     const { results: rentMonthly } = await db.prepare(`
       SELECT rp.month,
-        SUM(l.monthly_rent) as expected,
+        SUM(ROUND(c.annual_rent/12,2)) as expected,
         SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END) as collected
-      FROM rent_payments rp JOIN leases l ON rp.lease_id = l.id
+      FROM rent_payments rp JOIN contracts c ON rp.contract_id = c.id
       WHERE rp.month BETWEEN ? AND ?
       GROUP BY rp.month ORDER BY rp.month
     `).bind(from, to).all();
@@ -73,12 +71,12 @@ reports.get('/', async (c) => {
     let rentQuery = `
       SELECT rp.month, rp.amount, rp.status, rp.paid_date, rp.receipt_no,
         t.name as tenant_name, u.unit_no, u.type as unit_type,
-        b.id as building_id, b.name as building_name, l.monthly_rent as expected_rent
+        b.id as building_id, b.name as building_name, ROUND(c.annual_rent/12,2) as expected_rent
       FROM rent_payments rp
-      JOIN leases l ON rp.lease_id = l.id
-      JOIN tenants t ON l.tenant_id = t.id
-      JOIN units u ON l.unit_id = u.id
-      JOIN buildings b ON u.building_id = b.id
+      JOIN contracts c ON rp.contract_id = c.id
+      JOIN tenants t ON c.tenant_id = t.id
+      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN buildings b ON u.building_id = b.id
       WHERE rp.month BETWEEN ? AND ?
     `;
     const binds: unknown[] = [from, to];
@@ -90,12 +88,13 @@ reports.get('/', async (c) => {
     const { results: buildingSummary } = await db.prepare(`
       SELECT b.name as building_name,
         COUNT(DISTINCT u.id) as unit_count,
-        SUM(l.monthly_rent) as total_expected,
+        SUM(ROUND(c.annual_rent/12,2)) as total_expected,
         SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END) as total_collected
       FROM rent_payments rp
-      JOIN leases l ON rp.lease_id = l.id
-      JOIN units u ON l.unit_id = u.id
-      JOIN buildings b ON u.building_id = b.id
+      JOIN contracts c ON rp.contract_id = c.id
+      JOIN tenants t ON c.tenant_id = t.id
+      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN buildings b ON u.building_id = b.id
       WHERE rp.month BETWEEN ? AND ?
       GROUP BY b.id ORDER BY b.name
     `).bind(from, to).all();

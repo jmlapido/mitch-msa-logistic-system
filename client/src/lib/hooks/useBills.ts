@@ -19,15 +19,12 @@ export type BillEntry = {
   category_name: string;
   category_color: string;
   category_icon: string;
-  property_id: number | null;
-  property_name: string | null;
   attachment_count: number;
 };
 
 export type BillTemplate = {
   id: number;
   category_id: number;
-  property_id: number | null;
   particulars: string;
   account_no: string | null;
   due_day: number | null;
@@ -36,7 +33,6 @@ export type BillTemplate = {
   category_name: string;
   category_color: string;
   category_icon: string;
-  property_name: string | null;
 };
 
 export function useBillEntries(month: string) {

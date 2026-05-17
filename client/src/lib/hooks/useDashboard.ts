@@ -7,11 +7,11 @@ export type DashboardData = {
   rent: { due: number; collected: number; overdue: number };
   priorityPayments: Array<{
     entry_id: number; amount: number; status: string; particulars: string; due_day: number | null;
-    category_name: string; category_color: string; category_icon: string; property_name: string | null; priority_rank: number;
+    category_name: string; category_color: string; category_icon: string; priority_rank: number;
   }>;
   upcomingBills: Array<{
     entry_id: number; amount: number; particulars: string; due_day: number | null;
-    category_name: string; category_color: string; category_icon: string; property_name: string | null;
+    category_name: string; category_color: string; category_icon: string;
   }>;
   rentByBuilding: Array<{
     building_id: number; building_name: string; unit_count: number; expected: number; collected: number;

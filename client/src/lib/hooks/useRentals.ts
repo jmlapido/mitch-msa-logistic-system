@@ -3,10 +3,11 @@ import { api } from '../api';
 
 export type Building = { id: number; name: string; type: string; address?: string; notes?: string; unit_count: number; occupied_count: number };
 export type Unit = { id: number; building_id: number; unit_no: string; type: string; floor?: string; notes?: string; building_name: string; occupancy_status: 'occupied' | 'vacant' | 'expiring'; tenant_name?: string; monthly_rent?: number; lease_end?: string; lease_id?: number };
-export type Tenant = { id: number; name: string; phone?: string; email?: string; id_number?: string; notes?: string; lease_id?: number; unit_no?: string; building_name?: string; lease_status?: string; end_date?: string; monthly_rent?: number };
+export type Tenant = { id: number; name: string; phone?: string; email?: string; id_number?: string; notes?: string; unit_id?: number; lease_id?: number; unit_no?: string; building_name?: string; lease_status?: string; end_date?: string; monthly_rent?: number };
 export type Lease = { id: number; unit_id: number; tenant_id: number; start_date: string; end_date: string; monthly_rent: number; deposit: number; status: string; notes?: string; tenant_name: string; unit_no: string; building_name: string };
-export type RentPayment = { id: number; lease_id: number; month: string; amount: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; tenant_name: string; unit_no: string; building_name: string; building_id: number; expected_rent: number };
+export type RentPayment = { id: number; lease_id: number; month: string; amount: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; tenant_name: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; tenant_balance: number };
 export type RentalDoc = { id: number; entity_type: string; entity_id: number; doc_type: string; file_name: string; uploaded_at: string };
+export type Contract = { id: number; tenant_id: number; contract_no: string; start_date: string; end_date: string; annual_rent: number; no_of_pdc: number; notes?: string; status: 'valid' | 'expired'; created_at: string };
 
 export function useBuildings() {
   return useQuery<Building[]>({ queryKey: ['buildings'], queryFn: () => api.get('/api/buildings') });
@@ -32,6 +33,14 @@ export function useRentalDocs(entityType: string, entityId: number) {
     enabled: !!entityId,
   });
 }
+export function useContracts(tenantId: number) {
+  return useQuery<Contract[]>({
+    queryKey: ['contracts', tenantId],
+    queryFn: () => api.get(`/api/contracts?tenant_id=${tenantId}`),
+    enabled: !!tenantId,
+  });
+}
+
 export function useExpiringLeases(days = 60) {
   return useQuery<Lease[]>({ queryKey: ['leases', 'expiring', days], queryFn: () => api.get(`/api/leases/expiring?days=${days}`) });
 }
@@ -77,6 +86,19 @@ export function useRentalMutations() {
     deleteDoc: useMutation({
       mutationFn: (id: number) => api.del(`/api/rental-documents/${id}`),
       onSuccess: () => qc.invalidateQueries({ queryKey: ['rental-docs'] }),
+    }),
+
+    createContract: useMutation({
+      mutationFn: (d: Partial<Contract>) => api.post<Contract>('/api/contracts', d),
+      onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['contracts', v.tenant_id] }),
+    }),
+    updateContract: useMutation({
+      mutationFn: ({ id, ...d }: Partial<Contract> & { id: number }) => api.put<Contract>(`/api/contracts/${id}`, d),
+      onSuccess: (data) => qc.invalidateQueries({ queryKey: ['contracts', data.tenant_id] }),
+    }),
+    deleteContract: useMutation({
+      mutationFn: ({ id, tenantId }: { id: number; tenantId: number }) => api.del(`/api/contracts/${id}`).then(r => ({ ...r, tenantId })),
+      onSuccess: (_: unknown, v: { tenantId: number }) => qc.invalidateQueries({ queryKey: ['contracts', v.tenantId] }),
     }),
   };
 }

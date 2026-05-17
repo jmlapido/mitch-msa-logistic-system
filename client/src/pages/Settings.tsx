@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { api } from '@/lib/api';
 import { useCategories, useCategoryMutations } from '@/lib/hooks/useCategories';
 import { useBillTemplates, useBillMutations } from '@/lib/hooks/useBills';
+import type { BillTemplate } from '@/lib/hooks/useBills';
+import { BillFormModal } from '@/components/bills/BillFormModal';
 import { currentMonth } from '@/lib/utils';
 
 // ── Branding ──────────────────────────────────────────────────────────────────
@@ -268,6 +270,7 @@ function CategoriesTab() {
 function TemplatesTab() {
   const { data: templates = [] } = useBillTemplates();
   const { updateTemplate } = useBillMutations(currentMonth());
+  const [editingTemplate, setEditingTemplate] = useState<BillTemplate | null>(null);
 
   async function toggleRecurring(id: number, current: number) {
     try {
@@ -285,25 +288,29 @@ function TemplatesTab() {
           <thead className="bg-muted text-xs">
             <tr>
               <th className="text-left px-3 py-2">Category</th>
-              <th className="text-left px-3 py-2">Property</th>
               <th className="text-left px-3 py-2">Particulars</th>
               <th className="text-left px-3 py-2">Account No.</th>
               <th className="text-center px-3 py-2">Recurring</th>
+              <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {templates.map(t => (
               <tr key={t.id} className="hover:bg-muted/20">
                 <td className="px-3 py-2 text-xs">{t.category_icon} {t.category_name}</td>
-                <td className="px-3 py-2 text-xs">{t.property_name ?? '—'}</td>
                 <td className="px-3 py-2 text-xs font-medium">{t.particulars}</td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{t.account_no ?? '—'}</td>
                 <td className="px-3 py-2 text-center">
                   <button
                     onClick={() => toggleRecurring(t.id, t.is_recurring)}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${t.is_recurring ? 'bg-green-500' : 'bg-muted'}`}
+                    className={`w-10 h-5 rounded-full transition-colors relative overflow-hidden ${t.is_recurring ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
                   >
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${t.is_recurring ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${t.is_recurring ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </td>
+                <td className="px-3 py-2">
+                  <button onClick={() => setEditingTemplate(t)} className="p-1 text-muted-foreground hover:text-foreground">
+                    <Pencil size={13} />
                   </button>
                 </td>
               </tr>
@@ -311,6 +318,14 @@ function TemplatesTab() {
           </tbody>
         </table>
       </div>
+      {editingTemplate && (
+        <BillFormModal
+          open={!!editingTemplate}
+          onClose={() => setEditingTemplate(null)}
+          editing={editingTemplate}
+          month={currentMonth()}
+        />
+      )}
     </div>
   );
 }

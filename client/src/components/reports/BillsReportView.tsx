@@ -3,7 +3,7 @@ import { formatAED, monthLabel } from '@/lib/utils';
 
 type Row = {
   month: string; category_name: string; category_icon: string; category_color: string;
-  property_name: string | null; particulars: string; amount: number; status: string;
+  particulars: string; amount: number; status: string;
   paid_date: string | null;
 };
 type MonthSummary = { month: string; total: number; paid: number; unpaid: number };
@@ -85,14 +85,13 @@ export function BillsReportView({ rows, monthSummary, catSummary, from, to }: Pr
         </table>
       </div>
 
-      <div>
+      <div className="break-before-page">
         <h3 className="text-sm font-semibold mb-2">Detail</h3>
         <table className="w-full text-xs border rounded-lg overflow-hidden">
           <thead className="bg-muted">
             <tr>
               <th className="text-left px-3 py-2">Month</th>
               <th className="text-left px-3 py-2">Category</th>
-              <th className="text-left px-3 py-2">Property</th>
               <th className="text-left px-3 py-2">Particulars</th>
               <th className="text-right px-3 py-2">Amount</th>
               <th className="text-center px-3 py-2">Status</th>
@@ -104,7 +103,6 @@ export function BillsReportView({ rows, monthSummary, catSummary, from, to }: Pr
               <tr key={i} className="hover:bg-muted/20">
                 <td className="px-3 py-1.5">{r.month}</td>
                 <td className="px-3 py-1.5">{r.category_icon} {r.category_name}</td>
-                <td className="px-3 py-1.5">{r.property_name ?? '—'}</td>
                 <td className="px-3 py-1.5">{r.particulars}</td>
                 <td className="px-3 py-1.5 text-right font-medium">{formatAED(r.amount)}</td>
                 <td className="px-3 py-1.5 text-center">

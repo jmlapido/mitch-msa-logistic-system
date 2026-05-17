@@ -11,11 +11,10 @@ bills.use('*', requireAuth);
 
 const billSchema = z.object({
   category_id: z.number().int().positive(),
-  property_id: z.number().int().positive().nullable().optional(),
   particulars: z.string().min(1).max(100),
   account_no: z.string().max(60).optional(),
   due_day: z.number().int().min(1).max(28).nullable().optional(),
-  is_recurring: z.boolean().default(true),
+  is_recurring: z.coerce.boolean().default(true),
   notes: z.string().optional(),
 });
 
@@ -35,10 +34,10 @@ bills.post('/', requireAdmin, zValidator('json', billSchema), async (c) => {
   const user = c.get('user');
   const data = c.req.valid('json');
   const result = await c.env.DB.prepare(
-    `INSERT INTO bills (category_id, property_id, particulars, account_no, due_day, is_recurring, notes, created_by)
-     VALUES (?,?,?,?,?,?,?,?) RETURNING *`
+    `INSERT INTO bills (category_id, particulars, account_no, due_day, is_recurring, notes, created_by)
+     VALUES (?,?,?,?,?,?,?) RETURNING *`
   ).bind(
-    data.category_id, data.property_id ?? null, data.particulars,
+    data.category_id, data.particulars,
     data.account_no ?? null, data.due_day ?? null,
     data.is_recurring ? 1 : 0, data.notes ?? null, user.sub
   ).first();

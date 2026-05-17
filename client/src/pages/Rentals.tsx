@@ -8,17 +8,17 @@ export default function Rentals() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Rentals</h1>
-      <Tabs defaultValue="buildings">
+      <Tabs defaultValue="payments">
         <TabsList className="mb-4">
-          <TabsTrigger value="buildings">Buildings</TabsTrigger>
-          <TabsTrigger value="units">Units</TabsTrigger>
-          <TabsTrigger value="tenants">Tenants</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="tenants">Tenants</TabsTrigger>
+          <TabsTrigger value="units">Units</TabsTrigger>
+          <TabsTrigger value="buildings">Buildings</TabsTrigger>
         </TabsList>
-        <TabsContent value="buildings"><BuildingsTab /></TabsContent>
-        <TabsContent value="units"><UnitsTab /></TabsContent>
-        <TabsContent value="tenants"><TenantsTab /></TabsContent>
         <TabsContent value="payments"><PaymentsTab /></TabsContent>
+        <TabsContent value="tenants"><TenantsTab /></TabsContent>
+        <TabsContent value="units"><UnitsTab /></TabsContent>
+        <TabsContent value="buildings"><BuildingsTab /></TabsContent>
       </Tabs>
     </div>
   );

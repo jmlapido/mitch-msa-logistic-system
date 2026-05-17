@@ -17,7 +17,6 @@ export function UpcomingBillsWidget({ items, month: _month }: Props) {
                 <span className="text-sm">{item.category_icon}</span>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{item.particulars}</p>
-                  {item.property_name && <p className="text-xs text-muted-foreground truncate">{item.property_name}</p>}
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
