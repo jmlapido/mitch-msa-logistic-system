@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useContracts, useRentalMutations, type Contract } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { formatAED, formatDate } from '@/lib/utils';
+import { PdcPanel } from './PdcPanel';
 
 const schema = z.object({
   contract_no: z.string().min(1, 'Required'),
@@ -148,6 +149,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                   </div>
                 )}
               </div>
+              <PdcPanel contractId={c.id} pdcCount={c.no_of_pdc} />
             </div>
           ))}
         </div>
