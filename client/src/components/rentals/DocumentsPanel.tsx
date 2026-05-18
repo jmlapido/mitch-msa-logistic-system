@@ -59,7 +59,7 @@ export function DocumentsPanel({ entityType, entityId }: Props) {
               <div className="flex gap-1">
                 <a href={`/api/rental-documents/${d.id}/download`} target="_blank" rel="noreferrer"
                   className="p-1 hover:text-primary"><Eye size={12} /></a>
-                {user?.role === 'admin' && (
+                {(user?.role === 'admin' || user?.role === 'superadmin') && (
                   <button onClick={() => handleDelete(d.id)} className="p-1 hover:text-destructive"><Trash2 size={12} /></button>
                 )}
               </div>

@@ -122,7 +122,7 @@ export function BillsTable({ entries, month, onEdit }: Props) {
               className="text-muted-foreground hover:text-foreground p-1">
               <Pencil size={13} />
             </button>
-            {user?.role === 'admin' && (
+            {(user?.role === 'admin' || user?.role === 'superadmin') && (
               <button onClick={() => handleDelete(entry.bill_id)}
                 className="text-muted-foreground hover:text-destructive p-1">
                 <Trash2 size={13} />

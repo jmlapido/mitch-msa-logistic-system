@@ -104,7 +104,7 @@ export function PdcPanel({ contractId, pdcCount }: { contractId: number; pdcCoun
     } catch { toast.error('Failed'); }
   }
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   return (
     <div className="mt-2 border-t pt-2">

@@ -138,7 +138,7 @@ export function UnitsTab() {
                               </td>
                               <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
                                 <div className="flex gap-1">
-                                  {user?.role === 'admin' && <>
+                                  {(user?.role === 'admin' || user?.role === 'superadmin') && <>
                                     <button onClick={() => openEdit(u)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
                                     <button onClick={() => handleDelete(u.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button>
                                   </>}

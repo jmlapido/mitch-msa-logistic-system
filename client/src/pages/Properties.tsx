@@ -74,7 +74,7 @@ export default function Properties() {
                 <div className="text-xs text-muted-foreground mt-0.5 capitalize">{TYPE_LABELS[p.type] ?? p.type}</div>
                 {p.address && <div className="text-xs text-muted-foreground mt-1">{p.address}</div>}
               </div>
-              {user?.role === 'admin' && (
+              {(user?.role === 'admin' || user?.role === 'superadmin') && (
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => openEdit(p)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={13} /></button>
                   <button onClick={() => handleDelete(p.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={13} /></button>

@@ -46,7 +46,9 @@ export function BuildingsTab() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-semibold">Buildings & Shops</h2>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Building</Button>
+        {(user?.role === 'admin' || user?.role === 'superadmin') && (
+          <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Building</Button>
+        )}
       </div>
       {isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -60,7 +62,7 @@ export function BuildingsTab() {
                     <div className="text-xs text-muted-foreground capitalize">{b.type}</div>
                   </div>
                 </div>
-                {user?.role === 'admin' && (
+                {(user?.role === 'admin' || user?.role === 'superadmin') && (
                   <div className="flex gap-1">
                     <button onClick={() => openEdit(b)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={13} /></button>
                     <button onClick={() => handleDelete(b.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={13} /></button>
