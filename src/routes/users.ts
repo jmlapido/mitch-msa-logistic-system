@@ -70,7 +70,7 @@ users.delete('/:id', async (c) => {
     return c.json({ error: 'Cannot deactivate your own account' }, 400);
   const id = Number(c.req.param('id'));
   await c.env.DB.prepare('UPDATE users SET active = 0 WHERE id = ?').bind(id).run();
-  await auditLog(c.env.DB, actor, 'user.deactivated', 'user', id);
+  await auditLog(c.env.DB, actor, 'user.deactivated', 'user', id, `Deactivated user account`);
   return c.json({ ok: true });
 });
 

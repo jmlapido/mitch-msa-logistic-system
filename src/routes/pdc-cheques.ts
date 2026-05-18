@@ -39,10 +39,10 @@ router.post('/date', requireAdmin, zValidator('json', z.object({
     ON CONFLICT (contract_id, pdc_number)
     DO UPDATE SET cheque_date = excluded.cheque_date, updated_at = datetime('now')
   `).bind(contract_id, pdc_number, cheque_date).run();
-  await auditLog(c.env.DB, user, 'pdc.date_set', 'pdc', null, `Contract ${contract_id} PDC #${pdc_number} → ${cheque_date}`);
   const row = await c.env.DB.prepare(
     'SELECT id, contract_id, pdc_number, cheque_date, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'
   ).bind(contract_id, pdc_number).first();
+  await auditLog(c.env.DB, user, 'pdc.date_set', 'pdc', (row as { id?: number } | null)?.id ?? null, `Contract ${contract_id} PDC #${pdc_number} → ${cheque_date}`);
   return c.json(row);
 });
 
@@ -74,21 +74,23 @@ router.post('/upload', requireAdmin, async (c) => {
       file_size = excluded.file_size, file_type = excluded.file_type,
       uploaded_by = excluded.uploaded_by, updated_at = datetime('now')
   `).bind(contractId, pdcNumber, file.name, key, file.size, file.type, user.sub).run();
-  await auditLog(c.env.DB, user, 'pdc.file_uploaded', 'pdc', null, `Contract ${contractId} PDC #${pdcNumber}: ${file.name}`);
 
   const row = await c.env.DB.prepare(
     'SELECT id, contract_id, pdc_number, cheque_date, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'
   ).bind(contractId, pdcNumber).first();
+  await auditLog(c.env.DB, user, 'pdc.file_uploaded', 'pdc', (row as { id?: number } | null)?.id ?? null, `Contract ${contractId} PDC #${pdcNumber}: ${file.name}`);
   return c.json(row, 201);
 });
 
 router.delete('/:id/file', requireAdmin, async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
   const row = await c.env.DB.prepare('SELECT file_key FROM pdc_cheques WHERE id = ?').bind(id).first<{ file_key: string | null }>();
   if (row?.file_key) await c.env.R2.delete(row.file_key).catch(() => {});
   await c.env.DB.prepare(
     "UPDATE pdc_cheques SET file_name = NULL, file_key = NULL, file_size = NULL, file_type = NULL, updated_at = datetime('now') WHERE id = ?"
   ).bind(id).run();
+  await auditLog(c.env.DB, user, 'pdc.file_deleted', 'pdc', id, `Removed file from PDC #${id}`);
   return c.json({ ok: true });
 });
 
