@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useTenants, useUnits, useRentalMutations, type Tenant } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -61,14 +61,15 @@ export function TenantsTab() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
   const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm<F>({ resolver: zodResolver(schema) });
 
-  const buildingGroups = units.reduce<Record<string, typeof units>>((acc, u) => {
-    const key = u.building_name;
-    if (!acc[key]) acc[key] = [];
-    acc[key]!.push(u);
-    return acc;
-  }, {});
+  const buildings = [...new Map(units.map(u => [u.building_id, { id: u.building_id, name: u.building_name }])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const filteredUnits = selectedBuildingId
+    ? units.filter(u => u.building_id === Number(selectedBuildingId))
+    : [];
 
   const grouped = tenants.reduce<Record<string, Tenant[]>>((acc, t) => {
     const key = t.building_name ?? 'Unassigned';
@@ -85,9 +86,11 @@ export function TenantsTab() {
     setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function openAdd() { reset({}); setEditing(null); setOpen(true); }
+  function openAdd() { reset({}); setSelectedBuildingId(''); setEditing(null); setOpen(true); }
   function openEdit(t: Tenant) {
     reset({ name: t.name, phone: t.phone, email: t.email, id_number: t.id_number, notes: t.notes, unit_id: t.unit_id ? String(t.unit_id) : '' });
+    const currentUnit = units.find(u => u.id === t.unit_id);
+    setSelectedBuildingId(currentUnit ? String(currentUnit.building_id) : '');
     setEditing(t); setOpen(true);
   }
 
@@ -207,31 +210,45 @@ export function TenantsTab() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
             <div><Label>Name *</Label><Input {...register('name')} className="mt-1" /></div>
             <div>
-              <Label>Unit</Label>
-              <Select value={watch('unit_id') || 'none'} onValueChange={v => setValue('unit_id', v === 'none' ? '' : v)}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="No unit assigned" /></SelectTrigger>
+              <Label>Building</Label>
+              <Select
+                value={selectedBuildingId || 'none'}
+                onValueChange={v => {
+                  const bid = v === 'none' ? '' : v;
+                  setSelectedBuildingId(bid);
+                  setValue('unit_id', '');
+                }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select building" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {Object.entries(buildingGroups).map(([building, bUnits]) => (
-                    <SelectGroup key={building}>
-                      <SelectLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-2 py-1">
-                        {building}
-                      </SelectLabel>
-                      {bUnits.map(u => {
-                        const isCurrentUnit = editing?.unit_id === u.id;
-                        const unavailable = u.occupancy_status !== 'vacant' && !isCurrentUnit;
-                        return (
-                          <SelectItem key={u.id} value={String(u.id)} disabled={unavailable}>
-                            <span className={unavailable ? 'text-muted-foreground' : ''}>
-                              {u.unit_no}
-                              {u.type && <span className="text-xs text-muted-foreground ml-1 capitalize">({u.type})</span>}
-                              {unavailable && <span className="text-xs text-red-500 ml-1">· Not available</span>}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectGroup>
+                  {buildings.map(b => (
+                    <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Unit</Label>
+              <Select
+                value={watch('unit_id') || 'none'}
+                onValueChange={v => setValue('unit_id', v === 'none' ? '' : v)}
+                disabled={!selectedBuildingId}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder={selectedBuildingId ? 'Select unit' : 'Select a building first'} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— None —</SelectItem>
+                  {filteredUnits.map(u => {
+                    const isCurrentUnit = editing?.unit_id === u.id;
+                    const unavailable = u.occupancy_status !== 'vacant' && !isCurrentUnit;
+                    return (
+                      <SelectItem key={u.id} value={String(u.id)} disabled={unavailable}>
+                        {u.unit_no}
+                        {u.type && <span className="text-xs text-muted-foreground ml-1 capitalize">({u.type})</span>}
+                        {unavailable && <span className="text-xs text-red-500 ml-1"> · Not available</span>}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
