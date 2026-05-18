@@ -8,7 +8,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-const NAV_LINKS = [
+const BASE_NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/bills', label: 'Bills' },
   { to: '/rentals', label: 'Rentals' },
@@ -21,6 +21,10 @@ export function TopNav() {
   const location = useLocation();
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navLinks = user?.role === 'superadmin'
+    ? [...BASE_NAV, { to: '/logs', label: 'Logs' }]
+    : BASE_NAV;
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -40,7 +44,7 @@ export function TopNav() {
         </Link>
 
         <div className="hidden md:flex items-center gap-1 flex-1">
-          {NAV_LINKS.map(({ to, label }) => {
+          {navLinks.map(({ to, label }) => {
             const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
               <Link
@@ -68,7 +72,9 @@ export function TopNav() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem disabled className="text-xs text-muted-foreground">{user?.role}</DropdownMenuItem>
-              {user?.role === 'admin' && <DropdownMenuItem asChild><Link to="/settings">Settings</Link></DropdownMenuItem>}
+              {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                <DropdownMenuItem asChild><Link to="/settings">Settings</Link></DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 <LogOut size={14} className="mr-2" /> Sign out
               </DropdownMenuItem>
@@ -87,7 +93,7 @@ export function TopNav() {
 
       {mobileOpen && (
         <div className="md:hidden border-t border-white/20 px-4 py-2 space-y-1">
-          {NAV_LINKS.map(({ to, label }) => {
+          {navLinks.map(({ to, label }) => {
             const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
               <Link
@@ -103,7 +109,7 @@ export function TopNav() {
           <div className="border-t border-white/20 pt-2 mt-2 flex items-center justify-between">
             <span className="text-sm text-white/80">{user?.name} · {user?.role}</span>
             <div className="flex gap-1">
-              {user?.role === 'admin' && (
+              {(user?.role === 'admin' || user?.role === 'superadmin') && (
                 <Link to="/settings" className="text-xs px-2 py-1 rounded hover:bg-white/10">Settings</Link>
               )}
               <button onClick={logout} className="text-xs px-2 py-1 rounded hover:bg-white/10 text-red-300">Sign out</button>

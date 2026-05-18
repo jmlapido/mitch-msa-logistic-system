@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { api } from '../api';
 
-type User = { id: number; name: string; email: string; role: 'admin' | 'staff' };
+type User = { id: number; name: string; email: string; role: 'superadmin' | 'admin' | 'staff' };
 type AuthCtx = {
   user: User | null;
   loading: boolean;

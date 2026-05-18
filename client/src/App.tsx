@@ -10,7 +10,9 @@ import Bills from '@/pages/Bills';
 import Rentals from '@/pages/Rentals';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
+import AuditLogs from '@/pages/AuditLogs';
 import { AdminRoute } from '@/components/layout/AdminRoute';
+import { SuperAdminRoute } from '@/components/layout/SuperAdminRoute';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -42,6 +44,7 @@ export default function App() {
                     <Route path="/rentals" element={<Rentals />} />
                     <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
                     <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+                    <Route path="/logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
                   </Routes>
                 </AppLayout>
               </ProtectedRoute>
