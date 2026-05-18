@@ -51,4 +51,36 @@ app.get('*', async (c) => {
   return c.env.ASSETS.fetch(url.toString());
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+    // Purge financial data 1 year after tenant archive
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 1);
+    const cutoffStr = cutoff.toISOString();
+
+    const { results: expiredTenants } = await env.DB.prepare(
+      "SELECT id FROM tenants WHERE status = 'archived' AND archived_at < ?"
+    ).bind(cutoffStr).all<{ id: number }>();
+
+    for (const { id } of expiredTenants) {
+      await env.DB.prepare(
+        'DELETE FROM rent_payments WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
+      ).bind(id).run();
+
+      await env.DB.prepare(
+        'DELETE FROM pdc_cheques WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
+      ).bind(id).run();
+
+      const { results: docs } = await env.DB.prepare(
+        "SELECT file_key FROM rental_documents WHERE entity_type = 'tenant' AND entity_id = ? AND file_key IS NOT NULL"
+      ).bind(id).all<{ file_key: string }>();
+      for (const { file_key } of docs) {
+        await env.R2.delete(file_key).catch(() => {});
+      }
+      await env.DB.prepare(
+        "DELETE FROM rental_documents WHERE entity_type = 'tenant' AND entity_id = ?"
+      ).bind(id).run();
+    }
+  },
+};
