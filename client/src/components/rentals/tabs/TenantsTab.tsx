@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useTenants, useUnits, useRentalMutations, type Tenant } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -212,9 +212,26 @@ export function TenantsTab() {
                 <SelectTrigger className="mt-1"><SelectValue placeholder="No unit assigned" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— None —</SelectItem>
-                  {Object.entries(buildingGroups).map(([building, bUnits]) =>
-                    bUnits.map(u => <SelectItem key={u.id} value={String(u.id)}>{building} · {u.unit_no}</SelectItem>)
-                  )}
+                  {Object.entries(buildingGroups).map(([building, bUnits]) => (
+                    <SelectGroup key={building}>
+                      <SelectLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-2 py-1">
+                        {building}
+                      </SelectLabel>
+                      {bUnits.map(u => {
+                        const isCurrentUnit = editing?.unit_id === u.id;
+                        const unavailable = u.occupancy_status !== 'vacant' && !isCurrentUnit;
+                        return (
+                          <SelectItem key={u.id} value={String(u.id)} disabled={unavailable}>
+                            <span className={unavailable ? 'text-muted-foreground' : ''}>
+                              {u.unit_no}
+                              {u.type && <span className="text-xs text-muted-foreground ml-1 capitalize">({u.type})</span>}
+                              {unavailable && <span className="text-xs text-red-500 ml-1">· Not available</span>}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectGroup>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
