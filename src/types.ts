@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'staff';
+export type UserRole = 'superadmin' | 'admin' | 'staff';
 
 export type Env = {
   DB: D1Database;
