@@ -57,13 +57,19 @@ units.post('/', requireAdmin, zValidator('json', unitSchema), async (c) => {
   return c.json(result, 201);
 });
 
-units.put('/:id', requireAdmin, zValidator('json', unitSchema.partial()), async (c) => {
+const unitUpdateSchema = z.object({
+  unit_no: z.string().min(1).max(20).optional(),
+  type: z.enum(['room', 'shop', 'apartment', 'office', 'villa']).optional(),
+  floor: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+units.put('/:id', requireAdmin, zValidator('json', unitUpdateSchema), async (c) => {
   const id = Number(c.req.param('id'));
-  const d = c.req.valid('json');
-  const entries = Object.entries(d).filter(([, v]) => v !== undefined);
-  const fields = entries.map(([k]) => `${k} = ?`).join(', ');
-  await c.env.DB.prepare(`UPDATE units SET ${fields} WHERE id = ?`)
-    .bind(...entries.map(([, v]) => v), id).run();
+  const { unit_no, type, floor, notes } = c.req.valid('json');
+  await c.env.DB.prepare(
+    'UPDATE units SET unit_no = COALESCE(?, unit_no), type = COALESCE(?, type), floor = ?, notes = ? WHERE id = ?'
+  ).bind(unit_no ?? null, type ?? null, floor ?? null, notes ?? null, id).run();
   return c.json(await c.env.DB.prepare('SELECT * FROM units WHERE id = ?').bind(id).first());
 });
 

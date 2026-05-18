@@ -59,9 +59,12 @@ export function UnitsTab() {
 
   async function onSubmit(v: F) {
     try {
-      const payload = { ...v, building_id: Number(v.building_id) };
-      if (editing) { await updateUnit.mutateAsync({ id: editing.id, ...payload }); toast.success('Updated'); }
-      else { await createUnit.mutateAsync(payload); toast.success('Created'); }
+      if (editing) {
+        await updateUnit.mutateAsync({ id: editing.id, unit_no: v.unit_no, type: v.type, floor: v.floor, notes: v.notes });
+      } else {
+        await createUnit.mutateAsync({ ...v, building_id: Number(v.building_id) });
+      }
+      toast.success(editing ? 'Updated' : 'Created');
       setOpen(false);
     } catch { toast.error('Failed'); }
   }
