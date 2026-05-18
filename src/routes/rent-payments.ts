@@ -22,7 +22,7 @@ rentPayments.get('/', async (c) => {
 
   let query = `
     SELECT rp.*, ROUND(c.annual_rent / 12, 2) as expected_rent,
-      t.name as tenant_name, t.phone as tenant_phone,
+      t.id as tenant_id, t.name as tenant_name, t.phone as tenant_phone, t.email as tenant_email,
       u.unit_no, u.type as unit_type,
       b.id as building_id, b.name as building_name,
       c.payment_type,

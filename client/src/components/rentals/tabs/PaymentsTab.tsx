@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Phone, Mail, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRentPayments, useBuildings, useRentalMutations, type RentPayment } from '@/lib/hooks/useRentals';
+import { ContractsPanel } from '../ContractsPanel';
 import { currentMonth, monthLabel, formatAED, formatDate } from '@/lib/utils';
 
 function dueDateColor(dateStr: string, status: string): string {
@@ -19,6 +21,7 @@ function dueDateColor(dateStr: string, status: string): string {
 export function PaymentsTab() {
   const [month, setMonth] = useState(currentMonth());
   const [buildingFilter, setBuildingFilter] = useState<number | undefined>();
+  const [tenantDetail, setTenantDetail] = useState<RentPayment | null>(null);
   const { data: payments = [], isLoading } = useRentPayments(month, buildingFilter);
   const { data: buildings = [] } = useBuildings();
   const { updateRentPayment } = useRentalMutations();
@@ -95,7 +98,14 @@ export function PaymentsTab() {
                         return (
                           <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
                             <td className="px-3 py-2 font-medium">{p.unit_no}</td>
-                            <td className="px-3 py-2 text-xs">{p.tenant_name}</td>
+                            <td className="px-3 py-2 text-xs">
+                              <button
+                                onClick={() => setTenantDetail(p)}
+                                className="text-primary hover:underline text-left"
+                              >
+                                {p.tenant_name}
+                              </button>
+                            </td>
                             <td className="px-3 py-2 text-right text-xs">{formatAED(p.expected_rent)}</td>
                             <td className="hidden sm:table-cell px-3 py-2 text-right">{p.status === 'collected' ? formatAED(p.amount) : '—'}</td>
                             <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
@@ -124,6 +134,36 @@ export function PaymentsTab() {
           })}
         </div>
       )}
+
+      <Dialog open={!!tenantDetail} onOpenChange={v => !v && setTenantDetail(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{tenantDetail?.tenant_name}</DialogTitle>
+          </DialogHeader>
+          {tenantDetail && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Building2 size={12} /> {tenantDetail.unit_no} — {tenantDetail.building_name}
+                </span>
+                {tenantDetail.tenant_phone && (
+                  <a href={`tel:${tenantDetail.tenant_phone}`} className="flex items-center gap-1 hover:text-foreground">
+                    <Phone size={12} /> {tenantDetail.tenant_phone}
+                  </a>
+                )}
+                {tenantDetail.tenant_email && (
+                  <a href={`mailto:${tenantDetail.tenant_email}`} className="flex items-center gap-1 hover:text-foreground">
+                    <Mail size={12} /> {tenantDetail.tenant_email}
+                  </a>
+                )}
+              </div>
+              <div className="border-t pt-3">
+                <ContractsPanel tenantId={tenantDetail.tenant_id} />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
