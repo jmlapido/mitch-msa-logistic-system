@@ -8,6 +8,14 @@ import { Label } from '@/components/ui/label';
 import { useRentPayments, useBuildings, useRentalMutations, type RentPayment } from '@/lib/hooks/useRentals';
 import { currentMonth, monthLabel, formatAED, formatDate } from '@/lib/utils';
 
+function dueDateColor(dateStr: string, status: string): string {
+  if (status === 'collected') return 'text-muted-foreground';
+  const diff = Math.floor((new Date(dateStr).getTime() - Date.now()) / 86400000);
+  if (diff < 0) return 'font-semibold text-red-600 dark:text-red-400';
+  if (diff <= 7) return 'font-semibold text-amber-600 dark:text-amber-400';
+  return 'text-foreground';
+}
+
 export function PaymentsTab() {
   const [month, setMonth] = useState(currentMonth());
   const [buildingFilter, setBuildingFilter] = useState<number | undefined>();
@@ -76,7 +84,8 @@ export function PaymentsTab() {
                         <th className="hidden sm:table-cell text-right px-3 py-1.5">Collected</th>
                         <th className="hidden sm:table-cell text-right px-3 py-1.5 text-red-500">Overdue</th>
                         <th className="hidden sm:table-cell text-right px-3 py-1.5">Balance</th>
-                        <th className="hidden sm:table-cell text-center px-3 py-1.5">Date</th>
+                        <th className="hidden sm:table-cell text-center px-3 py-1.5">Paid Date</th>
+                        <th className="hidden sm:table-cell text-center px-3 py-1.5">Due Date</th>
                         <th className="text-center px-3 py-1.5">Status</th>
                       </tr>
                     </thead>
@@ -96,6 +105,11 @@ export function PaymentsTab() {
                               {(p.tenant_balance ?? 0) > 0 ? <span className="text-red-600 font-semibold">{formatAED(p.tenant_balance)}</span> : <span className="text-green-600">—</span>}
                             </td>
                             <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">{formatDate(p.paid_date)}</td>
+                            <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">
+                              {p.due_date ? (
+                                <span className={dueDateColor(p.due_date, p.status)}>{formatDate(p.due_date)}</span>
+                              ) : '—'}
+                            </td>
                             <td className="px-3 py-2 text-center">
                               <CollectPopover payment={p} onUpdate={updateRentPayment.mutateAsync} />
                             </td>

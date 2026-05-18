@@ -19,7 +19,9 @@ const schema = z.object({
   start_date: z.string().min(1, 'Required'),
   end_date: z.string().min(1, 'Required'),
   annual_rent: z.string().min(1, 'Required'),
-  no_of_pdc: z.string().min(1, 'Required'),
+  payment_type: z.enum(['cash', 'pdc']),
+  no_of_pdc: z.string().optional(),
+  due_day: z.string().optional(),
   notes: z.string().optional(),
 });
 type F = z.infer<typeof schema>;
@@ -54,7 +56,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   }
 
   function openAdd() {
-    reset({ contract_no: '', start_date: '', end_date: '', annual_rent: '', no_of_pdc: '1', notes: '' });
+    reset({ contract_no: '', start_date: '', end_date: '', annual_rent: '', payment_type: 'pdc', no_of_pdc: '1', due_day: '1', notes: '' });
     setDurationAmt('');
     setEditing(null);
     setOpen(true);
@@ -66,7 +68,9 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       start_date: c.start_date,
       end_date: c.end_date,
       annual_rent: String(c.annual_rent),
+      payment_type: c.payment_type ?? 'pdc',
       no_of_pdc: String(c.no_of_pdc),
+      due_day: String(c.due_day ?? 1),
       notes: c.notes ?? '',
     });
     setDurationAmt('');
@@ -75,13 +79,16 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   }
 
   async function onSubmit(v: F) {
+    const isPdc = v.payment_type === 'pdc';
     const payload = {
       tenant_id: tenantId,
       contract_no: v.contract_no,
       start_date: v.start_date,
       end_date: v.end_date,
       annual_rent: Number(v.annual_rent),
-      no_of_pdc: Number(v.no_of_pdc),
+      payment_type: v.payment_type,
+      no_of_pdc: isPdc ? Number(v.no_of_pdc ?? 1) : 0,
+      due_day: !isPdc ? Number(v.due_day ?? 1) : undefined,
       notes: v.notes || undefined,
     };
     try {
@@ -138,7 +145,11 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                   <div className="text-muted-foreground space-y-0.5">
                     <p>{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
                     <p>Annual Rent: <span className="font-medium text-foreground">{formatAED(c.annual_rent)}</span></p>
-                    <p>PDC: <span className="font-medium text-foreground">{c.no_of_pdc} cheque{c.no_of_pdc !== 1 ? 's' : ''}</span></p>
+                    {(c.payment_type ?? 'pdc') === 'pdc' ? (
+                      <p>PDC: <span className="font-medium text-foreground">{c.no_of_pdc} cheque{c.no_of_pdc !== 1 ? 's' : ''}</span></p>
+                    ) : (
+                      <p>Cash · Due day: <span className="font-medium text-foreground">{c.due_day ?? 1}</span></p>
+                    )}
                     {c.notes && <p className="italic">{c.notes}</p>}
                   </div>
                 </div>
@@ -149,7 +160,9 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                   </div>
                 )}
               </div>
-              <PdcPanel contractId={c.id} pdcCount={c.no_of_pdc} />
+              {(c.payment_type ?? 'pdc') === 'pdc' && c.no_of_pdc > 0 && (
+                <PdcPanel contractId={c.id} pdcCount={c.no_of_pdc} />
+              )}
             </div>
           ))}
         </div>
@@ -192,16 +205,32 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                 <Button type="button" variant="outline" size="sm" onClick={applyDuration}>Apply</Button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Annual Rent (AED) *</Label>
-                <Input {...register('annual_rent')} type="number" min={0} className="mt-1" placeholder="0" />
-              </div>
+            <div>
+              <Label>Annual Rent (AED) *</Label>
+              <Input {...register('annual_rent')} type="number" min={0} className="mt-1" placeholder="0" />
+            </div>
+            <div>
+              <Label>Payment Type *</Label>
+              <Select value={watch('payment_type')} onValueChange={v => setValue('payment_type', v as 'cash' | 'pdc')}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pdc">PDC (Post-Dated Cheques)</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {watch('payment_type') === 'pdc' ? (
               <div>
                 <Label>No. of PDC *</Label>
-                <Input {...register('no_of_pdc')} type="number" min={1} max={24} className="mt-1" placeholder="1" />
+                <Input {...register('no_of_pdc')} type="number" min={1} max={24} className="mt-1" placeholder="e.g. 4" />
               </div>
-            </div>
+            ) : (
+              <div>
+                <Label>Due Day (day of month) *</Label>
+                <Input {...register('due_day')} type="number" min={1} max={28} className="mt-1" placeholder="e.g. 5" />
+                <p className="text-xs text-muted-foreground mt-0.5">Rent is due on this day every month (1–28)</p>
+              </div>
+            )}
             <div>
               <Label>Notes</Label>
               <Input {...register('notes')} className="mt-1" />

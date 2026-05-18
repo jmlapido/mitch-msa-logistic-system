@@ -25,6 +25,14 @@ rentPayments.get('/', async (c) => {
       t.name as tenant_name, t.phone as tenant_phone,
       u.unit_no, u.type as unit_type,
       b.id as building_id, b.name as building_name,
+      c.payment_type,
+      CASE
+        WHEN c.payment_type = 'cash' THEN
+          rp.month || '-' || printf('%02d', COALESCE(c.due_day, 1))
+        WHEN c.payment_type = 'pdc' THEN
+          pc.cheque_date
+        ELSE NULL
+      END as due_date,
       (SELECT COALESCE(SUM(rp2.amount), 0)
        FROM rent_payments rp2
        JOIN contracts c2 ON rp2.contract_id = c2.id
@@ -41,6 +49,12 @@ rentPayments.get('/', async (c) => {
     JOIN tenants t ON c.tenant_id = t.id
     LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN buildings b ON u.building_id = b.id
+    LEFT JOIN pdc_cheques pc ON pc.contract_id = c.id
+      AND pc.pdc_number = MIN(
+        c.no_of_pdc,
+        MAX(1, (CAST(strftime('%Y', rp.month) AS INTEGER) * 12 + CAST(strftime('%m', rp.month) AS INTEGER))
+             - (CAST(strftime('%Y', c.start_date) AS INTEGER) * 12 + CAST(strftime('%m', c.start_date) AS INTEGER)) + 1)
+      )
     WHERE rp.month = ?
   `;
   const binds: unknown[] = [month, month];
