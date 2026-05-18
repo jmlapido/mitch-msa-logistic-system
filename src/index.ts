@@ -17,6 +17,7 @@ import dashboardRoutes from './routes/dashboard';
 import reportsRoutes from './routes/reports';
 import settingsRoutes from './routes/settings';
 import usersRoutes from './routes/users';
+import auditLogsRoutes from './routes/audit-logs';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -42,6 +43,7 @@ app.route('/api/dashboard', dashboardRoutes);
 app.route('/api/reports', reportsRoutes);
 app.route('/api/settings', settingsRoutes);
 app.route('/api/users', usersRoutes);
+app.route('/api/audit-logs', auditLogsRoutes);
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
