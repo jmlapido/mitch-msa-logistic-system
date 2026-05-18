@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
+import { auditLog } from '../lib/auditLog';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -30,6 +31,7 @@ router.post('/date', requireAdmin, zValidator('json', z.object({
   pdc_number: z.number().int().min(1),
   cheque_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
 })), async (c) => {
+  const user = c.get('user');
   const { contract_id, pdc_number, cheque_date } = c.req.valid('json');
   await c.env.DB.prepare(`
     INSERT INTO pdc_cheques (contract_id, pdc_number, cheque_date, updated_at)
@@ -37,6 +39,7 @@ router.post('/date', requireAdmin, zValidator('json', z.object({
     ON CONFLICT (contract_id, pdc_number)
     DO UPDATE SET cheque_date = excluded.cheque_date, updated_at = datetime('now')
   `).bind(contract_id, pdc_number, cheque_date).run();
+  await auditLog(c.env.DB, user, 'pdc.date_set', 'pdc', null, `Contract ${contract_id} PDC #${pdc_number} → ${cheque_date}`);
   const row = await c.env.DB.prepare(
     'SELECT id, contract_id, pdc_number, cheque_date, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'
   ).bind(contract_id, pdc_number).first();
@@ -71,6 +74,7 @@ router.post('/upload', requireAdmin, async (c) => {
       file_size = excluded.file_size, file_type = excluded.file_type,
       uploaded_by = excluded.uploaded_by, updated_at = datetime('now')
   `).bind(contractId, pdcNumber, file.name, key, file.size, file.type, user.sub).run();
+  await auditLog(c.env.DB, user, 'pdc.file_uploaded', 'pdc', null, `Contract ${contractId} PDC #${pdcNumber}: ${file.name}`);
 
   const row = await c.env.DB.prepare(
     'SELECT id, contract_id, pdc_number, cheque_date, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'

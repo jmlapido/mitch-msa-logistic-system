@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
+import { auditLog } from '../lib/auditLog';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -30,9 +31,7 @@ bills.get('/', async (c) => {
   return c.json(results);
 });
 
-const createBillSchema = billSchema.extend({
-  amount: z.number().min(0).default(0),
-});
+const createBillSchema = billSchema.extend({ amount: z.number().min(0).default(0) });
 
 bills.post('/', requireAdmin, zValidator('json', createBillSchema), async (c) => {
   const user = c.get('user');
@@ -43,12 +42,10 @@ bills.post('/', requireAdmin, zValidator('json', createBillSchema), async (c) =>
     `INSERT INTO bills (category_id, particulars, account_no, due_day, is_recurring, notes, created_by)
      VALUES (?,?,?,?,?,?,?) RETURNING *`
   ).bind(
-    data.category_id, data.particulars,
-    data.account_no ?? null, data.due_day ?? null,
-    data.is_recurring ? 1 : 0, data.notes ?? null, user.sub
+    data.category_id, data.particulars, data.account_no ?? null,
+    data.due_day ?? null, data.is_recurring ? 1 : 0, data.notes ?? null, user.sub
   ).first<{ id: number }>();
 
-  // Create entry in same D1 connection (avoids read-replica lag on subsequent GET)
   let entry_id: number | null = null;
   if (result && data.is_recurring) {
     const entry = await c.env.DB.prepare(
@@ -64,26 +61,27 @@ bills.post('/', requireAdmin, zValidator('json', createBillSchema), async (c) =>
     }
   }
 
+  await auditLog(c.env.DB, user, 'bill.created', 'bill', result?.id ?? null, `Bill: ${data.particulars}`);
   return c.json({ ...result, entry_id }, 201);
 });
 
 bills.put('/:id', requireAdmin, zValidator('json', billSchema.partial()), async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
   const data = c.req.valid('json');
-  const dbData = {
-    ...data,
-    is_recurring: data.is_recurring !== undefined ? (data.is_recurring ? 1 : 0) : undefined,
-  };
-  const fields = Object.entries(dbData)
-    .filter(([, v]) => v !== undefined)
-    .map(([k]) => `${k} = ?`).join(', ');
+  const dbData = { ...data, is_recurring: data.is_recurring !== undefined ? (data.is_recurring ? 1 : 0) : undefined };
+  const fields = Object.entries(dbData).filter(([, v]) => v !== undefined).map(([k]) => `${k} = ?`).join(', ');
   const values = [...Object.values(dbData).filter(v => v !== undefined), id];
   await c.env.DB.prepare(`UPDATE bills SET ${fields} WHERE id = ?`).bind(...values).run();
+  await auditLog(c.env.DB, user, 'bill.edited', 'bill', id, `Updated: ${Object.keys(data).join(', ')}`);
   return c.json(await c.env.DB.prepare('SELECT * FROM bills WHERE id = ?').bind(id).first());
 });
 
 bills.delete('/:id', requireAdmin, async (c) => {
-  await c.env.DB.prepare('DELETE FROM bills WHERE id = ?').bind(Number(c.req.param('id'))).run();
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  await c.env.DB.prepare('DELETE FROM bills WHERE id = ?').bind(id).run();
+  await auditLog(c.env.DB, user, 'bill.deleted', 'bill', id);
   return c.json({ ok: true });
 });
 

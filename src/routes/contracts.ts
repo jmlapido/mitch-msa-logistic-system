@@ -3,6 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
+import { auditLog } from '../lib/auditLog';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -40,11 +41,13 @@ contracts.post('/', requireAdmin, zValidator('json', contractSchema), async (c) 
   const result = await c.env.DB.prepare(
     `INSERT INTO contracts (tenant_id, contract_no, start_date, end_date, annual_rent, payment_type, no_of_pdc, due_day, notes, created_by)
      VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING *`
-  ).bind(d.tenant_id, d.contract_no, d.start_date, d.end_date, d.annual_rent, d.payment_type, d.no_of_pdc, d.due_day ?? null, d.notes ?? null, user.sub).first();
+  ).bind(d.tenant_id, d.contract_no, d.start_date, d.end_date, d.annual_rent, d.payment_type, d.no_of_pdc, d.due_day ?? null, d.notes ?? null, user.sub).first<{ id: number }>();
+  await auditLog(c.env.DB, user, 'contract.created', 'contract', result?.id ?? null, `Contract #${d.contract_no}`);
   return c.json(result, 201);
 });
 
 contracts.put('/:id', requireAdmin, zValidator('json', contractSchema.partial()), async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);
@@ -54,11 +57,15 @@ contracts.put('/:id', requireAdmin, zValidator('json', contractSchema.partial())
   const row = await c.env.DB.prepare(
     `SELECT *, CASE WHEN date(end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status FROM contracts WHERE id = ?`
   ).bind(id).first();
+  await auditLog(c.env.DB, user, 'contract.edited', 'contract', id, `Updated: ${entries.map(([k]) => k).join(', ')}`);
   return c.json(row);
 });
 
 contracts.delete('/:id', requireAdmin, async (c) => {
-  await c.env.DB.prepare('DELETE FROM contracts WHERE id = ?').bind(Number(c.req.param('id'))).run();
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  await c.env.DB.prepare('DELETE FROM contracts WHERE id = ?').bind(id).run();
+  await auditLog(c.env.DB, user, 'contract.deleted', 'contract', id);
   return c.json({ ok: true });
 });
 

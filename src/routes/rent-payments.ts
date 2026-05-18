@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
+import { auditLog } from '../lib/auditLog';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -12,7 +13,6 @@ rentPayments.get('/', async (c) => {
   const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
   const buildingId = c.req.query('building_id');
 
-  // Backfill all months from each contract's start through the viewed month
   await c.env.DB.prepare(`
     WITH RECURSIVE month_gen(m) AS (
       SELECT strftime('%Y-%m', MIN(start_date)) FROM contracts
@@ -29,7 +29,6 @@ rentPayments.get('/', async (c) => {
       AND mg.m <= ?
   `).bind(month, month).run();
 
-  // Mark all past unpaid months as overdue
   await c.env.DB.prepare(
     `UPDATE rent_payments SET status = 'overdue' WHERE month < ? AND status = 'pending'`
   ).bind(month).run();
@@ -96,6 +95,13 @@ rentPayments.put('/:id', zValidator('json', updatePaymentSchema), async (c) => {
   const fields = entries.map(([k]) => `${k} = ?`).join(', ');
   await c.env.DB.prepare(`UPDATE rent_payments SET ${fields} WHERE id = ?`)
     .bind(...entries.map(([, v]) => v), id).run();
+  if (d.status === 'collected') {
+    await auditLog(c.env.DB, user, 'payment.marked_paid', 'payment', id, `Marked collected`);
+  } else if (d.status) {
+    await auditLog(c.env.DB, user, 'payment.status_changed', 'payment', id, `Status → ${d.status}`);
+  } else {
+    await auditLog(c.env.DB, user, 'payment.edited', 'payment', id, `Updated: ${Object.keys(d).join(', ')}`);
+  }
   return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
 });
 
