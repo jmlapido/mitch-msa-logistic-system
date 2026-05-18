@@ -134,10 +134,6 @@ tenants.post('/:id/archive', requireAdmin, async (c) => {
     "UPDATE tenants SET status = 'archived', archived_at = ?, unit_id = NULL WHERE id = ?"
   ).bind(now, id).run();
 
-  if (tenant.unit_id) {
-    await c.env.DB.prepare("UPDATE units SET occupancy_status = 'vacant' WHERE id = ?").bind(tenant.unit_id).run();
-  }
-
   await auditLog(c.env.DB, user, 'tenant.archived', 'tenant', id, `Archived tenant: ${tenant.name}`);
   return c.json({ ok: true });
 });

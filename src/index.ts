@@ -64,23 +64,35 @@ export default {
     ).bind(cutoffStr).all<{ id: number }>();
 
     for (const { id } of expiredTenants) {
-      await env.DB.prepare(
-        'DELETE FROM rent_payments WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
-      ).bind(id).run();
+      try {
+        await env.DB.prepare(
+          'DELETE FROM rent_payments WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
+        ).bind(id).run();
 
-      await env.DB.prepare(
-        'DELETE FROM pdc_cheques WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
-      ).bind(id).run();
+        // Delete PDC cheque R2 files
+        const { results: pdcFiles } = await env.DB.prepare(
+          'SELECT file_key FROM pdc_cheques WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?) AND file_key IS NOT NULL'
+        ).bind(id).all<{ file_key: string }>();
+        for (const { file_key } of pdcFiles) {
+          await env.R2.delete(file_key).catch(() => {});
+        }
 
-      const { results: docs } = await env.DB.prepare(
-        "SELECT file_key FROM rental_documents WHERE entity_type = 'tenant' AND entity_id = ? AND file_key IS NOT NULL"
-      ).bind(id).all<{ file_key: string }>();
-      for (const { file_key } of docs) {
-        await env.R2.delete(file_key).catch(() => {});
+        await env.DB.prepare(
+          'DELETE FROM pdc_cheques WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
+        ).bind(id).run();
+
+        const { results: docs } = await env.DB.prepare(
+          "SELECT file_key FROM rental_documents WHERE entity_type = 'tenant' AND entity_id = ? AND file_key IS NOT NULL"
+        ).bind(id).all<{ file_key: string }>();
+        for (const { file_key } of docs) {
+          await env.R2.delete(file_key).catch(() => {});
+        }
+        await env.DB.prepare(
+          "DELETE FROM rental_documents WHERE entity_type = 'tenant' AND entity_id = ?"
+        ).bind(id).run();
+      } catch (e) {
+        console.error(`[cleanup] failed for tenant ${id}:`, e);
       }
-      await env.DB.prepare(
-        "DELETE FROM rental_documents WHERE entity_type = 'tenant' AND entity_id = ?"
-      ).bind(id).run();
     }
   },
 };
