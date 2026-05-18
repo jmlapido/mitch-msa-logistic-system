@@ -15,6 +15,7 @@ export type BillEntry = {
   particulars: string;
   account_no: string | null;
   due_day: number | null;
+  is_recurring: number;
   category_id: number;
   category_name: string;
   category_color: string;
@@ -33,6 +34,19 @@ export type BillTemplate = {
   category_name: string;
   category_color: string;
   category_icon: string;
+  entry_id?: number | null;
+  amount?: number;
+};
+
+export type BillCreateInput = {
+  category_id: number;
+  particulars: string;
+  account_no: string | null;
+  due_day: number | null;
+  is_recurring: number;
+  notes: string | null;
+  amount: number;
+  month: string;
 };
 
 export function useBillEntries(month: string) {
@@ -60,7 +74,8 @@ export function useBillMutations(month: string) {
 
   return {
     createTemplate: useMutation({
-      mutationFn: (d: Partial<BillTemplate>) => api.post<BillTemplate>('/api/bills', d),
+      mutationFn: ({ month, ...d }: BillCreateInput) =>
+        api.post<BillTemplate & { entry_id: number | null }>(`/api/bills?month=${month}`, d),
       onSuccess: invalidateAll,
     }),
     updateTemplate: useMutation({

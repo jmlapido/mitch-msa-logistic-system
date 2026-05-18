@@ -12,10 +12,10 @@ bills.use('*', requireAuth);
 const billSchema = z.object({
   category_id: z.number().int().positive(),
   particulars: z.string().min(1).max(100),
-  account_no: z.string().max(60).optional(),
-  due_day: z.number().int().min(1).max(28).nullable().optional(),
+  account_no: z.string().max(60).nullish(),
+  due_day: z.number().int().min(1).max(28).nullish(),
   is_recurring: z.coerce.boolean().default(true),
-  notes: z.string().optional(),
+  notes: z.string().nullish(),
 });
 
 bills.get('/', async (c) => {
@@ -30,9 +30,15 @@ bills.get('/', async (c) => {
   return c.json(results);
 });
 
-bills.post('/', requireAdmin, zValidator('json', billSchema), async (c) => {
+const createBillSchema = billSchema.extend({
+  amount: z.number().min(0).default(0),
+});
+
+bills.post('/', requireAdmin, zValidator('json', createBillSchema), async (c) => {
   const user = c.get('user');
-  const data = c.req.valid('json');
+  const { amount, ...data } = c.req.valid('json');
+  const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
+
   const result = await c.env.DB.prepare(
     `INSERT INTO bills (category_id, particulars, account_no, due_day, is_recurring, notes, created_by)
      VALUES (?,?,?,?,?,?,?) RETURNING *`
@@ -40,8 +46,25 @@ bills.post('/', requireAdmin, zValidator('json', billSchema), async (c) => {
     data.category_id, data.particulars,
     data.account_no ?? null, data.due_day ?? null,
     data.is_recurring ? 1 : 0, data.notes ?? null, user.sub
-  ).first();
-  return c.json(result, 201);
+  ).first<{ id: number }>();
+
+  // Create entry in same D1 connection (avoids read-replica lag on subsequent GET)
+  let entry_id: number | null = null;
+  if (result && data.is_recurring) {
+    const entry = await c.env.DB.prepare(
+      `INSERT OR IGNORE INTO bill_entries (bill_id, month, amount, status) VALUES (?,?,?,'unpaid') RETURNING id`
+    ).bind(result.id, month, amount).first<{ id: number }>();
+    if (entry) {
+      entry_id = entry.id;
+    } else {
+      const existing = await c.env.DB.prepare(
+        `SELECT id FROM bill_entries WHERE bill_id = ? AND month = ?`
+      ).bind(result.id, month).first<{ id: number }>();
+      entry_id = existing?.id ?? null;
+    }
+  }
+
+  return c.json({ ...result, entry_id }, 201);
 });
 
 bills.put('/:id', requireAdmin, zValidator('json', billSchema.partial()), async (c) => {

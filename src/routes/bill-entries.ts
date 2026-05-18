@@ -12,17 +12,28 @@ billEntries.use('*', requireAuth);
 billEntries.get('/', async (c) => {
   const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
 
-  // Auto-create unpaid entries for recurring bills this month
+  // Remove any pristine auto-created entries for bills created after this month
+  await c.env.DB.prepare(`
+    DELETE FROM bill_entries
+    WHERE month = ?
+      AND amount = 0 AND status = 'unpaid'
+      AND paid_date IS NULL AND invoice_no IS NULL AND notes IS NULL
+      AND (SELECT COUNT(*) FROM bill_attachments WHERE bill_entry_id = bill_entries.id) = 0
+      AND bill_id IN (SELECT id FROM bills WHERE strftime('%Y-%m', created_at) > ?)
+  `).bind(month, month).run();
+
+  // Auto-create entries only for recurring bills created on or before this month
   await c.env.DB.prepare(`
     INSERT OR IGNORE INTO bill_entries (bill_id, month, amount, status)
-    SELECT id, ?, 0, 'unpaid' FROM bills WHERE is_recurring = 1
-  `).bind(month).run();
+    SELECT id, ?, 0, 'unpaid' FROM bills
+    WHERE is_recurring = 1 AND strftime('%Y-%m', created_at) <= ?
+  `).bind(month, month).run();
 
   const { results } = await c.env.DB.prepare(`
     SELECT
       be.id as entry_id, be.month, be.amount, be.status, be.paid_date,
       be.invoice_no, be.notes as entry_notes, be.updated_at,
-      b.id as bill_id, b.particulars, b.account_no, b.due_day,
+      b.id as bill_id, b.particulars, b.account_no, b.due_day, b.is_recurring,
       c.id as category_id, c.name as category_name, c.color as category_color, c.icon as category_icon,
       (SELECT COUNT(*) FROM bill_attachments WHERE bill_entry_id = be.id) as attachment_count,
       CASE
@@ -38,7 +49,7 @@ billEntries.get('/', async (c) => {
     JOIN categories c ON b.category_id = c.id
     WHERE be.month = ?
     ORDER BY c.sort_order, c.name, b.particulars
-  `).bind(month, month).all();
+  `).bind(month).all();
 
   return c.json(results);
 });

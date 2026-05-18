@@ -50,10 +50,11 @@ export function UnitsTab() {
     setCollapsed(prev => ({ ...prev, [buildingId]: !prev[buildingId] }));
   }
 
-  function openAdd() { reset({}); setEditing(null); setOpen(true); }
+  function openAdd() { setEditing(null); reset({}); setOpen(true); }
   function openEdit(u: Unit) {
-    reset({ building_id: String(u.building_id), unit_no: u.unit_no, type: u.type as F['type'], floor: u.floor, notes: u.notes });
-    setEditing(u); setOpen(true);
+    setEditing(u);
+    reset({ building_id: String(u.building_id), unit_no: u.unit_no, type: u.type as F['type'], floor: u.floor ?? undefined, notes: u.notes ?? undefined });
+    setOpen(true);
   }
 
   async function onSubmit(v: F) {
@@ -158,7 +159,7 @@ export function UnitsTab() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
+      <Dialog key={editing ? `edit-${editing.id}` : 'new'} open={open} onOpenChange={v => !v && setOpen(false)}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>{editing ? 'Edit Unit' : 'Add Unit'}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
