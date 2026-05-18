@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useContracts, useRentalMutations, type Contract } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
 import { formatAED, formatDate } from '@/lib/utils';
 import { PdcPanel } from './PdcPanel';
 
@@ -34,6 +35,17 @@ function calcEndDate(startDate: string, amount: string, unit: 'days' | 'months')
   if (unit === 'days') d.setDate(d.getDate() + n);
   else d.setMonth(d.getMonth() + n);
   return d.toISOString().slice(0, 10);
+}
+
+function LastEditedBy({ entityType, entityId }: { entityType: string; entityId: number }) {
+  const { user } = useAuth();
+  const { data: log } = useLastAuditEntry(entityType, entityId);
+  if (user?.role !== 'superadmin' || !log) return null;
+  return (
+    <p className="text-[10px] text-muted-foreground mt-1">
+      Last edited by <span className="font-medium">{log.user_name}</span> · {new Date(log.created_at).toLocaleString()}
+    </p>
+  );
 }
 
 export function ContractsPanel({ tenantId }: { tenantId: number }) {
@@ -151,6 +163,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                       <p>Cash · Due day: <span className="font-medium text-foreground">{c.due_day ?? 1}</span></p>
                     )}
                     {c.notes && <p className="italic">{c.notes}</p>}
+                    <LastEditedBy entityType="contract" entityId={c.id} />
                   </div>
                 </div>
                 {(user?.role === 'admin' || user?.role === 'superadmin') && (

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useTenants, useUnits, useRentalMutations, type Tenant } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
 import { DocumentsPanel } from '../DocumentsPanel';
 import { ContractsPanel } from '../ContractsPanel';
 import { formatAED, formatDate } from '@/lib/utils';
@@ -49,6 +50,17 @@ function sortTenants(list: Tenant[], key: SortKey): Tenant[] {
     if (!b.end_date) return -1;
     return a.end_date.localeCompare(b.end_date);
   });
+}
+
+function LastEditedBy({ entityType, entityId }: { entityType: string; entityId: number }) {
+  const { user } = useAuth();
+  const { data: log } = useLastAuditEntry(entityType, entityId);
+  if (user?.role !== 'superadmin' || !log) return null;
+  return (
+    <p className="text-[10px] text-muted-foreground">
+      Last edited by <span className="font-medium">{log.user_name}</span> · {new Date(log.created_at).toLocaleString()}
+    </p>
+  );
 }
 
 export function TenantsTab() {
@@ -188,6 +200,7 @@ export function TenantsTab() {
                               <p className="text-xs text-muted-foreground">Email: {t.email ?? '—'}</p>
                               <p className="text-xs text-muted-foreground">Emirates ID: {t.id_number ?? '—'}</p>
                               {t.notes && <p className="text-xs text-muted-foreground mt-1">Notes: {t.notes}</p>}
+                              <LastEditedBy entityType="tenant" entityId={t.id} />
                             </div>
                             <div><ContractsPanel tenantId={t.id} /></div>
                             <div>
