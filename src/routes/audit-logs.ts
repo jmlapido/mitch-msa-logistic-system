@@ -13,14 +13,23 @@ auditLogs.get('/', async (c) => {
   const entityType = c.req.query('entity_type');
   const dateFrom = c.req.query('date_from');
   const dateTo = c.req.query('date_to');
-  const page = Math.max(1, Number(c.req.query('page') ?? 1));
+  const page = Math.max(1, Number(c.req.query('page') || 1));
   const limit = 50;
   const offset = (page - 1) * limit;
 
   const conditions: string[] = [];
   const binds: unknown[] = [];
 
-  if (userId) { conditions.push('user_id = ?'); binds.push(Number(userId)); }
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  if (dateFrom && !DATE_RE.test(dateFrom)) return c.json({ error: 'Invalid date_from format (YYYY-MM-DD)' }, 400);
+  if (dateTo && !DATE_RE.test(dateTo)) return c.json({ error: 'Invalid date_to format (YYYY-MM-DD)' }, 400);
+
+  if (userId) {
+    const parsedUserId = parseInt(userId, 10);
+    if (isNaN(parsedUserId)) return c.json({ error: 'Invalid user_id' }, 400);
+    conditions.push('user_id = ?');
+    binds.push(parsedUserId);
+  }
   if (action) { conditions.push('action = ?'); binds.push(action); }
   if (entityType) { conditions.push('entity_type = ?'); binds.push(entityType); }
   if (dateFrom) { conditions.push("date(created_at) >= date(?)"); binds.push(dateFrom); }
