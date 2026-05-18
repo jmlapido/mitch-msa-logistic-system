@@ -12,11 +12,11 @@ export default function AuditLogs() {
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useAuditLogs({ user_id: userId, action, entity_type: entityType, date_from: dateFrom || undefined, date_to: dateTo || undefined, page });
+  const { data, isLoading, isError } = useAuditLogs({ user_id: userId, action, entity_type: entityType, date_from: dateFrom || undefined, date_to: dateTo || undefined, page });
   const { data: users = [] } = useAuditLogUsers();
   const { data: actions = [] } = useAuditLogActions();
 
-  const totalPages = data ? Math.ceil(data.total / data.limit) : 1;
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
   function reset() {
     setUserId(undefined); setAction(undefined); setEntityType(undefined);
@@ -62,6 +62,8 @@ export default function AuditLogs() {
 
       {isLoading ? (
         <p className="text-muted-foreground text-sm">Loading…</p>
+      ) : isError ? (
+        <p className="text-sm text-destructive">Failed to load audit logs.</p>
       ) : (
         <>
           <div className="border rounded-lg overflow-hidden">

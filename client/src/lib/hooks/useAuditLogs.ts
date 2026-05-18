@@ -49,6 +49,7 @@ export function useAuditLogUsers() {
   return useQuery<AuditUser[]>({
     queryKey: ['audit-log-users'],
     queryFn: () => api.get('/api/audit-logs/users'),
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -56,6 +57,7 @@ export function useAuditLogActions() {
   return useQuery<{ action: string }[]>({
     queryKey: ['audit-log-actions'],
     queryFn: () => api.get('/api/audit-logs/actions'),
+    staleTime: 5 * 60_000,
   });
 }
 

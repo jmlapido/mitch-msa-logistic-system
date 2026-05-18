@@ -32,6 +32,12 @@ auditLogs.get('/', async (c) => {
   }
   if (action) { conditions.push('action = ?'); binds.push(action); }
   if (entityType) { conditions.push('entity_type = ?'); binds.push(entityType); }
+  const entityId = c.req.query('entity_id');
+  if (entityId) {
+    const id = parseInt(entityId, 10);
+    if (isNaN(id)) return c.json({ error: 'Invalid entity_id' }, 400);
+    conditions.push('entity_id = ?'); binds.push(id);
+  }
   if (dateFrom) { conditions.push("date(created_at) >= date(?)"); binds.push(dateFrom); }
   if (dateTo) { conditions.push("date(created_at) <= date(?)"); binds.push(dateTo); }
 
