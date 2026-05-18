@@ -9,10 +9,14 @@ export async function auditLog(
   entityId: number | null,
   note?: string
 ): Promise<void> {
-  await db
-    .prepare(
-      'INSERT INTO audit_logs (user_id, user_name, action, entity_type, entity_id, note) VALUES (?,?,?,?,?,?)'
-    )
-    .bind(user.sub, user.name, action, entityType, entityId, note ?? null)
-    .run();
+  try {
+    await db
+      .prepare(
+        'INSERT INTO audit_logs (user_id, user_name, action, entity_type, entity_id, note) VALUES (?,?,?,?,?,?)'
+      )
+      .bind(user.sub, user.name, action, entityType, entityId, note ?? null)
+      .run();
+  } catch (err) {
+    console.error('[auditLog] failed to write audit record', { action, entityType, entityId, err });
+  }
 }

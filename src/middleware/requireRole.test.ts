@@ -42,4 +42,10 @@ describe('requireRole', () => {
     const res = await app.request('/test', { headers: { 'x-role': 'admin' } });
     expect(res.status).toBe(403);
   });
+
+  it('blocks unknown role string', async () => {
+    const app = makeApp('staff');
+    const res = await app.request('/test', { headers: { 'x-role': 'unknown' } });
+    expect(res.status).toBe(403);
+  });
 });
