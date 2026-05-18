@@ -12,13 +12,27 @@ rentPayments.get('/', async (c) => {
   const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
   const buildingId = c.req.query('building_id');
 
+  // Backfill all months from each contract's start through the viewed month
   await c.env.DB.prepare(`
+    WITH RECURSIVE month_gen(m) AS (
+      SELECT strftime('%Y-%m', MIN(start_date)) FROM contracts
+      UNION ALL
+      SELECT strftime('%Y-%m', m || '-01', '+1 month')
+      FROM month_gen WHERE m < ?
+    )
     INSERT OR IGNORE INTO rent_payments (contract_id, month, amount, status)
-    SELECT c.id, ?, ROUND(c.annual_rent / 12, 2), 'pending'
+    SELECT c.id, mg.m, ROUND(c.annual_rent / 12, 2), 'pending'
     FROM contracts c
-    WHERE date(c.start_date) <= ? || '-28'
-      AND date(c.end_date) >= ? || '-01'
-  `).bind(month, month, month).run();
+    CROSS JOIN month_gen mg
+    WHERE date(c.start_date) <= mg.m || '-28'
+      AND date(c.end_date) >= mg.m || '-01'
+      AND mg.m <= ?
+  `).bind(month, month).run();
+
+  // Mark all past unpaid months as overdue
+  await c.env.DB.prepare(
+    `UPDATE rent_payments SET status = 'overdue' WHERE month < ? AND status = 'pending'`
+  ).bind(month).run();
 
   let query = `
     SELECT rp.*, ROUND(c.annual_rent / 12, 2) as expected_rent,
