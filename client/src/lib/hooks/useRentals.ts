@@ -19,6 +19,20 @@ export function useUnits(buildingId?: number) {
 export function useTenants() {
   return useQuery<Tenant[]>({ queryKey: ['tenants'], queryFn: () => api.get('/api/tenants') });
 }
+
+export type ArchivedTenant = {
+  id: number; name: string; phone?: string; email?: string; id_number?: string;
+  notes?: string; status: string; archived_at: string;
+  unit_no?: string; building_name?: string; last_contract_end?: string; last_annual_rent?: number;
+};
+
+export function useArchivedTenants() {
+  return useQuery<ArchivedTenant[]>({ queryKey: ['tenants-archived'], queryFn: () => api.get('/api/tenants/archived') });
+}
+
+export function usePendingArchiveTenants() {
+  return useQuery<Tenant[]>({ queryKey: ['tenants-pending-archive'], queryFn: () => api.get('/api/tenants/pending-archive') });
+}
 export function useLeases() {
   return useQuery<Lease[]>({ queryKey: ['leases'], queryFn: () => api.get('/api/leases') });
 }
@@ -63,6 +77,15 @@ export function useRentalMutations() {
     createTenant: useMutation({ mutationFn: (d: Partial<Tenant>) => api.post<Tenant>('/api/tenants', d), onSuccess: invAll }),
     updateTenant: useMutation({ mutationFn: ({ id, ...d }: Partial<Tenant> & { id: number }) => api.put<Tenant>(`/api/tenants/${id}`, d), onSuccess: invAll }),
     deleteTenant: useMutation({ mutationFn: (id: number) => api.del(`/api/tenants/${id}`), onSuccess: invAll }),
+
+    archiveTenant: useMutation({
+      mutationFn: (id: number) => api.post(`/api/tenants/${id}/archive`, {}),
+      onSuccess: () => inv([['tenants'], ['tenants-archived'], ['tenants-pending-archive'], ['units']]),
+    }),
+    restoreTenant: useMutation({
+      mutationFn: (id: number) => api.post(`/api/tenants/${id}/restore`, {}),
+      onSuccess: () => inv([['tenants'], ['tenants-archived'], ['tenants-pending-archive']]),
+    }),
 
     createLease: useMutation({ mutationFn: (d: Partial<Lease>) => api.post<Lease>('/api/leases', d), onSuccess: invAll }),
     updateLease: useMutation({ mutationFn: ({ id, ...d }: Partial<Lease> & { id: number }) => api.put<Lease>(`/api/leases/${id}`, d), onSuccess: invAll }),
