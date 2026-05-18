@@ -123,11 +123,12 @@ function StatCard({ label, value, valueClass }: { label: string; value: string; 
   );
 }
 
-function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate: (d: { id: number; status: string; paid_date?: string; receipt_no?: string; amount?: number }) => Promise<unknown> }) {
+function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate: (d: { id: number; status: string; paid_date?: string; receipt_no?: string; amount?: number; notes?: string }) => Promise<unknown> }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(payment.amount));
   const [date, setDate] = useState(payment.paid_date ?? new Date().toISOString().slice(0, 10));
   const [receipt, setReceipt] = useState(payment.receipt_no ?? '');
+  const [notes, setNotes] = useState(payment.notes ?? '');
 
   const STATUS_STYLE: Record<string, string> = {
     collected: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -137,7 +138,7 @@ function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate:
 
   async function collect() {
     try {
-      await onUpdate({ id: payment.id, status: 'collected', amount: Number(amount), paid_date: date, receipt_no: receipt || undefined });
+      await onUpdate({ id: payment.id, status: 'collected', amount: Number(amount), paid_date: date, receipt_no: receipt || undefined, notes: notes || undefined });
       toast.success('Rent collected');
       setOpen(false);
     } catch { toast.error('Failed'); }
@@ -155,6 +156,7 @@ function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate:
         <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} type="number" className="mt-0.5 h-7 text-xs" /></div>
         <div><Label className="text-xs">Date</Label><Input value={date} onChange={e => setDate(e.target.value)} type="date" className="mt-0.5 h-7 text-xs" /></div>
         <div><Label className="text-xs">Receipt No.</Label><Input value={receipt} onChange={e => setReceipt(e.target.value)} className="mt-0.5 h-7 text-xs" /></div>
+        <div><Label className="text-xs">Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} className="mt-0.5 h-7 text-xs" placeholder="Optional" /></div>
         <Button size="sm" className="w-full" onClick={collect}><Check size={12} className="mr-1" /> Mark Collected</Button>
       </PopoverContent>
     </Popover>
