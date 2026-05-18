@@ -122,7 +122,9 @@ export function TenantsTab() {
             <option value="unit">Sort: Unit</option>
             <option value="expiring">Sort: Expiring First</option>
           </select>
-          <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Tenant</Button>
+          {(user?.role === 'admin' || user?.role === 'superadmin') && (
+            <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Tenant</Button>
+          )}
         </div>
       </div>
       {isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> : (
@@ -171,7 +173,7 @@ export function TenantsTab() {
                             )}
                             <LeaseStatusBadge tenant={t} />
                             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                              {user?.role === 'admin' && <>
+                              {(user?.role === 'admin' || user?.role === 'superadmin') && <>
                                 <button onClick={() => openEdit(t)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
                                 <button onClick={() => handleDelete(t.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button>
                               </>}
