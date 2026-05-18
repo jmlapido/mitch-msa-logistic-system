@@ -18,6 +18,12 @@ settings.get('/public', async (c) => {
   });
 });
 
+settings.get('/unit_types', requireAuth, async (c) => {
+  const row = await c.env.DB.prepare("SELECT value FROM settings WHERE key = 'unit_types'").first<{ value: string }>();
+  const types: string[] = row ? JSON.parse(row.value) : ['room', 'shop', 'apartment', 'office', 'villa'];
+  return c.json(types);
+});
+
 settings.get('/', requireAuth, requireAdmin, async (c) => {
   const { results } = await c.env.DB.prepare('SELECT key, value FROM settings').all<{ key: string; value: string }>();
   const out: Record<string, string> = {};

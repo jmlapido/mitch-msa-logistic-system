@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,10 +14,11 @@ import { useUnits, useBuildings, useRentalMutations, type Unit } from '@/lib/hoo
 import { useAuth } from '@/lib/hooks/useAuth';
 import { DocumentsPanel } from '../DocumentsPanel';
 import { formatAED, formatDate } from '@/lib/utils';
+import { api } from '@/lib/api';
 
 const schema = z.object({
   building_id: z.string().min(1), unit_no: z.string().min(1),
-  type: z.enum(['room', 'shop', 'apartment', 'office', 'villa']),
+  type: z.string().min(1),
   floor: z.string().optional(), notes: z.string().optional(),
 });
 type F = z.infer<typeof schema>;
@@ -30,6 +32,7 @@ const STATUS_STYLE: Record<string, string> = {
 export function UnitsTab() {
   const { data: units = [], isLoading } = useUnits();
   const { data: buildings = [] } = useBuildings();
+  const { data: unitTypes = [] } = useQuery<string[]>({ queryKey: ['unit-types'], queryFn: () => api.get('/api/settings/unit_types') });
   const { createUnit, updateUnit, deleteUnit } = useRentalMutations();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -174,15 +177,15 @@ export function UnitsTab() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Unit No. *</Label><Input {...register('unit_no')} className="mt-1" /></div>
+              <div><Label>Unit Name/No. *</Label><Input {...register('unit_no')} className="mt-1" /></div>
               <div><Label>Floor</Label><Input {...register('floor')} className="mt-1" /></div>
             </div>
             <div>
               <Label>Type *</Label>
-              <Select value={watch('type')} onValueChange={v => setValue('type', v as F['type'], { shouldValidate: true })}>
+              <Select value={watch('type')} onValueChange={v => setValue('type', v, { shouldValidate: true })}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
                 <SelectContent>
-                  {['room', 'shop', 'apartment', 'office', 'villa'].map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
+                  {unitTypes.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

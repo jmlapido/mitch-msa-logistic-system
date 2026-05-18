@@ -10,8 +10,8 @@ units.use('*', requireAuth);
 
 const unitSchema = z.object({
   building_id: z.number().int().positive(),
-  unit_no: z.string().min(1).max(20),
-  type: z.enum(['room', 'shop', 'apartment', 'office', 'villa']),
+  unit_no: z.string().min(1).max(50),
+  type: z.string().min(1).max(50),
   floor: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -58,8 +58,8 @@ units.post('/', requireAdmin, zValidator('json', unitSchema), async (c) => {
 });
 
 const unitUpdateSchema = z.object({
-  unit_no: z.string().min(1).max(20).optional(),
-  type: z.enum(['room', 'shop', 'apartment', 'office', 'villa']).optional(),
+  unit_no: z.string().min(1).max(50).optional(),
+  type: z.string().min(1).max(50).optional(),
   floor: z.string().optional(),
   notes: z.string().optional(),
 });

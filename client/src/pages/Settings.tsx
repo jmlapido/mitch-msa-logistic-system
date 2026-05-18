@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Upload, UserPlus, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -13,10 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { useCategories, useCategoryMutations } from '@/lib/hooks/useCategories';
-import { useBillTemplates, useBillMutations } from '@/lib/hooks/useBills';
-import type { BillTemplate } from '@/lib/hooks/useBills';
-import { BillFormModal } from '@/components/bills/BillFormModal';
-import { currentMonth } from '@/lib/utils';
+import { api } from '@/lib/api';
 
 // ── Branding ──────────────────────────────────────────────────────────────────
 function BrandingTab() {
@@ -266,66 +263,59 @@ function CategoriesTab() {
   );
 }
 
-// ── Templates ─────────────────────────────────────────────────────────────────
-function TemplatesTab() {
-  const { data: templates = [] } = useBillTemplates();
-  const { updateTemplate } = useBillMutations(currentMonth());
-  const [editingTemplate, setEditingTemplate] = useState<BillTemplate | null>(null);
+// ── Unit Types ────────────────────────────────────────────────────────────────
+function UnitTypesTab() {
+  const qc = useQueryClient();
+  const { data: types = [] } = useQuery<string[]>({
+    queryKey: ['unit-types'],
+    queryFn: () => api.get('/api/settings/unit_types'),
+  });
+  const [newType, setNewType] = useState('');
 
-  async function toggleRecurring(id: number, current: number) {
+  async function addType() {
+    const trimmed = newType.trim().toLowerCase();
+    if (!trimmed) return;
+    if (types.includes(trimmed)) { toast.error('Type already exists'); return; }
     try {
-      await updateTemplate.mutateAsync({ id, is_recurring: current ? 0 : 1 });
-      toast.success('Updated');
+      await api.put('/api/settings/unit_types', { value: JSON.stringify([...types, trimmed]) });
+      qc.invalidateQueries({ queryKey: ['unit-types'] });
+      setNewType('');
+      toast.success('Type added');
+    } catch { toast.error('Failed'); }
+  }
+
+  async function removeType(t: string) {
+    try {
+      await api.put('/api/settings/unit_types', { value: JSON.stringify(types.filter(x => x !== t)) });
+      qc.invalidateQueries({ queryKey: ['unit-types'] });
+      toast.success('Type removed');
     } catch { toast.error('Failed'); }
   }
 
   return (
-    <div>
-      <h3 className="font-semibold mb-1">Bill Templates</h3>
-      <p className="text-xs text-muted-foreground mb-4">Toggle recurring to stop auto-generating monthly entries.</p>
-      <div className="border rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-xs">
-            <tr>
-              <th className="text-left px-3 py-2">Category</th>
-              <th className="text-left px-3 py-2">Particulars</th>
-              <th className="text-left px-3 py-2">Account No.</th>
-              <th className="text-center px-3 py-2">Recurring</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {templates.map(t => (
-              <tr key={t.id} className="hover:bg-muted/20">
-                <td className="px-3 py-2 text-xs">{t.category_icon} {t.category_name}</td>
-                <td className="px-3 py-2 text-xs font-medium">{t.particulars}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{t.account_no ?? '—'}</td>
-                <td className="px-3 py-2 text-center">
-                  <button
-                    onClick={() => toggleRecurring(t.id, t.is_recurring)}
-                    className={`w-10 h-5 rounded-full transition-colors relative overflow-hidden ${t.is_recurring ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${t.is_recurring ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </button>
-                </td>
-                <td className="px-3 py-2">
-                  <button onClick={() => setEditingTemplate(t)} className="p-1 text-muted-foreground hover:text-foreground">
-                    <Pencil size={13} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="max-w-sm">
+      <h3 className="font-semibold mb-1">Unit Types</h3>
+      <p className="text-xs text-muted-foreground mb-4">Types available in the unit form dropdown.</p>
+      <div className="space-y-1 mb-4">
+        {types.map(t => (
+          <div key={t} className="flex items-center justify-between border rounded px-3 py-2">
+            <span className="text-sm capitalize">{t}</span>
+            <button onClick={() => removeType(t)} className="p-1 text-muted-foreground hover:text-destructive">
+              <Trash2 size={13} />
+            </button>
+          </div>
+        ))}
       </div>
-      {editingTemplate && (
-        <BillFormModal
-          open={!!editingTemplate}
-          onClose={() => setEditingTemplate(null)}
-          editing={editingTemplate}
-          month={currentMonth()}
+      <div className="flex gap-2">
+        <Input
+          value={newType}
+          onChange={e => setNewType(e.target.value)}
+          placeholder="e.g. studio, bed space"
+          onKeyDown={e => e.key === 'Enter' && addType()}
+          className="flex-1"
         />
-      )}
+        <Button size="sm" onClick={addType}><Plus size={14} className="mr-1" />Add</Button>
+      </div>
     </div>
   );
 }
@@ -340,12 +330,12 @@ export default function Settings() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="templates">Bill Templates</TabsTrigger>
+          <TabsTrigger value="unit-types">Unit Types</TabsTrigger>
         </TabsList>
         <TabsContent value="branding"><BrandingTab /></TabsContent>
         <TabsContent value="users"><UsersTab /></TabsContent>
         <TabsContent value="categories"><CategoriesTab /></TabsContent>
-        <TabsContent value="templates"><TemplatesTab /></TabsContent>
+        <TabsContent value="unit-types"><UnitTypesTab /></TabsContent>
       </Tabs>
     </div>
   );
