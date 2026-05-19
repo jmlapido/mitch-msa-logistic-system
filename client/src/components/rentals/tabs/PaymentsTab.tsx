@@ -94,7 +94,7 @@ export function PaymentsTab() {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {group.items.map(p => {
-                        const shouldHighlight = p.status === 'overdue' || (p.balance ?? 0) > 0;
+                        const shouldHighlight = p.status === 'overdue' || p.status === 'partial' || (p.balance ?? 0) > 0;
                         return (
                           <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
                             <td className="px-3 py-2 font-medium">{p.unit_no}</td>
@@ -107,7 +107,13 @@ export function PaymentsTab() {
                               </button>
                             </td>
                             <td className="px-3 py-2 text-right text-xs">{formatAED(p.expected_rent)}</td>
-                            <td className="hidden sm:table-cell px-3 py-2 text-right">{p.status === 'collected' ? formatAED(p.amount) : '—'}</td>
+                            <td className="hidden sm:table-cell px-3 py-2 text-right">
+                              {p.status === 'collected' && <span className="text-green-600">{formatAED(p.amount_paid)}</span>}
+                              {p.status === 'partial' && (
+                                <span className="text-orange-600 text-xs">{formatAED(p.amount_paid)} <span className="text-muted-foreground">/ {formatAED(p.expected_rent)}</span></span>
+                              )}
+                              {p.status !== 'collected' && p.status !== 'partial' && <span className="text-muted-foreground">—</span>}
+                            </td>
                             <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
                               {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium">{formatAED(p.tenant_overdue)}</span> : '—'}
                             </td>
