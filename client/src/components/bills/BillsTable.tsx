@@ -43,7 +43,7 @@ export function BillsTable({ entries, month, onEdit }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [catFilter, setCatFilter] = useState<string>('all');
   const [buildingFilter, setBuildingFilter] = useState<string>('all');
-  useEffect(() => { setBuildingFilter('all'); }, [entries]);
+  useEffect(() => { setBuildingFilter('all'); }, [month]);
   const { deleteTemplate } = useBillMutations(month);
   const { user } = useAuth();
 

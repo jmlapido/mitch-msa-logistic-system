@@ -34,7 +34,7 @@ bills.get('/', async (c) => {
   `;
   const binds: unknown[] = [];
   if (buildingId) { query += ' AND b.building_id = ?'; binds.push(buildingId); }
-  query += ' ORDER BY c.sort_order, c.name, bld.name, b.particulars';
+  query += ' ORDER BY c.sort_order, c.name, COALESCE(bld.name, p.name), b.particulars';
   const { results } = await c.env.DB.prepare(query).bind(...binds).all();
   return c.json(results);
 });
