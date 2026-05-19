@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Pencil, Trash2, RefreshCw, Hash } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ export function BillsTable({ entries, month, onEdit }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [catFilter, setCatFilter] = useState<string>('all');
   const [buildingFilter, setBuildingFilter] = useState<string>('all');
+  useEffect(() => { setBuildingFilter('all'); }, [entries]);
   const { deleteTemplate } = useBillMutations(month);
   const { user } = useAuth();
 

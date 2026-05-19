@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { BillsReportView } from '@/components/reports/BillsReportView';
 import { RentalReportView } from '@/components/reports/RentalReportView';
 import { CombinedReportView } from '@/components/reports/CombinedReportView';
+import { useBuildings } from '@/lib/hooks/useRentals';
 import { api } from '@/lib/api';
 import { currentMonth } from '@/lib/utils';
 
@@ -15,11 +16,16 @@ export default function Reports() {
   const [from, setFrom] = useState(now);
   const [to, setTo] = useState(now);
   const [activeTab, setActiveTab] = useState('bills');
+  const [buildingId, setBuildingId] = useState('');
+  const { data: buildings = [] } = useBuildings();
 
+  const buildingParam = activeTab === 'bills' && buildingId ? `&building_id=${buildingId}` : '';
   const { data, isLoading, refetch } = useQuery<Record<string, unknown>>({
-    queryKey: ['reports', activeTab, from, to],
-    queryFn: () => api.get(`/api/reports?type=${activeTab}&from=${from}&to=${to}`),
+    queryKey: ['reports', activeTab, from, to, buildingId],
+    queryFn: () => api.get(`/api/reports?type=${activeTab}&from=${from}&to=${to}${buildingParam}`),
   });
+
+  const selectedBuilding = buildings.find(b => String(b.id) === buildingId);
 
   function arr<T>(key: string): T[] {
     return (data?.[key] as T[] | undefined) ?? [];
@@ -45,6 +51,16 @@ export default function Reports() {
           <input type="month" value={to} onChange={e => setTo(e.target.value)}
             className="mt-1 block border rounded px-2 py-1 text-sm bg-background border-border" />
         </div>
+        {activeTab === 'bills' && (
+          <div>
+            <Label className="text-xs">Building</Label>
+            <select value={buildingId} onChange={e => setBuildingId(e.target.value)}
+              className="mt-1 block border rounded px-2 py-1 text-sm bg-background border-border">
+              <option value="">All buildings</option>
+              {buildings.map(b => <option key={b.id} value={String(b.id)}>{b.name}</option>)}
+            </select>
+          </div>
+        )}
         <Button size="sm" variant="outline" onClick={() => refetch()}>Apply</Button>
       </div>
 
@@ -65,6 +81,7 @@ export default function Reports() {
                 monthSummary={arr('monthSummary')}
                 catSummary={arr('catSummary')}
                 from={from} to={to}
+                buildingName={selectedBuilding?.name}
               />
             </TabsContent>
             <TabsContent value="rental">

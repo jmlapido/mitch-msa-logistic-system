@@ -37,7 +37,7 @@ type Props = {
 };
 
 export function BillFormModal({ open, onClose, editing, month }: Props) {
-  const { data: categories = [] } = useCategories();
+  const { data: categories = [], isSuccess: categoriesReady } = useCategories();
   const { createTemplate, updateTemplate, updateEntry } = useBillMutations(month);
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -81,9 +81,9 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
   const showBuildingPicker = selectedCategory?.links_to_building === 1;
 
   useEffect(() => {
-    if (categories.length === 0) return;
+    if (!categoriesReady) return;
     if (!showBuildingPicker) setValue('building_id', undefined);
-  }, [showBuildingPicker, setValue, categories.length]);
+  }, [showBuildingPicker, setValue, categoriesReady]);
 
   async function onSubmit(values: FormValues) {
     const billPayload = {

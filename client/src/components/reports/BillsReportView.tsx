@@ -15,10 +15,12 @@ type Props = {
   catSummary: CatSummary[];
   from: string;
   to: string;
+  buildingName?: string;
 };
 
-export function BillsReportView({ rows, monthSummary, catSummary, from, to }: Props) {
-  const subtitle = from === to ? monthLabel(from) : `${monthLabel(from)} – ${monthLabel(to)}`;
+export function BillsReportView({ rows, monthSummary, catSummary, from, to, buildingName }: Props) {
+  const dateRange = from === to ? monthLabel(from) : `${monthLabel(from)} – ${monthLabel(to)}`;
+  const subtitle = buildingName ? `${buildingName} · ${dateRange}` : dateRange;
   const grandTotal = monthSummary.reduce((s, r) => s + r.total, 0);
   const grandPaid = monthSummary.reduce((s, r) => s + r.paid, 0);
 
