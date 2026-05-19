@@ -18,7 +18,7 @@ const schema = z.object({
 });
 type F = z.infer<typeof schema>;
 
-export function BuildingsTab() {
+export function BuildingsTab({ readonly = false }: { readonly?: boolean }) {
   const { data: buildings = [], isLoading } = useBuildings();
   const { createBuilding, updateBuilding, deleteBuilding } = useRentalMutations();
   const { user } = useAuth();
@@ -42,11 +42,13 @@ export function BuildingsTab() {
     try { await deleteBuilding.mutateAsync(id); toast.success('Deleted'); } catch { toast.error('Failed'); }
   }
 
+  const canEdit = !readonly && (user?.role === 'admin' || user?.role === 'superadmin');
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-semibold">Buildings & Shops</h2>
-        {(user?.role === 'admin' || user?.role === 'superadmin') && (
+        {canEdit && (
           <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Building</Button>
         )}
       </div>
@@ -62,7 +64,7 @@ export function BuildingsTab() {
                     <div className="text-xs text-muted-foreground capitalize">{b.type}</div>
                   </div>
                 </div>
-                {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                {canEdit && (
                   <div className="flex gap-1">
                     <button onClick={() => openEdit(b)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={13} /></button>
                     <button onClick={() => handleDelete(b.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={13} /></button>
@@ -79,31 +81,33 @@ export function BuildingsTab() {
           ))}
         </div>
       )}
-      <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{editing ? 'Edit Building' : 'Add Building'}</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            <div><Label>Name *</Label><Input {...register('name')} className="mt-1" /></div>
-            <div>
-              <Label>Type *</Label>
-              <Select value={watch('type')} onValueChange={v => setValue('type', v as F['type'])}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="residential">Residential</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
-                  <SelectItem value="mixed">Mixed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div><Label>Address</Label><Input {...register('address')} className="mt-1" /></div>
-            <div><Label>Notes</Label><Input {...register('notes')} className="mt-1" /></div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {!readonly && (
+        <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>{editing ? 'Edit Building' : 'Add Building'}</DialogTitle></DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+              <div><Label>Name *</Label><Input {...register('name')} className="mt-1" /></div>
+              <div>
+                <Label>Type *</Label>
+                <Select value={watch('type')} onValueChange={v => setValue('type', v as F['type'])}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="residential">Residential</SelectItem>
+                    <SelectItem value="commercial">Commercial</SelectItem>
+                    <SelectItem value="mixed">Mixed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Address</Label><Input {...register('address')} className="mt-1" /></div>
+              <div><Label>Notes</Label><Input {...register('notes')} className="mt-1" /></div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save'}</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

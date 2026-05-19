@@ -29,12 +29,13 @@ const STATUS_STYLE: Record<string, string> = {
   expiring: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
 };
 
-export function UnitsTab() {
+export function UnitsTab({ readonly = false }: { readonly?: boolean }) {
   const { data: units = [], isLoading } = useUnits();
   const { data: buildings = [] } = useBuildings();
   const { data: unitTypes = [] } = useQuery<string[]>({ queryKey: ['unit-types'], queryFn: () => api.get('/api/settings/unit_types') });
   const { createUnit, updateUnit, deleteUnit } = useRentalMutations();
   const { user } = useAuth();
+  const canEdit = !readonly && (user?.role === 'admin' || user?.role === 'superadmin');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Unit | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
@@ -83,7 +84,7 @@ export function UnitsTab() {
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-semibold">Units</h2>
-          <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Unit</Button>
+          {canEdit && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Unit</Button>}
         </div>
         {isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> : (
           <div className="space-y-3">
@@ -138,7 +139,7 @@ export function UnitsTab() {
                               </td>
                               <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
                                 <div className="flex gap-1">
-                                  {(user?.role === 'admin' || user?.role === 'superadmin') && <>
+                                  {canEdit && <>
                                     <button onClick={() => openEdit(u)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
                                     <button onClick={() => handleDelete(u.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button>
                                   </>}
@@ -165,37 +166,39 @@ export function UnitsTab() {
         </div>
       )}
 
-      <Dialog key={editing ? `edit-${editing.id}` : 'new'} open={open} onOpenChange={v => !v && setOpen(false)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{editing ? 'Edit Unit' : 'Add Unit'}</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            <div>
-              <Label>Building *</Label>
-              <Select value={watch('building_id')} onValueChange={v => setValue('building_id', v, { shouldValidate: true })}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select building" /></SelectTrigger>
-                <SelectContent>{buildings.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Unit Name/No. *</Label><Input {...register('unit_no')} className="mt-1" /></div>
-              <div><Label>Floor</Label><Input {...register('floor')} className="mt-1" /></div>
-            </div>
-            <div>
-              <Label>Type *</Label>
-              <Select value={watch('type')} onValueChange={v => setValue('type', v, { shouldValidate: true })}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
-                <SelectContent>
-                  {unitTypes.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {!readonly && (
+        <Dialog key={editing ? `edit-${editing.id}` : 'new'} open={open} onOpenChange={v => !v && setOpen(false)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>{editing ? 'Edit Unit' : 'Add Unit'}</DialogTitle></DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+              <div>
+                <Label>Building *</Label>
+                <Select value={watch('building_id')} onValueChange={v => setValue('building_id', v, { shouldValidate: true })}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select building" /></SelectTrigger>
+                  <SelectContent>{buildings.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Unit Name/No. *</Label><Input {...register('unit_no')} className="mt-1" /></div>
+                <div><Label>Floor</Label><Input {...register('floor')} className="mt-1" /></div>
+              </div>
+              <div>
+                <Label>Type *</Label>
+                <Select value={watch('type')} onValueChange={v => setValue('type', v, { shouldValidate: true })}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    {unitTypes.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save'}</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -21,8 +21,8 @@ export default function Rentals() {
         </TabsList>
         <TabsContent value="payments"><PaymentsTab /></TabsContent>
         <TabsContent value="tenants"><TenantsTab /></TabsContent>
-        <TabsContent value="units"><UnitsTab /></TabsContent>
-        <TabsContent value="buildings"><BuildingsTab /></TabsContent>
+        <TabsContent value="units"><UnitsTab readonly /></TabsContent>
+        <TabsContent value="buildings"><BuildingsTab readonly /></TabsContent>
         <TabsContent value="archived"><ArchivedTab /></TabsContent>
       </Tabs>
     </div>
