@@ -95,12 +95,8 @@ rentPayments.get('/', async (c) => {
 });
 
 const updatePaymentSchema = z.object({
-  amount: z.number().positive().optional(),
-  status: z.enum(['collected', 'pending', 'overdue']).optional(),
-  paid_date: z.string().nullable().optional(),
-  receipt_no: z.string().nullable().optional(),
+  status: z.enum(['collected', 'pending', 'overdue', 'partial']).optional(),
   notes: z.string().nullable().optional(),
-  payment_method: z.enum(['cash', 'cheque']).nullable().optional(),
 });
 
 rentPayments.put('/:id', zValidator('json', updatePaymentSchema), async (c) => {
