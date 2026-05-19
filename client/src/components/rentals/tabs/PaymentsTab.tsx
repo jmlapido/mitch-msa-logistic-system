@@ -94,7 +94,7 @@ export function PaymentsTab() {
                     </thead>
                     <tbody className="divide-y divide-border">
                       {group.items.map(p => {
-                        const shouldHighlight = p.status === 'overdue' || (p.tenant_balance ?? 0) > 0;
+                        const shouldHighlight = p.status === 'overdue' || (p.balance ?? 0) > 0;
                         return (
                           <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
                             <td className="px-3 py-2 font-medium">{p.unit_no}</td>
@@ -112,7 +112,7 @@ export function PaymentsTab() {
                               {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium">{formatAED(p.tenant_overdue)}</span> : '—'}
                             </td>
                             <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
-                              {(p.tenant_balance ?? 0) > 0 ? <span className="text-red-600 font-semibold">{formatAED(p.tenant_balance)}</span> : <span className="text-green-600">—</span>}
+                              {(p.balance ?? 0) > 0 ? <span className="text-red-600 font-semibold">{formatAED(p.balance)}</span> : <span className="text-green-600">—</span>}
                             </td>
                             <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">{formatDate(p.paid_date)}</td>
                             <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">
@@ -121,7 +121,14 @@ export function PaymentsTab() {
                               ) : '—'}
                             </td>
                             <td className="px-3 py-2 text-center">
-                              <CollectPopover payment={p} onUpdate={updateRentPayment.mutateAsync} />
+                              <div className="flex flex-col items-center gap-0.5">
+                                <CollectPopover payment={p} onUpdate={updateRentPayment.mutateAsync} />
+                                {p.payment_method && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">
+                                    {p.payment_method}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -177,12 +184,14 @@ function StatCard({ label, value, valueClass }: { label: string; value: string; 
   );
 }
 
-function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate: (d: { id: number; status: string; paid_date?: string; receipt_no?: string; amount?: number; notes?: string }) => Promise<unknown> }) {
+function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate: (d: { id: number; status: string; paid_date?: string; receipt_no?: string; amount?: number; notes?: string; payment_method?: string }) => Promise<unknown> }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(payment.amount));
   const [date, setDate] = useState(payment.paid_date ?? new Date().toISOString().slice(0, 10));
   const [receipt, setReceipt] = useState(payment.receipt_no ?? '');
   const [notes, setNotes] = useState(payment.notes ?? '');
+  const defaultMethod = payment.payment_method ?? (payment.payment_type === 'cash' ? 'cash' : 'cheque');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'cheque'>(defaultMethod as 'cash' | 'cheque');
 
   const STATUS_STYLE: Record<string, string> = {
     collected: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -192,7 +201,7 @@ function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate:
 
   async function collect() {
     try {
-      await onUpdate({ id: payment.id, status: 'collected', amount: Number(amount), paid_date: date, receipt_no: receipt || undefined, notes: notes || undefined });
+      await onUpdate({ id: payment.id, status: 'collected', amount: Number(amount), paid_date: date, receipt_no: receipt || undefined, notes: notes || undefined, payment_method: paymentMethod });
       toast.success('Rent collected');
       setOpen(false);
     } catch { toast.error('Failed'); }
@@ -210,6 +219,25 @@ function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate:
         <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} type="number" className="mt-0.5 h-7 text-xs" /></div>
         <div><Label className="text-xs">Date</Label><Input value={date} onChange={e => setDate(e.target.value)} type="date" className="mt-0.5 h-7 text-xs" /></div>
         <div><Label className="text-xs">Receipt No.</Label><Input value={receipt} onChange={e => setReceipt(e.target.value)} className="mt-0.5 h-7 text-xs" /></div>
+        <div>
+          <Label className="text-xs">Payment Method</Label>
+          <div className="flex gap-1 mt-0.5">
+            {(['cash', 'cheque'] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setPaymentMethod(m)}
+                className={`flex-1 text-xs py-1 rounded border capitalize transition-colors ${
+                  paymentMethod === m
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
         <div><Label className="text-xs">Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} className="mt-0.5 h-7 text-xs" placeholder="Optional" /></div>
         <Button size="sm" className="w-full" onClick={collect}><Check size={12} className="mr-1" /> Mark Collected</Button>
       </PopoverContent>
