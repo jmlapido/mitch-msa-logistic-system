@@ -30,7 +30,12 @@ tenants.get('/', async (c) => {
       ELSE NULL END as lease_status,
       c.start_date, c.end_date,
       ROUND(c.annual_rent / 12, 2) as monthly_rent,
-      u.unit_no, bld.name as building_name
+      u.unit_no, bld.name as building_name,
+      (SELECT COALESCE(SUM(rp.amount), 0)
+       FROM rent_payments rp
+       JOIN contracts c2 ON rp.contract_id = c2.id
+       WHERE c2.tenant_id = t.id
+         AND rp.status != 'collected') as total_balance
     FROM tenants t
     LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN buildings bld ON u.building_id = bld.id
@@ -49,7 +54,7 @@ tenants.get('/', async (c) => {
 tenants.get('/pending-archive', requireAdmin, async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT t.*, u.unit_no, bld.name as building_name,
-      MAX(c.end_date) as last_contract_end
+      MAX(c.end_date) as end_date
     FROM tenants t
     LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN buildings bld ON u.building_id = bld.id
@@ -58,7 +63,7 @@ tenants.get('/pending-archive', requireAdmin, async (c) => {
     GROUP BY t.id
     HAVING COUNT(c.id) > 0
       AND MAX(date(c.end_date)) < date('now')
-    ORDER BY last_contract_end ASC
+    ORDER BY end_date ASC
   `).all();
   return c.json(results);
 });
