@@ -66,11 +66,8 @@ rentPayments.get('/', async (c) => {
        WHERE c2.tenant_id = t.id
          AND rp2.status != 'collected'
          AND rp2.month < ?) as tenant_overdue,
-      (SELECT COALESCE(SUM(rp2.amount), 0)
-       FROM rent_payments rp2
-       JOIN contracts c2 ON rp2.contract_id = c2.id
-       WHERE c2.tenant_id = t.id
-         AND rp2.status != 'collected') as tenant_balance
+      MAX(0, (CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE ROUND(c.annual_rent / 12, 2) END)
+           - CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END) as balance
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
     JOIN tenants t ON c.tenant_id = t.id
@@ -98,6 +95,7 @@ const updatePaymentSchema = z.object({
   paid_date: z.string().nullable().optional(),
   receipt_no: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  payment_method: z.enum(['cash', 'cheque']).nullable().optional(),
 });
 
 rentPayments.put('/:id', zValidator('json', updatePaymentSchema), async (c) => {
