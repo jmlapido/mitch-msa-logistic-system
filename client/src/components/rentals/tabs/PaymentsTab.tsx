@@ -214,7 +214,7 @@ function PaymentPopover({
       setReceipt('');
       setNotes('');
     }
-  }, [open]);
+  }, [open, payment.expected_rent, payment.amount_paid, payment.payment_type]);
 
   const STATUS_STYLE: Record<string, string> = {
     collected: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -236,6 +236,7 @@ function PaymentPopover({
         notes: notes || undefined,
       });
       toast.success('Payment recorded');
+      setOpen(false);
     } catch { toast.error('Failed'); }
     finally { setSubmitting(false); }
   }

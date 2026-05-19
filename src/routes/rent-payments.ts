@@ -148,6 +148,8 @@ async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Pr
 
 rentPayments.get('/:id/entries', async (c) => {
   const id = Number(c.req.param('id'));
+  const parent = await c.env.DB.prepare('SELECT id FROM rent_payments WHERE id = ?').bind(id).first();
+  if (!parent) return c.json({ error: 'Payment not found' }, 404);
   const { results } = await c.env.DB.prepare(
     'SELECT * FROM payment_entries WHERE rent_payment_id = ? ORDER BY paid_date ASC, id ASC'
   ).bind(id).all();
