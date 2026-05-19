@@ -53,6 +53,7 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
       is_recurring: editing.is_recurring === 1,
       notes: editing.notes ?? '',
       amount: editing.amount != null ? String(editing.amount) : '',
+      building_id: editing.building_id ? String(editing.building_id) : undefined,
     } : { is_recurring: true, amount: '' },
   });
 
@@ -80,8 +81,9 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
   const showBuildingPicker = selectedCategory?.links_to_building === 1;
 
   useEffect(() => {
+    if (categories.length === 0) return;
     if (!showBuildingPicker) setValue('building_id', undefined);
-  }, [showBuildingPicker, setValue]);
+  }, [showBuildingPicker, setValue, categories.length]);
 
   async function onSubmit(values: FormValues) {
     const billPayload = {
