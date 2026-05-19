@@ -175,6 +175,9 @@ export function TenantsTab() {
                               {t.unit_no ? `Unit ${t.unit_no}` : 'No unit assigned'}
                               {t.phone && <span className="ml-2">{t.phone}</span>}
                             </div>
+                            {(t.total_balance ?? 0) > 0 && (
+                              <div className="text-xs text-red-600 font-medium">{formatAED(t.total_balance!)} outstanding</div>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             {t.monthly_rent && (
