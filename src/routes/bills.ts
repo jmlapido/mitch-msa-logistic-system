@@ -83,6 +83,7 @@ bills.put('/:id', requireAdmin, zValidator('json', billSchema.partial()), async 
     is_recurring: data.is_recurring !== undefined ? (data.is_recurring ? 1 : 0) : undefined,
   };
   const entries = Object.entries(dbData).filter(([, v]) => v !== undefined);
+  if (entries.length === 0) return c.json({ error: 'No fields to update' }, 400);
   const fields = entries.map(([k]) => `${k} = ?`).join(', ');
   const values = [...entries.map(([, v]) => v), id];
   await c.env.DB.prepare(`UPDATE bills SET ${fields} WHERE id = ?`).bind(...values).run();
