@@ -42,6 +42,7 @@ export function BillsTable({ entries, month, onEdit }: Props) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [catFilter, setCatFilter] = useState<string>('all');
+  const [buildingFilter, setBuildingFilter] = useState<string>('all');
   const { deleteTemplate } = useBillMutations(month);
   const { user } = useAuth();
 
@@ -50,12 +51,23 @@ export function BillsTable({ entries, month, onEdit }: Props) {
     return entries.filter(e => { const k = e.category_name; if (seen.has(k)) return false; seen.add(k); return true; });
   }, [entries]);
 
+  const buildingOptions = useMemo(() => {
+    const seen = new Map<number, string>();
+    for (const e of entries) {
+      if (e.building_id && e.building_name && !seen.has(e.building_id)) {
+        seen.set(e.building_id, e.building_name);
+      }
+    }
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  }, [entries]);
+
   const filtered = useMemo(() => entries.filter(e => {
     if (search && !`${e.particulars} ${e.account_no ?? ''}`.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== 'all' && e.computed_status !== statusFilter) return false;
     if (catFilter !== 'all' && e.category_name !== catFilter) return false;
+    if (buildingFilter !== 'all' && String(e.building_id ?? '') !== buildingFilter) return false;
     return true;
-  }), [entries, search, statusFilter, catFilter]);
+  }), [entries, search, statusFilter, catFilter, buildingFilter]);
 
   const recurring = useMemo(() => filtered.filter(e => e.is_recurring === 1), [filtered]);
   const oneTime   = useMemo(() => filtered.filter(e => e.is_recurring !== 1), [filtered]);
@@ -82,6 +94,8 @@ export function BillsTable({ entries, month, onEdit }: Props) {
       category_icon: e.category_icon,
       entry_id: e.entry_id,
       amount: e.amount,
+      building_id: e.building_id,
+      building_name: e.building_name,
     };
   }
 
@@ -151,6 +165,13 @@ export function BillsTable({ entries, month, onEdit }: Props) {
           className="text-xs px-2 py-1 rounded border bg-background border-border">
           <option value="all">All categories</option>
           {categories.map(e => <option key={e.category_name} value={e.category_name}>{e.category_icon} {e.category_name}</option>)}
+        </select>
+        <select value={buildingFilter} onChange={e => setBuildingFilter(e.target.value)}
+          className="text-xs px-2 py-1 rounded border bg-background border-border">
+          <option value="all">All buildings</option>
+          {buildingOptions.map(b => (
+            <option key={b.id} value={String(b.id)}>{b.name}</option>
+          ))}
         </select>
         <Input placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
           className="w-40 h-7 text-xs ml-auto" />
