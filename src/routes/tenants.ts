@@ -54,7 +54,7 @@ tenants.get('/', async (c) => {
 tenants.get('/pending-archive', requireAdmin, async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT t.*, u.unit_no, bld.name as building_name,
-      MAX(c.end_date) as end_date
+      MAX(c.end_date) as last_contract_end
     FROM tenants t
     LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN buildings bld ON u.building_id = bld.id
@@ -63,7 +63,7 @@ tenants.get('/pending-archive', requireAdmin, async (c) => {
     GROUP BY t.id
     HAVING COUNT(c.id) > 0
       AND MAX(date(c.end_date)) < date('now')
-    ORDER BY end_date ASC
+    ORDER BY last_contract_end ASC
   `).all();
   return c.json(results);
 });
