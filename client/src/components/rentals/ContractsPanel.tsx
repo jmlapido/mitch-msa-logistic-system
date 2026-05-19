@@ -21,6 +21,7 @@ const schema = z.object({
   end_date: z.string().min(1, 'Required'),
   annual_rent: z.string().min(1, 'Required'),
   payment_type: z.enum(['cash', 'pdc']),
+  payment_frequency: z.enum(['monthly', 'annual']),
   no_of_pdc: z.string().optional(),
   due_day: z.string().optional(),
   notes: z.string().optional(),
@@ -68,7 +69,11 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   }
 
   function openAdd() {
-    reset({ contract_no: '', start_date: '', end_date: '', annual_rent: '', payment_type: 'pdc', no_of_pdc: '1', due_day: '1', notes: '' });
+    reset({
+      contract_no: '', start_date: '', end_date: '', annual_rent: '',
+      payment_type: 'pdc', payment_frequency: 'monthly',
+      no_of_pdc: '1', due_day: '1', notes: '',
+    });
     setDurationAmt('');
     setEditing(null);
     setOpen(true);
@@ -81,6 +86,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       end_date: c.end_date,
       annual_rent: String(c.annual_rent),
       payment_type: c.payment_type ?? 'pdc',
+      payment_frequency: c.payment_frequency ?? 'monthly',
       no_of_pdc: String(c.no_of_pdc),
       due_day: String(c.due_day ?? 1),
       notes: c.notes ?? '',
@@ -99,6 +105,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       end_date: v.end_date,
       annual_rent: Number(v.annual_rent),
       payment_type: v.payment_type,
+      payment_frequency: v.payment_frequency,
       no_of_pdc: isPdc ? Number(v.no_of_pdc ?? 1) : 0,
       due_day: !isPdc ? Number(v.due_day ?? 1) : undefined,
       notes: v.notes || undefined,
@@ -157,6 +164,12 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                   <div className="text-muted-foreground space-y-0.5">
                     <p>{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
                     <p>Annual Rent: <span className="font-medium text-foreground">{formatAED(c.annual_rent)}</span></p>
+                    <p>
+                      Frequency:{' '}
+                      <span className="font-medium text-foreground">
+                        {(c.payment_frequency ?? 'monthly') === 'annual' ? 'Annual (lump sum)' : 'Monthly'}
+                      </span>
+                    </p>
                     {(c.payment_type ?? 'pdc') === 'pdc' ? (
                       <p>PDC: <span className="font-medium text-foreground">{c.no_of_pdc} cheque{c.no_of_pdc !== 1 ? 's' : ''}</span></p>
                     ) : (
@@ -221,6 +234,19 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
             <div>
               <Label>Annual Rent (AED) *</Label>
               <Input {...register('annual_rent')} type="number" min={0} className="mt-1" placeholder="0" />
+            </div>
+            <div>
+              <Label>Payment Frequency *</Label>
+              <Select
+                value={watch('payment_frequency')}
+                onValueChange={v => setValue('payment_frequency', v as 'monthly' | 'annual')}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select frequency" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="annual">Annual (one-time lump sum)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Payment Type *</Label>
