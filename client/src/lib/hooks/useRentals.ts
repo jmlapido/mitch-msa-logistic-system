@@ -7,7 +7,21 @@ export type Tenant = { id: number; name: string; phone?: string; email?: string;
 export type Lease = { id: number; unit_id: number; tenant_id: number; start_date: string; end_date: string; monthly_rent: number; deposit: number; status: string; notes?: string; tenant_name: string; unit_no: string; building_name: string };
 export type RentPayment = { id: number; lease_id: number; month: string; amount: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; tenant_balance: number };
 export type RentalDoc = { id: number; entity_type: string; entity_id: number; doc_type: string; file_name: string; uploaded_at: string };
-export type Contract = { id: number; tenant_id: number; contract_no: string; start_date: string; end_date: string; annual_rent: number; payment_type: 'cash' | 'pdc'; no_of_pdc: number; due_day?: number; notes?: string; status: 'valid' | 'expired'; created_at: string };
+export type Contract = {
+  id: number;
+  tenant_id: number;
+  contract_no: string;
+  start_date: string;
+  end_date: string;
+  annual_rent: number;
+  payment_type: 'cash' | 'pdc';
+  no_of_pdc: number;
+  due_day?: number;
+  payment_frequency: 'monthly' | 'annual';
+  notes?: string;
+  status: 'valid' | 'expired';
+  created_at: string;
+};
 
 export function useBuildings() {
   return useQuery<Building[]>({ queryKey: ['buildings'], queryFn: () => api.get('/api/buildings') });
