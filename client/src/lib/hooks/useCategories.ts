@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 
-export type Category = { id: number; name: string; color: string; icon: string; sort_order: number };
+export type Category = { id: number; name: string; color: string; icon: string; sort_order: number; links_to_building: number };
 
 export function useCategories() {
   return useQuery<Category[]>({

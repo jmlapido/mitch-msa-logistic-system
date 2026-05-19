@@ -20,6 +20,8 @@ export type BillEntry = {
   category_name: string;
   category_color: string;
   category_icon: string;
+  building_id: number | null;
+  building_name: string | null;
   attachment_count: number;
 };
 
@@ -34,6 +36,8 @@ export type BillTemplate = {
   category_name: string;
   category_color: string;
   category_icon: string;
+  building_id?: number | null;
+  building_name?: string | null;
   entry_id?: number | null;
   amount?: number;
 };
@@ -45,14 +49,29 @@ export type BillCreateInput = {
   due_day: number | null;
   is_recurring: number;
   notes: string | null;
+  building_id?: number | null;
   amount: number;
   month: string;
+};
+
+export type BillMonthlySummary = {
+  month: string;
+  total: number;
+  paid: number;
+  unpaid: number;
 };
 
 export function useBillEntries(month: string) {
   return useQuery<BillEntry[]>({
     queryKey: ['bill-entries', month],
     queryFn: () => api.get(`/api/bill-entries?month=${month}`),
+  });
+}
+
+export function useBillsYearlySummary(year: string) {
+  return useQuery<BillMonthlySummary[]>({
+    queryKey: ['bill-entries-yearly', year],
+    queryFn: () => api.get(`/api/bill-entries/yearly-summary?year=${year}`),
   });
 }
 
