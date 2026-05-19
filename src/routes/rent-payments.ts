@@ -117,4 +117,70 @@ rentPayments.put('/:id', zValidator('json', updatePaymentSchema), async (c) => {
   return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
 });
 
+const addEntrySchema = z.object({
+  amount: z.number().positive(),
+  paid_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  payment_method: z.enum(['cash', 'cheque']),
+  receipt_no: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Promise<void> {
+  const row = await db.prepare(`
+    SELECT rp.month,
+      CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE ROUND(c.annual_rent / 12, 2) END as expected_rent,
+      COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as new_sum
+    FROM rent_payments rp
+    JOIN contracts c ON rp.contract_id = c.id
+    WHERE rp.id = ?
+  `).bind(rentPaymentId).first<{ month: string; expected_rent: number; new_sum: number }>();
+  if (!row) return;
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  let status: string;
+  if (row.new_sum >= row.expected_rent) status = 'collected';
+  else if (row.new_sum > 0) status = 'partial';
+  else if (row.month < currentMonth) status = 'overdue';
+  else status = 'pending';
+  await db.prepare('UPDATE rent_payments SET amount_paid = ?, status = ? WHERE id = ?')
+    .bind(row.new_sum, status, rentPaymentId).run();
+}
+
+rentPayments.get('/:id/entries', async (c) => {
+  const id = Number(c.req.param('id'));
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM payment_entries WHERE rent_payment_id = ? ORDER BY paid_date ASC, id ASC'
+  ).bind(id).all();
+  return c.json(results);
+});
+
+rentPayments.post('/:id/entries', zValidator('json', addEntrySchema), async (c) => {
+  const user = c.get('user');
+  const rentPaymentId = Number(c.req.param('id'));
+  const d = c.req.valid('json');
+  const now = new Date().toISOString();
+  const entry = await c.env.DB.prepare(
+    `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at)
+     VALUES (?,?,?,?,?,?,?,?) RETURNING *`
+  ).bind(
+    rentPaymentId, d.amount, d.paid_date, d.payment_method,
+    d.receipt_no ?? null, d.notes ?? null, String(user.sub), now
+  ).first();
+  await recomputePaymentStatus(c.env.DB, rentPaymentId);
+  await auditLog(c.env.DB, user, 'payment.entry_added', 'payment', rentPaymentId,
+    `Added ${d.amount} on ${d.paid_date}`);
+  return c.json(entry, 201);
+});
+
+rentPayments.delete('/:id/entries/:entryId', async (c) => {
+  const user = c.get('user');
+  const rentPaymentId = Number(c.req.param('id'));
+  const entryId = Number(c.req.param('entryId'));
+  await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
+    .bind(entryId, rentPaymentId).run();
+  await recomputePaymentStatus(c.env.DB, rentPaymentId);
+  await auditLog(c.env.DB, user, 'payment.entry_deleted', 'payment', rentPaymentId,
+    `Deleted entry ${entryId}`);
+  return c.json({ ok: true });
+});
+
 export default rentPayments;
