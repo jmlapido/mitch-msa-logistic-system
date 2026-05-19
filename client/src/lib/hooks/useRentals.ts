@@ -5,8 +5,19 @@ export type Building = { id: number; name: string; type: string; address?: strin
 export type Unit = { id: number; building_id: number; unit_no: string; type: string; floor?: string; notes?: string; building_name: string; occupancy_status: 'occupied' | 'vacant' | 'expiring'; tenant_name?: string; monthly_rent?: number; lease_end?: string; lease_id?: number };
 export type Tenant = { id: number; name: string; phone?: string; email?: string; id_number?: string; notes?: string; unit_id?: number; lease_id?: number; unit_no?: string; building_name?: string; lease_status?: string; end_date?: string; monthly_rent?: number; total_balance?: number };
 export type Lease = { id: number; unit_id: number; tenant_id: number; start_date: string; end_date: string; monthly_rent: number; deposit: number; status: string; notes?: string; tenant_name: string; unit_no: string; building_name: string };
-export type RentPayment = { id: number; lease_id: number; month: string; amount: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; balance: number; payment_method?: 'cash' | 'cheque' | null; payment_type: string };
+export type RentPayment = { id: number; lease_id: number; month: string; amount: number; amount_paid: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; balance: number; payment_method?: 'cash' | 'cheque' | null; payment_type: string };
 export type RentalDoc = { id: number; entity_type: string; entity_id: number; doc_type: string; file_name: string; uploaded_at: string };
+export type PaymentEntry = {
+  id: number;
+  rent_payment_id: number;
+  amount: number;
+  paid_date: string;
+  payment_method: 'cash' | 'cheque' | null;
+  receipt_no: string | null;
+  notes: string | null;
+  recorded_by: string | null;
+  recorded_at: string;
+};
 export type Contract = {
   id: number;
   tenant_id: number;
@@ -53,6 +64,13 @@ export function useLeases() {
 export function useRentPayments(month: string, buildingId?: number) {
   const url = `/api/rent-payments?month=${month}${buildingId ? `&building_id=${buildingId}` : ''}`;
   return useQuery<RentPayment[]>({ queryKey: ['rent-payments', month, buildingId], queryFn: () => api.get(url) });
+}
+export function usePaymentEntries(rentPaymentId: number, enabled = false) {
+  return useQuery<PaymentEntry[]>({
+    queryKey: ['payment-entries', rentPaymentId],
+    queryFn: () => api.get(`/api/rent-payments/${rentPaymentId}/entries`),
+    enabled,
+  });
 }
 export function useRentalDocs(entityType: string, entityId: number) {
   return useQuery<RentalDoc[]>({
@@ -109,6 +127,24 @@ export function useRentalMutations() {
       mutationFn: ({ id, ...d }: { id: number; amount?: number; status?: string; paid_date?: string | null; receipt_no?: string | null; notes?: string | null }) =>
         api.put(`/api/rent-payments/${id}`, d),
       onSuccess: () => qc.invalidateQueries({ queryKey: ['rent-payments'] }),
+    }),
+    addPaymentEntry: useMutation({
+      mutationFn: ({ rentPaymentId, ...d }: { rentPaymentId: number; amount: number; paid_date: string; payment_method: 'cash' | 'cheque'; receipt_no?: string; notes?: string }) =>
+        api.post(`/api/rent-payments/${rentPaymentId}/entries`, d),
+      onSuccess: (_: unknown, v: { rentPaymentId: number }) => {
+        qc.invalidateQueries({ queryKey: ['rent-payments'] });
+        qc.invalidateQueries({ queryKey: ['payment-entries', v.rentPaymentId] });
+        qc.invalidateQueries({ queryKey: ['tenants'] });
+      },
+    }),
+    deletePaymentEntry: useMutation({
+      mutationFn: ({ rentPaymentId, entryId }: { rentPaymentId: number; entryId: number }) =>
+        api.del(`/api/rent-payments/${rentPaymentId}/entries/${entryId}`),
+      onSuccess: (_: unknown, v: { rentPaymentId: number; entryId: number }) => {
+        qc.invalidateQueries({ queryKey: ['rent-payments'] });
+        qc.invalidateQueries({ queryKey: ['payment-entries', v.rentPaymentId] });
+        qc.invalidateQueries({ queryKey: ['tenants'] });
+      },
     }),
 
     uploadDoc: async (file: File, entityType: string, entityId: number, docType: string) => {
