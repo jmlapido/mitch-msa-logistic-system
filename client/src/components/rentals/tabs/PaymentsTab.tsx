@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Check, Phone, Mail, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useRentPayments, useBuildings, useRentalMutations, type RentPayment } from '@/lib/hooks/useRentals';
+import { useRentPayments, useBuildings, useRentalMutations, usePaymentEntries, type RentPayment, type PaymentEntry } from '@/lib/hooks/useRentals';
 import { ContractsPanel } from '../ContractsPanel';
 import { currentMonth, monthLabel, formatAED, formatDate } from '@/lib/utils';
 
@@ -24,7 +24,7 @@ export function PaymentsTab() {
   const [tenantDetail, setTenantDetail] = useState<RentPayment | null>(null);
   const { data: payments = [], isLoading } = useRentPayments(month, buildingFilter);
   const { data: buildings = [] } = useBuildings();
-  const { updateRentPayment } = useRentalMutations();
+  const { addPaymentEntry, deletePaymentEntry } = useRentalMutations();
 
   function changeMonth(delta: number) {
     const [y, m] = month.split('-').map(Number) as [number, number];
@@ -122,12 +122,7 @@ export function PaymentsTab() {
                             </td>
                             <td className="px-3 py-2 text-center">
                               <div className="flex flex-col items-center gap-0.5">
-                                <CollectPopover payment={p} onUpdate={updateRentPayment.mutateAsync} />
-                                {p.payment_method && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">
-                                    {p.payment_method}
-                                  </span>
-                                )}
+                                <PaymentPopover payment={p} onAdd={addPaymentEntry.mutateAsync} onDelete={deletePaymentEntry.mutateAsync} />
                               </div>
                             </td>
                           </tr>
@@ -184,28 +179,69 @@ function StatCard({ label, value, valueClass }: { label: string; value: string; 
   );
 }
 
-function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate: (d: { id: number; status: string; paid_date?: string; receipt_no?: string; amount?: number; notes?: string; payment_method?: string }) => Promise<unknown> }) {
+function PaymentPopover({
+  payment,
+  onAdd,
+  onDelete,
+}: {
+  payment: RentPayment;
+  onAdd: (d: { rentPaymentId: number; amount: number; paid_date: string; payment_method: 'cash' | 'cheque'; receipt_no?: string; notes?: string }) => Promise<unknown>;
+  onDelete: (d: { rentPaymentId: number; entryId: number }) => Promise<unknown>;
+}) {
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(String(payment.amount));
-  const [date, setDate] = useState(payment.paid_date ?? new Date().toISOString().slice(0, 10));
-  const [receipt, setReceipt] = useState(payment.receipt_no ?? '');
-  const [notes, setNotes] = useState(payment.notes ?? '');
-  const defaultMethod = payment.payment_method ?? (payment.payment_type === 'cash' ? 'cash' : 'cheque');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'cheque'>(defaultMethod as 'cash' | 'cheque');
+  const { data: entries = [], isLoading: loadingEntries } = usePaymentEntries(payment.id, open);
+  const defaultMethod: 'cash' | 'cheque' = payment.payment_type === 'cash' ? 'cash' : 'cheque';
+
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'cheque'>(defaultMethod);
+  const [receipt, setReceipt] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      const remaining = Math.max(0, payment.expected_rent - payment.amount_paid);
+      setAmount(remaining > 0 ? String(remaining) : '');
+      setDate(new Date().toISOString().slice(0, 10));
+      setPaymentMethod(defaultMethod);
+      setReceipt('');
+      setNotes('');
+    }
+  }, [open]);
 
   const STATUS_STYLE: Record<string, string> = {
     collected: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    overdue: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    partial:   'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+    pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    overdue:   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   };
 
-  async function collect() {
+  async function handleAdd() {
+    if (!amount || Number(amount) <= 0) return;
+    setSubmitting(true);
     try {
-      await onUpdate({ id: payment.id, status: 'collected', amount: Number(amount), paid_date: date, receipt_no: receipt || undefined, notes: notes || undefined, payment_method: paymentMethod });
-      toast.success('Rent collected');
-      setOpen(false);
+      await onAdd({
+        rentPaymentId: payment.id,
+        amount: Number(amount),
+        paid_date: date,
+        payment_method: paymentMethod,
+        receipt_no: receipt || undefined,
+        notes: notes || undefined,
+      });
+      toast.success('Payment recorded');
+    } catch { toast.error('Failed'); }
+    finally { setSubmitting(false); }
+  }
+
+  async function handleDelete(entry: PaymentEntry) {
+    try {
+      await onDelete({ rentPaymentId: payment.id, entryId: entry.id });
+      toast.success('Entry removed');
     } catch { toast.error('Failed'); }
   }
+
+  const totalPaid = entries.reduce((s, e) => s + e.amount, 0);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -214,32 +250,59 @@ function CollectPopover({ payment, onUpdate }: { payment: RentPayment; onUpdate:
           {payment.status}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-3 space-y-2">
-        <p className="text-xs font-semibold">Unit {payment.unit_no}</p>
-        <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} type="number" className="mt-0.5 h-7 text-xs" /></div>
-        <div><Label className="text-xs">Date</Label><Input value={date} onChange={e => setDate(e.target.value)} type="date" className="mt-0.5 h-7 text-xs" /></div>
-        <div><Label className="text-xs">Receipt No.</Label><Input value={receipt} onChange={e => setReceipt(e.target.value)} className="mt-0.5 h-7 text-xs" /></div>
-        <div>
-          <Label className="text-xs">Payment Method</Label>
-          <div className="flex gap-1 mt-0.5">
-            {(['cash', 'cheque'] as const).map(m => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setPaymentMethod(m)}
-                className={`flex-1 text-xs py-1 rounded border capitalize transition-colors ${
-                  paymentMethod === m
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                }`}
-              >
-                {m}
-              </button>
+      <PopoverContent className="w-72 p-3 space-y-2">
+        <p className="text-xs font-semibold">Unit {payment.unit_no} — {monthLabel(payment.month)}</p>
+
+        {loadingEntries && <p className="text-xs text-muted-foreground">Loading…</p>}
+
+        {entries.length > 0 && (
+          <div className="space-y-0.5">
+            {entries.map(e => (
+              <div key={e.id} className="flex items-center justify-between text-xs py-1 border-b last:border-0">
+                <div className="flex flex-col">
+                  <span className="text-foreground">{formatDate(e.paid_date)} · <span className="capitalize">{e.payment_method ?? '—'}</span></span>
+                  {e.receipt_no && <span className="text-muted-foreground">#{e.receipt_no}</span>}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">{formatAED(e.amount)}</span>
+                  <button onClick={() => handleDelete(e)} className="text-red-400 hover:text-red-600 ml-1 leading-none">✕</button>
+                </div>
+              </div>
             ))}
+            <div className="flex justify-between text-xs font-semibold pt-1">
+              <span>Total paid</span>
+              <span className={totalPaid >= payment.expected_rent ? 'text-green-600' : 'text-orange-600'}>
+                {formatAED(totalPaid)} / {formatAED(payment.expected_rent)}
+              </span>
+            </div>
           </div>
+        )}
+
+        <div className="border-t pt-2 space-y-2">
+          <p className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wide">Add Payment</p>
+          <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} type="number" className="mt-0.5 h-7 text-xs" /></div>
+          <div><Label className="text-xs">Date</Label><Input value={date} onChange={e => setDate(e.target.value)} type="date" className="mt-0.5 h-7 text-xs" /></div>
+          <div>
+            <Label className="text-xs">Method</Label>
+            <div className="flex gap-1 mt-0.5">
+              {(['cash', 'cheque'] as const).map(m => (
+                <button key={m} type="button" onClick={() => setPaymentMethod(m)}
+                  className={`flex-1 text-xs py-1 rounded border capitalize transition-colors ${
+                    paymentMethod === m
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                  }`}>
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div><Label className="text-xs">Receipt No.</Label><Input value={receipt} onChange={e => setReceipt(e.target.value)} className="mt-0.5 h-7 text-xs" /></div>
+          <div><Label className="text-xs">Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} className="mt-0.5 h-7 text-xs" placeholder="Optional" /></div>
+          <Button size="sm" className="w-full" onClick={handleAdd} disabled={submitting}>
+            <Check size={12} className="mr-1" /> Record Payment
+          </Button>
         </div>
-        <div><Label className="text-xs">Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} className="mt-0.5 h-7 text-xs" placeholder="Optional" /></div>
-        <Button size="sm" className="w-full" onClick={collect}><Check size={12} className="mr-1" /> Mark Collected</Button>
       </PopoverContent>
     </Popover>
   );
