@@ -194,9 +194,10 @@ function UsersTab() {
 
 // ── Categories ────────────────────────────────────────────────────────────────
 const catSchema = z.object({
-  name: z.string().min(1),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  icon: z.string().max(5),
+  name: z.string().min(1, 'Required'),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#3b82f6'),
+  icon: z.string().max(10).default('📋'),
+  links_to_building: z.boolean().default(false),
 });
 type CatForm = z.infer<typeof catSchema>;
 
@@ -208,7 +209,7 @@ function CategoriesTab() {
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<CatForm>({ resolver: zodResolver(catSchema) });
 
   function openAdd() { reset({ color: '#3b82f6', icon: '📋' }); setEditing(null); setOpen(true); }
-  function openEdit(c: typeof categories[0]) { reset({ name: c.name, color: c.color, icon: c.icon }); setEditing({ ...c }); setOpen(true); }
+  function openEdit(c: typeof categories[0]) { reset({ name: c.name, color: c.color, icon: c.icon, links_to_building: c.links_to_building === 1 }); setEditing({ ...c }); setOpen(true); }
 
   async function onSubmit(v: CatForm) {
     try {
@@ -236,6 +237,9 @@ function CategoriesTab() {
               <span className="text-lg">{c.icon}</span>
               <span className="font-medium text-sm">{c.name}</span>
               <span className="w-4 h-4 rounded-full inline-block border" style={{ background: c.color }} />
+              {c.links_to_building === 1 && (
+                <span className="text-xs text-muted-foreground border rounded px-1.5 py-0.5">🏢 building</span>
+              )}
             </div>
             <div className="flex gap-1">
               <button onClick={() => openEdit(c)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={13} /></button>
@@ -252,6 +256,17 @@ function CategoriesTab() {
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Icon (emoji)</Label><Input {...register('icon')} className="mt-1" maxLength={5} /></div>
               <div><Label>Color</Label><Input {...register('color')} type="color" className="mt-1 h-9" /></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="links_to_building"
+                {...register('links_to_building')}
+                className="w-4 h-4 accent-primary cursor-pointer"
+              />
+              <label htmlFor="links_to_building" className="text-sm cursor-pointer select-none">
+                Requires building selection
+              </label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
