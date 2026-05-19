@@ -21,12 +21,24 @@ rentPayments.get('/', async (c) => {
       FROM month_gen WHERE m < ?
     )
     INSERT OR IGNORE INTO rent_payments (contract_id, month, amount, status)
-    SELECT c.id, mg.m, ROUND(c.annual_rent / 12, 2), 'pending'
+    SELECT c.id, mg.m,
+      CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE ROUND(c.annual_rent / 12, 2) END,
+      'pending'
     FROM contracts c
     CROSS JOIN month_gen mg
     WHERE date(c.start_date) <= mg.m || '-28'
       AND date(c.end_date) >= mg.m || '-01'
       AND mg.m <= ?
+      AND (
+        c.payment_frequency = 'monthly'
+        OR (
+          c.payment_frequency = 'annual'
+          AND (
+            (CAST(strftime('%Y', mg.m) AS INTEGER) * 12 + CAST(strftime('%m', mg.m) AS INTEGER))
+            - (CAST(strftime('%Y', c.start_date) AS INTEGER) * 12 + CAST(strftime('%m', c.start_date) AS INTEGER))
+          ) % 12 = 0
+        )
+      )
   `).bind(month, month).run();
 
   await c.env.DB.prepare(
@@ -34,7 +46,8 @@ rentPayments.get('/', async (c) => {
   ).bind(month).run();
 
   let query = `
-    SELECT rp.*, ROUND(c.annual_rent / 12, 2) as expected_rent,
+    SELECT rp.*,
+      CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE ROUND(c.annual_rent / 12, 2) END as expected_rent,
       t.id as tenant_id, t.name as tenant_name, t.phone as tenant_phone, t.email as tenant_email,
       u.unit_no, u.type as unit_type,
       b.id as building_id, b.name as building_name,
