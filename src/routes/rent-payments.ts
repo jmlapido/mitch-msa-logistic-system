@@ -60,14 +60,19 @@ rentPayments.get('/', async (c) => {
           pc.cheque_date
         ELSE NULL
       END as due_date,
-      (SELECT COALESCE(SUM(rp2.amount), 0)
+      (SELECT COALESCE(SUM(
+         CASE WHEN rp2.status = 'partial'
+           THEN (CASE WHEN c2.payment_frequency = 'annual' THEN c2.annual_rent ELSE ROUND(c2.annual_rent / 12, 2) END - rp2.amount_paid)
+           ELSE rp2.amount
+         END
+       ), 0)
        FROM rent_payments rp2
        JOIN contracts c2 ON rp2.contract_id = c2.id
        WHERE c2.tenant_id = t.id
-         AND rp2.status != 'collected'
+         AND rp2.status NOT IN ('collected')
          AND rp2.month < ?) as tenant_overdue,
       MAX(0, (CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE ROUND(c.annual_rent / 12, 2) END)
-           - CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END) as balance
+           - rp.amount_paid) as balance
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
     JOIN tenants t ON c.tenant_id = t.id
