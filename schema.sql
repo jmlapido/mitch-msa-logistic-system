@@ -17,11 +17,12 @@ CREATE TABLE IF NOT EXISTS settings (
 
 -- Bill categories
 CREATE TABLE IF NOT EXISTS categories (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  name       TEXT NOT NULL,
-  color      TEXT NOT NULL DEFAULT '#3b82f6',
-  icon       TEXT NOT NULL DEFAULT '📋',
-  sort_order INTEGER NOT NULL DEFAULT 0
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  name              TEXT NOT NULL,
+  color             TEXT NOT NULL DEFAULT '#3b82f6',
+  icon              TEXT NOT NULL DEFAULT '📋',
+  sort_order        INTEGER NOT NULL DEFAULT 0,
+  links_to_building INTEGER NOT NULL DEFAULT 0
 );
 
 -- Bill-related properties (villas, offices, shops)
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS bills (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   category_id  INTEGER NOT NULL REFERENCES categories(id),
   property_id  INTEGER REFERENCES properties(id),
+  building_id  INTEGER REFERENCES buildings(id),
   particulars  TEXT NOT NULL,
   account_no   TEXT,
   due_day      INTEGER,
