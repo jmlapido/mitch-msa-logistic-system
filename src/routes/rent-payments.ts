@@ -157,6 +157,11 @@ rentPayments.post('/:id/entries', zValidator('json', addEntrySchema), async (c) 
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
   const d = c.req.valid('json');
+
+  // Verify parent exists
+  const parent = await c.env.DB.prepare('SELECT id FROM rent_payments WHERE id = ?').bind(rentPaymentId).first();
+  if (!parent) return c.json({ error: 'Payment not found' }, 404);
+
   const now = new Date().toISOString();
   const entry = await c.env.DB.prepare(
     `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at)
@@ -175,8 +180,9 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
   const entryId = Number(c.req.param('entryId'));
-  await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
+  const result = await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
     .bind(entryId, rentPaymentId).run();
+  if (result.meta.changes === 0) return c.json({ error: 'Entry not found' }, 404);
   await recomputePaymentStatus(c.env.DB, rentPaymentId);
   await auditLog(c.env.DB, user, 'payment.entry_deleted', 'payment', rentPaymentId,
     `Deleted entry ${entryId}`);
