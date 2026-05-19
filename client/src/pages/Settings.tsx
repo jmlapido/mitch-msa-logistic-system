@@ -205,11 +205,11 @@ function CategoriesTab() {
   const { data: categories = [] } = useCategories();
   const { create, update, remove } = useCategoryMutations();
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<{ id: number } & CatForm | null>(null);
+  const [editing, setEditing] = useState<{ id: number } | null>(null);
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<CatForm>({ resolver: zodResolver(catSchema) });
 
-  function openAdd() { reset({ color: '#3b82f6', icon: '📋' }); setEditing(null); setOpen(true); }
-  function openEdit(c: typeof categories[0]) { reset({ name: c.name, color: c.color, icon: c.icon, links_to_building: c.links_to_building === 1 }); setEditing({ ...c }); setOpen(true); }
+  function openAdd() { reset({ color: '#3b82f6', icon: '📋', links_to_building: false }); setEditing(null); setOpen(true); }
+  function openEdit(c: typeof categories[0]) { reset({ name: c.name, color: c.color, icon: c.icon, links_to_building: c.links_to_building === 1 }); setEditing({ id: c.id }); setOpen(true); }
 
   async function onSubmit(v: CatForm) {
     try {
@@ -254,7 +254,7 @@ function CategoriesTab() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
             <div><Label>Name *</Label><Input {...register('name')} className="mt-1" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Icon (emoji)</Label><Input {...register('icon')} className="mt-1" maxLength={5} /></div>
+              <div><Label>Icon (emoji)</Label><Input {...register('icon')} className="mt-1" maxLength={10} /></div>
               <div><Label>Color</Label><Input {...register('color')} type="color" className="mt-1 h-9" /></div>
             </div>
             <div className="flex items-center gap-2">
