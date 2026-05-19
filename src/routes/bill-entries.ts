@@ -8,16 +8,36 @@ import type { Env } from '../types';
 const billEntries = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 billEntries.use('*', requireAuth);
 
+// GET /api/bill-entries/yearly-summary?year=YYYY
+billEntries.get('/yearly-summary', async (c) => {
+  const year = c.req.query('year') ?? new Date().getFullYear().toString();
+  const { results } = await c.env.DB.prepare(`
+    SELECT
+      be.month,
+      SUM(be.amount) as total,
+      SUM(CASE WHEN be.status = 'paid' THEN be.amount ELSE 0 END) as paid,
+      SUM(CASE WHEN be.status = 'unpaid' THEN be.amount ELSE 0 END) as unpaid
+    FROM bill_entries be
+    WHERE be.month LIKE ?
+    GROUP BY be.month
+    ORDER BY be.month
+  `).bind(`${year}-%`).all();
+  return c.json(results);
+});
+
 // GET /api/bill-entries?month=YYYY-MM
 billEntries.get('/', async (c) => {
   const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
 
-  // Remove any pristine auto-created entries for bills created after this month
+  // Remove pristine auto-created entries for bills that didn't exist in this month.
+  // updated_by IS NULL distinguishes auto-inserts (no user) from explicit creation
+  // via POST /api/bills which stamps the creating user's id onto the entry.
   await c.env.DB.prepare(`
     DELETE FROM bill_entries
     WHERE month = ?
       AND amount = 0 AND status = 'unpaid'
       AND paid_date IS NULL AND invoice_no IS NULL AND notes IS NULL
+      AND updated_by IS NULL
       AND (SELECT COUNT(*) FROM bill_attachments WHERE bill_entry_id = bill_entries.id) = 0
       AND bill_id IN (SELECT id FROM bills WHERE strftime('%Y-%m', created_at) > ?)
   `).bind(month, month).run();
@@ -34,6 +54,7 @@ billEntries.get('/', async (c) => {
       be.id as entry_id, be.month, be.amount, be.status, be.paid_date,
       be.invoice_no, be.notes as entry_notes, be.updated_at,
       b.id as bill_id, b.particulars, b.account_no, b.due_day, b.is_recurring,
+      b.building_id, bld.name as building_name,
       c.id as category_id, c.name as category_name, c.color as category_color, c.icon as category_icon,
       (SELECT COUNT(*) FROM bill_attachments WHERE bill_entry_id = be.id) as attachment_count,
       CASE
@@ -47,6 +68,7 @@ billEntries.get('/', async (c) => {
     FROM bill_entries be
     JOIN bills b ON be.bill_id = b.id
     JOIN categories c ON b.category_id = c.id
+    LEFT JOIN buildings bld ON b.building_id = bld.id
     WHERE be.month = ?
     ORDER BY c.sort_order, c.name, b.particulars
   `).bind(month).all();
