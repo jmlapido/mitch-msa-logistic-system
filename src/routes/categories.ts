@@ -14,6 +14,7 @@ const categorySchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#3b82f6'),
   icon: z.string().max(10).default('📋'),
   sort_order: z.number().int().default(0),
+  links_to_building: z.coerce.boolean().default(false),
 });
 
 categories.get('/', async (c) => {
@@ -26,16 +27,21 @@ categories.get('/', async (c) => {
 categories.post('/', requireAdmin, zValidator('json', categorySchema), async (c) => {
   const data = c.req.valid('json');
   const result = await c.env.DB.prepare(
-    'INSERT INTO categories (name, color, icon, sort_order) VALUES (?,?,?,?) RETURNING *'
-  ).bind(data.name, data.color, data.icon, data.sort_order).first();
+    'INSERT INTO categories (name, color, icon, sort_order, links_to_building) VALUES (?,?,?,?,?) RETURNING *'
+  ).bind(data.name, data.color, data.icon, data.sort_order, data.links_to_building ? 1 : 0).first();
   return c.json(result, 201);
 });
 
 categories.put('/:id', requireAdmin, zValidator('json', categorySchema.partial()), async (c) => {
   const id = Number(c.req.param('id'));
   const data = c.req.valid('json');
-  const fields = Object.entries(data).map(([k]) => `${k} = ?`).join(', ');
-  const values = [...Object.values(data), id];
+  const dbData = {
+    ...data,
+    links_to_building: data.links_to_building !== undefined ? (data.links_to_building ? 1 : 0) : undefined,
+  };
+  const entries = Object.entries(dbData).filter(([, v]) => v !== undefined);
+  const fields = entries.map(([k]) => `${k} = ?`).join(', ');
+  const values = [...entries.map(([, v]) => v), id];
   await c.env.DB.prepare(`UPDATE categories SET ${fields} WHERE id = ?`).bind(...values).run();
   const updated = await c.env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first();
   return c.json(updated);
