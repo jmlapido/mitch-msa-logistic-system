@@ -28,28 +28,36 @@ reports.get('/', async (c) => {
       WHERE be.month BETWEEN ? AND ?
     `;
     const binds: unknown[] = [from, to];
+    if (buildingId) { billsQuery += ' AND b.building_id = ?'; binds.push(buildingId); }
     if (categoryId) { billsQuery += ' AND c.id = ?'; binds.push(categoryId); }
     billsQuery += ' ORDER BY be.month, c.sort_order, b.particulars';
 
     const { results: billRows } = await db.prepare(billsQuery).bind(...binds).all();
 
-    const { results: monthSummary } = await db.prepare(`
-      SELECT month,
-        SUM(amount) as total,
-        SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) as paid,
-        SUM(CASE WHEN status = 'unpaid' THEN amount ELSE 0 END) as unpaid
-      FROM bill_entries WHERE month BETWEEN ? AND ?
-      GROUP BY month ORDER BY month
-    `).bind(from, to).all();
+    let monthQuery = `
+      SELECT be.month,
+        SUM(be.amount) as total,
+        SUM(CASE WHEN be.status = 'paid' THEN be.amount ELSE 0 END) as paid,
+        SUM(CASE WHEN be.status = 'unpaid' THEN be.amount ELSE 0 END) as unpaid
+      FROM bill_entries be JOIN bills b ON be.bill_id = b.id
+      WHERE be.month BETWEEN ? AND ?
+    `;
+    const monthBinds: unknown[] = [from, to];
+    if (buildingId) { monthQuery += ' AND b.building_id = ?'; monthBinds.push(buildingId); }
+    monthQuery += ' GROUP BY be.month ORDER BY be.month';
+    const { results: monthSummary } = await db.prepare(monthQuery).bind(...monthBinds).all();
 
-    const { results: catSummary } = await db.prepare(`
+    let catQuery = `
       SELECT c.name, c.color, c.icon,
         SUM(be.amount) as total,
         SUM(CASE WHEN be.status = 'paid' THEN be.amount ELSE 0 END) as paid
       FROM bill_entries be JOIN bills b ON be.bill_id = b.id JOIN categories c ON b.category_id = c.id
       WHERE be.month BETWEEN ? AND ?
-      GROUP BY c.id ORDER BY total DESC
-    `).bind(from, to).all();
+    `;
+    const catBinds: unknown[] = [from, to];
+    if (buildingId) { catQuery += ' AND b.building_id = ?'; catBinds.push(buildingId); }
+    catQuery += ' GROUP BY c.id ORDER BY total DESC';
+    const { results: catSummary } = await db.prepare(catQuery).bind(...catBinds).all();
 
     if (type === 'bills') {
       return c.json({ type, from, to, rows: billRows, monthSummary, catSummary });
