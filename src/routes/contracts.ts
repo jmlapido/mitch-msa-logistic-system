@@ -19,6 +19,7 @@ const contractSchema = z.object({
   payment_type: z.enum(['cash', 'pdc']).default('pdc'),
   no_of_pdc: z.number().int().min(0).max(24).default(0),
   due_day: z.number().int().min(1).max(28).optional(),
+  payment_frequency: z.enum(['monthly', 'annual']).default('monthly'),
   notes: z.string().optional(),
 });
 
@@ -39,9 +40,9 @@ contracts.post('/', requireAdmin, zValidator('json', contractSchema), async (c) 
   const user = c.get('user');
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
-    `INSERT INTO contracts (tenant_id, contract_no, start_date, end_date, annual_rent, payment_type, no_of_pdc, due_day, notes, created_by)
-     VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING *`
-  ).bind(d.tenant_id, d.contract_no, d.start_date, d.end_date, d.annual_rent, d.payment_type, d.no_of_pdc, d.due_day ?? null, d.notes ?? null, user.sub).first<{ id: number }>();
+    `INSERT INTO contracts (tenant_id, contract_no, start_date, end_date, annual_rent, payment_type, no_of_pdc, due_day, payment_frequency, notes, created_by)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING *`
+  ).bind(d.tenant_id, d.contract_no, d.start_date, d.end_date, d.annual_rent, d.payment_type, d.no_of_pdc, d.due_day ?? null, d.payment_frequency, d.notes ?? null, user.sub).first<{ id: number }>();
   await auditLog(c.env.DB, user, 'contract.created', 'contract', result?.id ?? null, `Contract #${d.contract_no}`);
   return c.json(result, 201);
 });
