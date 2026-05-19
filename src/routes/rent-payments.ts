@@ -31,6 +31,7 @@ rentPayments.get('/', async (c) => {
       AND mg.m <= ?
       AND (
         c.payment_frequency = 'monthly'
+        OR c.payment_frequency IS NULL
         OR (
           c.payment_frequency = 'annual'
           AND (
