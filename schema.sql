@@ -152,6 +152,7 @@ CREATE TABLE IF NOT EXISTS rental_documents (
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_bill_entries_month   ON bill_entries(month);
 CREATE INDEX IF NOT EXISTS idx_bill_entries_status  ON bill_entries(status);
+CREATE INDEX IF NOT EXISTS idx_bills_building       ON bills(building_id);
 CREATE INDEX IF NOT EXISTS idx_units_building       ON units(building_id);
 CREATE INDEX IF NOT EXISTS idx_leases_unit          ON leases(unit_id);
 CREATE INDEX IF NOT EXISTS idx_leases_status        ON leases(status);
