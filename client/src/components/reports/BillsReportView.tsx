@@ -4,7 +4,7 @@ import { formatAED, monthLabel } from '@/lib/utils';
 type Row = {
   month: string; category_name: string; category_icon: string; category_color: string;
   particulars: string; amount: number; status: string;
-  paid_date: string | null;
+  paid_date: string | null; building_name: string | null;
 };
 type MonthSummary = { month: string; total: number; paid: number; unpaid: number };
 type CatSummary = { name: string; color: string; icon: string; total: number; paid: number };
@@ -105,7 +105,12 @@ export function BillsReportView({ rows, monthSummary, catSummary, from, to, buil
               <tr key={i} className="hover:bg-muted/20">
                 <td className="px-3 py-1.5">{r.month}</td>
                 <td className="px-3 py-1.5">{r.category_icon} {r.category_name}</td>
-                <td className="px-3 py-1.5">{r.particulars}</td>
+                <td className="px-3 py-1.5">
+                  <div>{r.particulars}</div>
+                  {r.building_name && (
+                    <div className="text-xs text-muted-foreground">{r.building_name}</div>
+                  )}
+                </td>
                 <td className="px-3 py-1.5 text-right font-medium">{formatAED(r.amount)}</td>
                 <td className="px-3 py-1.5 text-center">
                   <span className={r.status === 'paid' ? 'text-green-600' : 'text-red-600'}>{r.status}</span>

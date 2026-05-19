@@ -21,10 +21,12 @@ reports.get('/', async (c) => {
         be.month,
         c.name as category_name, c.color as category_color, c.icon as category_icon,
         b.particulars, b.account_no,
-        be.amount, be.status, be.paid_date, be.invoice_no
+        be.amount, be.status, be.paid_date, be.invoice_no,
+        bld.name as building_name
       FROM bill_entries be
       JOIN bills b ON be.bill_id = b.id
       JOIN categories c ON b.category_id = c.id
+      LEFT JOIN buildings bld ON b.building_id = bld.id
       WHERE be.month BETWEEN ? AND ?
     `;
     const binds: unknown[] = [from, to];
