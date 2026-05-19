@@ -40,6 +40,7 @@ categories.put('/:id', requireAdmin, zValidator('json', categorySchema.partial()
     links_to_building: data.links_to_building !== undefined ? (data.links_to_building ? 1 : 0) : undefined,
   };
   const entries = Object.entries(dbData).filter(([, v]) => v !== undefined);
+  if (entries.length === 0) return c.json({ error: 'No fields to update' }, 400);
   const fields = entries.map(([k]) => `${k} = ?`).join(', ');
   const values = [...entries.map(([, v]) => v), id];
   await c.env.DB.prepare(`UPDATE categories SET ${fields} WHERE id = ?`).bind(...values).run();
