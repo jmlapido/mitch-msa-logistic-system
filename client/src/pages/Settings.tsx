@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { useCategories, useCategoryMutations } from '@/lib/hooks/useCategories';
-import { api } from '@/lib/api';
+import { BuildingsTab } from '@/components/rentals/tabs/BuildingsTab';
+import { UnitsTab } from '@/components/rentals/tabs/UnitsTab';
 
 // ── Branding ──────────────────────────────────────────────────────────────────
 function BrandingTab() {
@@ -331,11 +332,19 @@ export default function Settings() {
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="unit-types">Unit Types</TabsTrigger>
+          <TabsTrigger value="properties">Properties</TabsTrigger>
         </TabsList>
         <TabsContent value="branding"><BrandingTab /></TabsContent>
         <TabsContent value="users"><UsersTab /></TabsContent>
         <TabsContent value="categories"><CategoriesTab /></TabsContent>
         <TabsContent value="unit-types"><UnitTypesTab /></TabsContent>
+        <TabsContent value="properties">
+          <div className="space-y-8">
+            <BuildingsTab />
+            <hr className="border-border" />
+            <UnitsTab />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
