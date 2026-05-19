@@ -13,7 +13,8 @@ auditLogs.get('/', async (c) => {
   const entityType = c.req.query('entity_type');
   const dateFrom = c.req.query('date_from');
   const dateTo = c.req.query('date_to');
-  const page = Math.max(1, Number(c.req.query('page') || 1));
+  const rawPage = parseInt(c.req.query('page') ?? '1', 10);
+  const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
   const limit = 50;
   const offset = (page - 1) * limit;
 

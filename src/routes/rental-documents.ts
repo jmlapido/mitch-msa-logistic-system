@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
+import { auditLog } from '../lib/auditLog';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -40,7 +41,8 @@ rentalDocs.post('/', async (c) => {
   const doc = await c.env.DB.prepare(
     `INSERT INTO rental_documents (entity_type, entity_id, doc_type, file_name, file_key, file_size, file_type, uploaded_by)
      VALUES (?,?,?,?,?,?,?,?) RETURNING *`
-  ).bind(entityType, entityId, docType, file.name, key, file.size, file.type, user.sub).first();
+  ).bind(entityType, entityId, docType, file.name, key, file.size, file.type, user.sub).first<{ id: number }>();
+  await auditLog(c.env.DB, user, 'document.uploaded', 'document', doc?.id ?? null, `Uploaded: ${file.name}`);
   return c.json(doc, 201);
 });
 
@@ -56,11 +58,14 @@ rentalDocs.get('/:id/download', async (c) => {
 });
 
 rentalDocs.delete('/:id', requireAdmin, async (c) => {
-  const doc = await c.env.DB.prepare('SELECT file_key FROM rental_documents WHERE id = ?')
-    .bind(Number(c.req.param('id'))).first<{ file_key: string }>();
+  const user = c.get('user');
+  const docId = Number(c.req.param('id'));
+  const doc = await c.env.DB.prepare('SELECT file_key, file_name FROM rental_documents WHERE id = ?')
+    .bind(docId).first<{ file_key: string; file_name: string }>();
   if (!doc) return c.json({ error: 'Not found' }, 404);
   await c.env.R2.delete(doc.file_key);
-  await c.env.DB.prepare('DELETE FROM rental_documents WHERE id = ?').bind(Number(c.req.param('id'))).run();
+  await c.env.DB.prepare('DELETE FROM rental_documents WHERE id = ?').bind(docId).run();
+  await auditLog(c.env.DB, user, 'document.deleted', 'document', docId, `Deleted: ${doc.file_name}`);
   return c.json({ ok: true });
 });
 
