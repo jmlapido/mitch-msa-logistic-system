@@ -31,11 +31,16 @@ tenants.get('/', async (c) => {
       c.start_date, c.end_date,
       ROUND(c.annual_rent / 12, 2) as monthly_rent,
       u.unit_no, bld.name as building_name,
-      (SELECT COALESCE(SUM(rp.amount), 0)
+      (SELECT COALESCE(SUM(
+         CASE WHEN rp.status = 'partial'
+           THEN (CASE WHEN c2.payment_frequency = 'annual' THEN c2.annual_rent ELSE ROUND(c2.annual_rent / 12, 2) END - rp.amount_paid)
+           ELSE rp.amount
+         END
+       ), 0)
        FROM rent_payments rp
        JOIN contracts c2 ON rp.contract_id = c2.id
        WHERE c2.tenant_id = t.id
-         AND rp.status != 'collected') as total_balance
+         AND rp.status NOT IN ('collected')) as total_balance
     FROM tenants t
     LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN buildings bld ON u.building_id = bld.id
