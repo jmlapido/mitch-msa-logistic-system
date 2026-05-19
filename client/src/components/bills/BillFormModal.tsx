@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCategories } from '@/lib/hooks/useCategories';
 import { useBillMutations } from '@/lib/hooks/useBills';
+import { useBuildings } from '@/lib/hooks/useRentals';
 import { monthLabel } from '@/lib/utils';
 import type { BillTemplate } from '@/lib/hooks/useBills';
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,6 +24,7 @@ const schema = z.object({
   is_recurring: z.boolean().default(true),
   notes: z.string().optional(),
   amount: z.string().optional(),
+  building_id: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -64,12 +66,22 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
         is_recurring: editing.is_recurring === 1,
         notes: editing.notes ?? '',
         amount: editing.amount != null ? String(editing.amount) : '',
+        building_id: editing.building_id ? String(editing.building_id) : undefined,
       });
     } else {
       reset({ is_recurring: true, amount: '' });
     }
     setPendingFile(null);
   }, [editing, reset]);
+
+  const { data: buildings = [] } = useBuildings();
+  const selectedCategoryId = watch('category_id');
+  const selectedCategory = categories.find(c => String(c.id) === selectedCategoryId);
+  const showBuildingPicker = selectedCategory?.links_to_building === 1;
+
+  useEffect(() => {
+    if (!showBuildingPicker) setValue('building_id', undefined);
+  }, [showBuildingPicker, setValue]);
 
   async function onSubmit(values: FormValues) {
     const billPayload = {
@@ -79,6 +91,7 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
       due_day: values.due_day ? Number(values.due_day) : null,
       is_recurring: values.is_recurring ? 1 : 0,
       notes: values.notes || null,
+      building_id: values.building_id ? Number(values.building_id) : null,
     };
     try {
       if (editing) {
@@ -132,6 +145,23 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
             </Select>
             {errors.category_id && <p className="text-xs text-destructive mt-1">{errors.category_id.message}</p>}
           </div>
+          {showBuildingPicker && (
+            <div>
+              <Label>Building</Label>
+              <Select
+                value={watch('building_id') ?? 'none'}
+                onValueChange={v => setValue('building_id', v === 'none' ? undefined : v)}
+              >
+                <SelectTrigger><SelectValue placeholder="None / General" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None / General</SelectItem>
+                  {buildings.map(b => (
+                    <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label>Particulars *</Label>
             <Input {...register('particulars')} placeholder="e.g. FEWA, DU Mobile" />
