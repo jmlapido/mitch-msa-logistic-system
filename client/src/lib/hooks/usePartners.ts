@@ -332,7 +332,9 @@ export function usePartnerMutations() {
       const body = await res.json().catch(() => ({}));
       throw new Error((body as { error?: string }).error ?? 'Upload failed');
     }
+    const data = await res.json();
     invalidatePartners();
+    return data;
   };
 
   const deleteLogo = useMutation({
