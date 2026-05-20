@@ -180,7 +180,6 @@ export function PartnersTab() {
                   </div>
                   <div className="min-w-0">
                     <div className="font-semibold text-sm truncate">{p.company_name}</div>
-                    {p.email && <div className="text-xs text-muted-foreground truncate">{p.email}</div>}
                     {(p.address_city || p.address_country) && (
                       <div className="text-xs text-muted-foreground/70 truncate">
                         {[p.address_city, p.address_country].filter(Boolean).join(', ')}
