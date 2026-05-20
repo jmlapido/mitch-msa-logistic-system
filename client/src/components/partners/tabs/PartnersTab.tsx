@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -50,6 +50,17 @@ export function PartnersTab() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const logoRef = useRef<HTMLInputElement>(null);
+
+  const logoPreview = useMemo(
+    () => (logoFile ? URL.createObjectURL(logoFile) : null),
+    [logoFile],
+  );
+  useEffect(() => {
+    return () => { if (logoPreview) URL.revokeObjectURL(logoPreview); };
+  }, [logoPreview]);
+
+  const livePartner = editing ? partners.find(p => p.id === editing.id) : null;
+  const effectiveLogoKey = livePartner?.logo_key ?? editing?.logo_key;
 
   const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<F>({ resolver: zodResolver(schema) });
 
@@ -218,22 +229,29 @@ export function PartnersTab() {
                 <Label>Logo</Label>
                 <div className="flex items-center gap-3 mt-1">
                   <div className="w-12 h-12 rounded-lg border border-border bg-muted flex items-center justify-center overflow-hidden text-sm font-bold text-muted-foreground shrink-0">
-                    {logoFile
-                      ? <img src={URL.createObjectURL(logoFile)} alt="" className="w-full h-full object-cover" />
-                      : editing.logo_key
+                    {logoPreview
+                      ? <img src={logoPreview} alt="" className="w-full h-full object-cover" />
+                      : effectiveLogoKey
                         ? <img src={`/api/partners/${editing.id}/logo`} alt="" className="w-full h-full object-cover" />
                         : editing.company_name.slice(0, 2).toUpperCase()
                     }
                   </div>
                   <div className="flex flex-col gap-1">
                     <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => logoRef.current?.click()}>
-                      <Paperclip size={12} className="mr-1" /> {editing.logo_key || logoFile ? 'Change' : 'Upload Logo'}
+                      <Paperclip size={12} className="mr-1" /> {effectiveLogoKey || logoFile ? 'Change' : 'Upload Logo'}
                     </Button>
-                    {(editing.logo_key || logoFile) && (
+                    {(effectiveLogoKey || logoFile) && (
                       <Button
                         type="button" size="sm" variant="ghost"
                         className="h-7 text-xs text-destructive hover:text-destructive"
-                        onClick={() => { setLogoFile(null); deleteLogo.mutate(editing.id); }}
+                        onClick={async () => {
+                          if (logoFile) {
+                            setLogoFile(null);
+                          } else {
+                            try { await deleteLogo.mutateAsync(editing.id); }
+                            catch (err) { toast.error(err instanceof Error ? err.message : 'Remove failed'); }
+                          }
+                        }}
                       >
                         Remove
                       </Button>
@@ -241,7 +259,12 @@ export function PartnersTab() {
                     <span className="text-xs text-muted-foreground">Images only · max 2 MB</span>
                   </div>
                   <input ref={logoRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.heic"
-                    onChange={e => { setLogoFile(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+                    onChange={e => {
+                      const f = e.target.files?.[0] ?? null;
+                      if (f && f.size > 2 * 1024 * 1024) { toast.error('Image must be under 2 MB'); e.target.value = ''; return; }
+                      setLogoFile(f);
+                      e.target.value = '';
+                    }} />
                 </div>
               </div>
             )}
