@@ -293,8 +293,14 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
         </div>
 
         {/* Sub-dialogs */}
-        <ContactFormDialog open={contactOpen} onClose={() => setContactOpen(false)} partnerId={partner.id} onSave={mutations.createContact.mutateAsync} />
-        <ContractFormDialog open={contractOpen} onClose={() => setContractOpen(false)} partnerId={partner.id} onSave={mutations.createContract.mutateAsync} />
+        <ContactFormDialog
+          open={contactOpen} onClose={() => setContactOpen(false)} partnerId={partner.id}
+          onSave={d => mutations.createContact.mutateAsync({ ...d, partner_id: d.partnerId })}
+        />
+        <ContractFormDialog
+          open={contractOpen} onClose={() => setContractOpen(false)} partnerId={partner.id}
+          onSave={d => mutations.createContract.mutateAsync({ ...d, partner_id: d.partnerId, status: 'active' })}
+        />
         <PaymentFormDialog open={paymentOpen} onClose={() => setPaymentOpen(false)} partnerId={partner.id} contracts={contracts} onSave={mutations.createPayment.mutateAsync} />
       </DialogContent>
     </Dialog>
