@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Phone, Mail, FileText, Download, Pencil } from 'lucide-react';
+import { Plus, Trash2, Phone, Mail, FileText, Download, Pencil, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -93,8 +93,8 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                 )}
                 {partner.notes && <p className="text-xs text-muted-foreground italic mt-1">{partner.notes}</p>}
                 {(partner.address_street || partner.address_city || partner.address_country) && (
-                  <p className="text-xs text-muted-foreground">
-                    📍 {[partner.address_street, partner.address_city, partner.address_country].filter(Boolean).join(', ')}
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin size={13} /> {[partner.address_street, partner.address_city, partner.address_country].filter(Boolean).join(', ')}
                   </p>
                 )}
               </div>
