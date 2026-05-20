@@ -189,8 +189,9 @@ The Partners report endpoint returns:
 
 ## Access Control
 
-- All authenticated users can view the Partners page and payments.
-- Only `admin` and `superadmin` roles can create, edit, or delete partners, contacts, contracts, payments, or documents.
+- All authenticated users (including staff) can view the Partners page, partner cards, and payments.
+- Only `admin` and `superadmin` roles can create, edit, or delete partners, contacts, contracts, payments, or documents. Add/edit/delete buttons are hidden for staff.
+- The `/partners` route is not wrapped in `AdminRoute` — it uses `ProtectedRoute` only.
 - Partners report is admin-only (same as existing reports).
 
 ---
