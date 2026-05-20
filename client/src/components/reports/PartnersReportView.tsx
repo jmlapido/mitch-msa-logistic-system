@@ -39,9 +39,9 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
 
   return (
     <div>
-      <PrintHeader title="Partners Report" subtitle={subtitle} />
+      <PrintHeader title="Sponsorships Report" subtitle={subtitle} />
       <div className="no-print mb-4">
-        <h2 className="text-lg font-semibold">Partners Report</h2>
+        <h2 className="text-lg font-semibold">Sponsorships Report</h2>
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
 
@@ -63,11 +63,11 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
 
       {/* Per-partner table */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold mb-2">By Partner</h3>
+        <h3 className="text-sm font-semibold mb-2">By Sponsor</h3>
         <table className="w-full text-sm border rounded-lg overflow-hidden">
           <thead className="bg-muted text-xs">
             <tr>
-              <th className="text-left px-3 py-2">Partner</th>
+              <th className="text-left px-3 py-2">Sponsor</th>
               <th className="text-left px-3 py-2">Frequency</th>
               <th className="text-right px-3 py-2">Expected</th>
               <th className="text-right px-3 py-2">Collected</th>
@@ -103,7 +103,7 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
           <table className="w-full text-sm border rounded-lg overflow-hidden">
             <thead className="bg-muted text-xs">
               <tr>
-                <th className="text-left px-3 py-2">Partner</th>
+                <th className="text-left px-3 py-2">Sponsor</th>
                 <th className="text-right px-3 py-2">Amount</th>
                 <th className="text-left px-3 py-2">Date</th>
                 <th className="text-left px-3 py-2">Method</th>

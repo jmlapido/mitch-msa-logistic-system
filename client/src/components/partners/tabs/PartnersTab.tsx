@@ -131,7 +131,7 @@ export function PartnersTab() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex flex-wrap gap-2">
           <Input
-            placeholder="Search partners…"
+            placeholder="Search sponsorships…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="h-8 text-xs w-48"
@@ -168,7 +168,7 @@ export function PartnersTab() {
             {showArchived ? 'Active Partners' : 'Archived'}
           </Button>
           {canEdit && !showArchived && (
-            <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Partner</Button>
+            <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Sponsorship</Button>
           )}
         </div>
       </div>
@@ -176,7 +176,7 @@ export function PartnersTab() {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{showArchived ? 'No archived partners.' : 'No partners found.'}</p>
+        <p className="text-sm text-muted-foreground">{showArchived ? 'No archived sponsorships.' : 'No sponsorships found.'}</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(p => (
@@ -256,7 +256,7 @@ export function PartnersTab() {
       {/* Add/Edit Dialog */}
       <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{editing ? 'Edit Partner' : 'Add Partner'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? 'Edit Sponsorship' : 'Add Sponsorship'}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
             <div>
               <Label>Company Name *</Label>

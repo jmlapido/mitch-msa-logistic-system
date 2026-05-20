@@ -20,7 +20,7 @@ const TABS = [
   { value: 'bills',       label: 'Bills'            },
   { value: 'expiring',    label: 'Expiring Leases'  },
   { value: 'combined',    label: 'P&L Summary'      },
-  { value: 'partners',    label: 'Partners'         },
+  { value: 'partners',    label: 'Sponsorships'     },
 ];
 
 export default function Reports() {

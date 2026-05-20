@@ -80,7 +80,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
 
             {/* Partner Info */}
             <section>
-              <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2">Partner Info</h4>
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2">Sponsor Info</h4>
               <div className="space-y-1 text-sm">
                 {partner.email && (
                   <a href={`mailto:${partner.email}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">

@@ -37,7 +37,7 @@ export function PaymentsTab() {
     <div>
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <StatCard label="Total Partners" value={String(stats.totalPartners)} />
+        <StatCard label="Total Sponsors" value={String(stats.totalPartners)} />
         <StatCard label="Total Collected" value={formatAED(stats.totalCollected)} valueClass="text-green-600" />
         <StatCard label="Partial Remaining" value={formatAED(stats.partial)} valueClass={stats.partial > 0 ? 'text-yellow-600' : undefined} />
         <StatCard label="Overdue" value={formatAED(stats.overdue)} valueClass={stats.overdue > 0 ? 'text-red-600' : undefined} />
@@ -46,13 +46,13 @@ export function PaymentsTab() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end mb-4">
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Partner</p>
+          <p className="text-xs text-muted-foreground mb-1">Sponsor</p>
           <select
             value={partnerId ?? ''}
             onChange={e => setPartnerId(e.target.value ? Number(e.target.value) : undefined)}
             className="text-xs px-2 py-1 rounded border bg-background border-border"
           >
-            <option value="">All Partners</option>
+            <option value="">All Sponsors</option>
             {partners.map(p => <option key={p.id} value={p.id}>{p.company_name}</option>)}
           </select>
         </div>
@@ -100,7 +100,7 @@ export function PaymentsTab() {
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground bg-muted">
                 <tr>
-                  <th className="text-left px-3 py-2">Partner</th>
+                  <th className="text-left px-3 py-2">Sponsor</th>
                   <th className="text-left px-3 py-2 hidden sm:table-cell">Contract #</th>
                   <th className="text-left px-3 py-2 hidden sm:table-cell">Start</th>
                   <th className="text-left px-3 py-2 hidden sm:table-cell">Frequency</th>
