@@ -8,7 +8,7 @@ import { auditLog } from '../lib/auditLog';
 import type { Env } from '../types';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'application/pdf'];
-const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_SIZE = 10 * 1024 * 1024;
 
 const partnerPayments = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 partnerPayments.use('*', requireAuth);
@@ -31,16 +31,19 @@ partnerPayments.get('/', async (c) => {
   const bindings: (string | number)[] = [];
 
   if (partner_id) {
+    const pid = Number(partner_id);
+    if (!Number.isInteger(pid) || pid < 1) return c.json({ error: 'Invalid partner_id' }, 400);
     conditions.push('pc.partner_id = ?');
-    bindings.push(Number(partner_id));
+    bindings.push(pid);
   }
   if (from) {
-    conditions.push("pc.end_date >= ?");
+    conditions.push('pc.end_date >= ?');
     bindings.push(`${from}-01`);
   }
   if (to) {
-    conditions.push("pc.start_date <= ?");
-    bindings.push(`${to}-28`);
+    // Use start of next month as exclusive upper bound to cover all days in `to` month
+    conditions.push('pc.start_date <= ?');
+    bindings.push(`${to}-31`);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -79,10 +82,8 @@ partnerPayments.get('/', async (c) => {
     status: string;
   }>();
 
-  // Post-filter by status if requested
   const rows = status ? results.filter(r => r.status === status) : results;
 
-  // Compute stats over the (filtered) rows
   const partnerIds = new Set(rows.map(r => r.partner_id));
   let totalExpected = 0;
   let totalCollected = 0;
@@ -98,19 +99,15 @@ partnerPayments.get('/', async (c) => {
 
   return c.json({
     rows,
-    stats: {
-      totalPartners: partnerIds.size,
-      totalExpected,
-      totalCollected,
-      overdue,
-      partial,
-    },
+    stats: { totalPartners: partnerIds.size, totalExpected, totalCollected, overdue, partial },
   });
 });
 
 // GET /api/partner-payments/by-partner/:id — payment list for detail modal
 partnerPayments.get('/by-partner/:id', async (c) => {
   const id = Number(c.req.param('id'));
+  const partner = await c.env.DB.prepare('SELECT id FROM partners WHERE id = ?').bind(id).first();
+  if (!partner) return c.json({ error: 'Partner not found' }, 404);
 
   const { results } = await c.env.DB.prepare(`
     SELECT pp.*,
@@ -159,10 +156,7 @@ partnerPayments.post('/', requireAdmin, zValidator('json', paymentSchema), async
   const user = c.get('user');
   const d = c.req.valid('json');
 
-  const partner = await c.env.DB.prepare('SELECT id FROM partners WHERE id = ?')
-    .bind(d.partner_id).first();
-  if (!partner) return c.json({ error: 'Partner not found' }, 404);
-
+  // A valid (contract_id, partner_id) pair implicitly verifies the partner exists
   const contract = await c.env.DB.prepare(
     'SELECT id FROM partner_contracts WHERE id = ? AND partner_id = ?'
   ).bind(d.contract_id, d.partner_id).first();
@@ -185,7 +179,7 @@ partnerPayments.post('/', requireAdmin, zValidator('json', paymentSchema), async
   return c.json(result, 201);
 });
 
-// DELETE /api/partner-payments/:id — delete payment (also deletes R2 files)
+// DELETE /api/partner-payments/:id
 partnerPayments.delete('/:id', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
@@ -198,13 +192,19 @@ partnerPayments.delete('/:id', requireAdmin, async (c) => {
     'SELECT file_key FROM partner_payment_attachments WHERE payment_id = ?'
   ).bind(id).all<{ file_key: string }>();
 
-  await Promise.all(attachments.map(({ file_key }) => c.env.R2.delete(file_key).catch(() => {})));
+  await Promise.all(
+    attachments.map(({ file_key }) =>
+      c.env.R2.delete(file_key).catch(err =>
+        console.error('[partner-payments] R2 delete failed', { file_key, err })
+      )
+    )
+  );
   await c.env.DB.prepare('DELETE FROM partner_payments WHERE id = ?').bind(id).run();
   await auditLog(c.env.DB, user, 'partner.payment.deleted', 'partner', payment.partner_id, `Deleted payment id ${id}: AED ${payment.amount}`);
   return c.json({ ok: true });
 });
 
-// POST /api/partner-payments/:id/attachments — upload cheque copy to R2
+// POST /api/partner-payments/:id/attachments — upload cheque copy
 partnerPayments.post('/:id/attachments', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
@@ -215,7 +215,6 @@ partnerPayments.post('/:id/attachments', requireAdmin, async (c) => {
 
   const formData = await c.req.formData();
   const file = formData.get('file') as File | null;
-
   if (!file) return c.json({ error: 'No file provided' }, 400);
   if (!ALLOWED_TYPES.includes(file.type)) return c.json({ error: 'File type not allowed' }, 400);
   if (file.size > MAX_SIZE) return c.json({ error: 'File exceeds 10MB limit' }, 400);
@@ -223,18 +222,26 @@ partnerPayments.post('/:id/attachments', requireAdmin, async (c) => {
   const ext = file.name.split('.').pop() ?? 'bin';
   const key = `partners/payments/${id}/${crypto.randomUUID()}.${ext}`;
 
-  await c.env.R2.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
-
-  const result = await c.env.DB.prepare(
+  // Insert DB record first; if R2 upload fails, delete the DB row and return error
+  const record = await c.env.DB.prepare(
     `INSERT INTO partner_payment_attachments (payment_id, file_name, file_key, file_size, file_type)
      VALUES (?,?,?,?,?) RETURNING *`
   ).bind(id, file.name, key, file.size, file.type).first<{ id: number }>();
 
+  try {
+    await c.env.R2.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
+  } catch (err) {
+    await c.env.DB.prepare('DELETE FROM partner_payment_attachments WHERE id = ?')
+      .bind((record as { id: number }).id).run().catch(() => {});
+    console.error('[partner-payments] R2 upload failed, rolled back DB record', { key, err });
+    return c.json({ error: 'File upload failed' }, 500);
+  }
+
   await auditLog(c.env.DB, user, 'partner.payment.attachment.uploaded', 'partner', payment.partner_id, `Uploaded attachment: ${file.name}`);
-  return c.json(result, 201);
+  return c.json(record, 201);
 });
 
-// GET /api/partner-payments/:id/attachments/:aid/download — download attachment
+// GET /api/partner-payments/:id/attachments/:aid/download
 partnerPayments.get('/:id/attachments/:aid/download', async (c) => {
   const aid = Number(c.req.param('aid'));
 
@@ -253,15 +260,19 @@ partnerPayments.get('/:id/attachments/:aid/download', async (c) => {
   });
 });
 
-// DELETE /api/partner-payments/:id/attachments/:aid — delete attachment
+// DELETE /api/partner-payments/:id/attachments/:aid
 partnerPayments.delete('/:id/attachments/:aid', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const aid = Number(c.req.param('aid'));
 
+  // Verify attachment belongs to the specified payment
   const att = await c.env.DB.prepare(
-    'SELECT ppa.file_key, ppa.file_name, pp.partner_id FROM partner_payment_attachments ppa JOIN partner_payments pp ON ppa.payment_id = pp.id WHERE ppa.id = ?'
-  ).bind(aid).first<{ file_key: string; file_name: string; partner_id: number }>();
+    `SELECT ppa.file_key, ppa.file_name, pp.partner_id
+     FROM partner_payment_attachments ppa
+     JOIN partner_payments pp ON ppa.payment_id = pp.id
+     WHERE ppa.id = ? AND pp.id = ?`
+  ).bind(aid, id).first<{ file_key: string; file_name: string; partner_id: number }>();
   if (!att) return c.json({ error: 'Attachment not found' }, 404);
 
   await c.env.R2.delete(att.file_key);
