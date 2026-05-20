@@ -112,7 +112,7 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
             </thead>
             <tbody className="divide-y divide-border">
               {payments.map((p, i) => (
-                <tr key={i} className="hover:bg-muted/20">
+                <tr key={`${p.company_name}-${p.paid_date}-${p.amount}-${i}`} className="hover:bg-muted/20">
                   <td className="px-3 py-1.5">{p.company_name}</td>
                   <td className="px-3 py-1.5 text-right text-green-600 font-medium">{formatAED(p.amount)}</td>
                   <td className="px-3 py-1.5">{formatDate(p.paid_date)}</td>

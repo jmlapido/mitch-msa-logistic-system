@@ -124,7 +124,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                             <Pencil size={11} />
                           </button>
                           <button
-                            onClick={() => mutations.deleteContact.mutateAsync({ partnerId: partner.id, id: ct.id }).then(() => toast.success('Removed')).catch(() => toast.error('Failed'))}
+                            onClick={() => mutations.deleteContact.mutateAsync({ partnerId: partner.id, id: ct.id }).then(() => toast.success('Removed')).catch((err: unknown) => { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); })}
                             className="p-0.5 text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 size={11} />
@@ -149,7 +149,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                         const file = e.target.files?.[0];
                         if (!file) return;
                         try { await mutations.uploadDocument(partner.id, file, 'other'); toast.success('Uploaded'); }
-                        catch { toast.error('Upload failed'); }
+                        catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Upload failed'); }
                         e.target.value = '';
                       }}
                     />
@@ -172,7 +172,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                     </span>
                     {canEdit && (
                       <button
-                        onClick={() => mutations.deleteDocument.mutateAsync({ partnerId: partner.id, id: doc.id }).then(() => toast.success('Deleted')).catch(() => toast.error('Failed'))}
+                        onClick={() => mutations.deleteDocument.mutateAsync({ partnerId: partner.id, id: doc.id }).then(() => toast.success('Deleted')).catch((err: unknown) => { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); })}
                         className="text-muted-foreground hover:text-destructive ml-2"
                       >
                         <Trash2 size={11} />
@@ -223,7 +223,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                             <Pencil size={11} />
                           </button>
                           <button
-                            onClick={() => mutations.deleteContract.mutateAsync({ partnerId: partner.id, id: c.id }).then(() => toast.success('Deleted')).catch(() => toast.error('Failed'))}
+                            onClick={() => mutations.deleteContract.mutateAsync({ partnerId: partner.id, id: c.id }).then(() => toast.success('Deleted')).catch((err: unknown) => { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); })}
                             className="p-0.5 text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 size={11} />
@@ -283,7 +283,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                                         const file = e.target.files?.[0];
                                         if (!file) return;
                                         try { await mutations.uploadPaymentAttachment(p.id, partner.id, file); toast.success('Uploaded'); }
-                                        catch { toast.error('Upload failed'); }
+                                        catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Upload failed'); }
                                         e.target.value = '';
                                       }}
                                     />
@@ -291,7 +291,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                                 )}
                                 {canEdit && (
                                   <button
-                                    onClick={() => mutations.deletePayment.mutateAsync({ id: p.id, partnerId: partner.id }).then(() => toast.success('Deleted')).catch(() => toast.error('Failed'))}
+                                    onClick={() => mutations.deletePayment.mutateAsync({ id: p.id, partnerId: partner.id }).then(() => toast.success('Deleted')).catch((err: unknown) => { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); })}
                                     className="text-muted-foreground hover:text-destructive"
                                   >
                                     <Trash2 size={11} />
@@ -355,7 +355,7 @@ function ContactFormDialog({ open, onClose, partnerId, editing, onSave }: {
 
   async function onSubmit(v: ContactF) {
     try { await onSave({ partnerId, ...v }); toast.success(editing ? 'Updated' : 'Contact added'); reset(); onClose(); }
-    catch { toast.error('Failed'); }
+    catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); }
   }
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -404,7 +404,7 @@ function ContractFormDialog({ open, onClose, partnerId, editing, onSave }: {
     try {
       await onSave({ partnerId, ...v, expected_amount: Number(v.expected_amount) });
       toast.success(editing ? 'Updated' : 'Contract added'); reset(); onClose();
-    } catch { toast.error('Failed'); }
+    } catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); }
   }
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -460,7 +460,7 @@ function PaymentFormDialog({ open, onClose, partnerId, contracts, onSave }: {
         notes: v.notes || undefined,
       });
       toast.success('Payment recorded'); reset(); onClose();
-    } catch { toast.error('Failed'); }
+    } catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); }
   }
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>

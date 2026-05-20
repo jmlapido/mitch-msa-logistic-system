@@ -56,13 +56,13 @@ export function PartnersTab() {
       if (editing) { await updatePartner.mutateAsync({ id: editing.id, ...v }); toast.success('Updated'); }
       else { await createPartner.mutateAsync(v); toast.success('Partner added'); }
       setOpen(false);
-    } catch { toast.error('Failed'); }
+    } catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); }
   }
 
   async function handleDelete(p: Partner) {
     if (!confirm(`Delete ${p.company_name}? All contacts, contracts, payments and documents will be deleted.`)) return;
     try { await deletePartner.mutateAsync(p.id); toast.success('Deleted'); }
-    catch { toast.error('Failed'); }
+    catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); }
   }
 
   const filtered = partners
