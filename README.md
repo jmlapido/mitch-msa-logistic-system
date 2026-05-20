@@ -1,4 +1,4 @@
-# MSA Financial, Property & Sponsorship System
+# MSA Logistic Financial, Property & Sponsorship System
 
 A full-stack financial, property, and sponsorship management system built on **Cloudflare Workers + D1 SQLite** (backend) and **React + Vite** (frontend). Designed for managing rental buildings, recurring bills, tenants, sponsorship contracts, and financial reporting in one place.
 

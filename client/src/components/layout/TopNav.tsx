@@ -41,7 +41,7 @@ export function TopNav() {
           {settings?.logo_url && (
             <img src={settings.logo_url} alt="Logo" className="h-7 w-7 rounded object-contain" />
           )}
-          <span className="font-bold text-sm">{settings?.company_name ?? 'MSA Financial, Property & Sponsorship System'}</span>
+          <span className="font-bold text-sm">{settings?.company_name ?? 'MSA Logistic Financial, Property & Sponsorship System'}</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-1 flex-1">

@@ -37,7 +37,7 @@ export default function Login() {
           {settings?.logo_url && (
             <img src={settings.logo_url} alt="Logo" className="h-[200px] w-[200px] mx-auto rounded-lg object-contain mb-2" />
           )}
-          <h1 className="text-xl font-bold">{settings?.company_name ?? 'MSA Financial, Property & Sponsorship System'}</h1>
+          <h1 className="text-xl font-bold">{settings?.company_name ?? 'MSA Logistic Financial, Property & Sponsorship System'}</h1>
           <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </CardHeader>
         <CardContent>
