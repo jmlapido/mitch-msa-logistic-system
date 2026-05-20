@@ -96,6 +96,98 @@ dashboard.get('/', async (c) => {
     LIMIT 8
   `).all();
 
+  // compute previous month string  e.g. "2026-04" when month="2026-05"
+  const [y, mo] = month.split('-').map(Number) as [number, number];
+  const prevDate = new Date(y, mo - 2);
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+  const prevBillStats = await db.prepare(`
+    SELECT
+      COALESCE(SUM(amount), 0) as total_bills,
+      COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) as total_paid
+    FROM bill_entries WHERE month = ?
+  `).bind(prevMonth).first<{ total_bills: number; total_paid: number }>();
+
+  const prevRentStats = await db.prepare(`
+    SELECT COALESCE(SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as total_rent_collected
+    FROM rent_payments rp WHERE rp.month = ?
+  `).bind(prevMonth).first<{ total_rent_collected: number }>();
+
+  const billsHistory = await db.prepare(`
+    SELECT month,
+      COALESCE(SUM(amount), 0) as total,
+      COALESCE(SUM(CASE WHEN status = 'unpaid' THEN amount ELSE 0 END), 0) as unpaid
+    FROM bill_entries
+    WHERE month >= strftime('%Y-%m', date(? || '-01', '-5 months'))
+    GROUP BY month
+    ORDER BY month
+  `).bind(month).all<{ month: string; total: number; unpaid: number }>();
+
+  const sponsorshipSummary = await db.prepare(`
+    SELECT
+      COUNT(DISTINCT p.id) as active_sponsors,
+      COALESCE(SUM(pc.expected_amount), 0) as total_contract_value,
+      COALESCE(SUM(pp_totals.total_paid), 0) as total_collected,
+      COALESCE(SUM(
+        CASE WHEN date(pc.end_date) < date('now')
+                  AND COALESCE(pp_totals.total_paid, 0) < pc.expected_amount
+             THEN pc.expected_amount - COALESCE(pp_totals.total_paid, 0)
+             ELSE 0 END
+      ), 0) as total_overdue
+    FROM partners p
+    JOIN partner_contracts pc ON pc.partner_id = p.id AND pc.status = 'active'
+    LEFT JOIN (
+      SELECT contract_id, SUM(amount) as total_paid
+      FROM partner_payments GROUP BY contract_id
+    ) pp_totals ON pp_totals.contract_id = pc.id
+    WHERE p.is_archived = 0
+  `).first<{ active_sponsors: number; total_contract_value: number; total_collected: number; total_overdue: number }>();
+
+  const activeSponsors = await db.prepare(`
+    SELECT p.id as partner_id, p.company_name,
+      pc.id as contract_id, pc.expected_amount, pc.payment_frequency,
+      pc.end_date as contract_end,
+      COALESCE(pp.total_paid, 0) as total_paid,
+      CASE
+        WHEN COALESCE(pp.total_paid, 0) >= pc.expected_amount THEN 'paid'
+        WHEN date(pc.end_date) < date('now') AND COALESCE(pp.total_paid, 0) < pc.expected_amount THEN 'overdue'
+        WHEN COALESCE(pp.total_paid, 0) > 0 THEN 'partial'
+        ELSE 'pending'
+      END as status
+    FROM partners p
+    JOIN partner_contracts pc ON pc.partner_id = p.id AND pc.status = 'active'
+    LEFT JOIN (
+      SELECT contract_id, SUM(amount) as total_paid
+      FROM partner_payments GROUP BY contract_id
+    ) pp ON pp.contract_id = pc.id
+    WHERE p.is_archived = 0
+    ORDER BY p.company_name
+    LIMIT 8
+  `).all();
+
+  const expiringSponsors = await db.prepare(`
+    SELECT p.id as partner_id, p.company_name,
+      pc.end_date, pc.expected_amount, pc.payment_frequency,
+      COALESCE(pp.total_paid, 0) as total_paid,
+      CAST(julianday(pc.end_date) - julianday('now') AS INTEGER) as days_remaining,
+      CASE
+        WHEN COALESCE(pp.total_paid, 0) >= pc.expected_amount THEN 'paid'
+        WHEN date(pc.end_date) < date('now') AND COALESCE(pp.total_paid, 0) < pc.expected_amount THEN 'overdue'
+        WHEN COALESCE(pp.total_paid, 0) > 0 THEN 'partial'
+        ELSE 'pending'
+      END as status
+    FROM partners p
+    JOIN partner_contracts pc ON pc.partner_id = p.id AND pc.status = 'active'
+    LEFT JOIN (
+      SELECT contract_id, SUM(amount) as total_paid
+      FROM partner_payments GROUP BY contract_id
+    ) pp ON pp.contract_id = pc.id
+    WHERE date(pc.end_date) BETWEEN date('now') AND date('now', '+90 days')
+      AND p.is_archived = 0
+    ORDER BY pc.end_date
+    LIMIT 8
+  `).all();
+
   return c.json({
     month,
     bills: {
@@ -109,6 +201,23 @@ dashboard.get('/', async (c) => {
       collected: rentStats?.total_rent_collected ?? 0,
       overdue: overdueRent?.overdue ?? 0,
     },
+    prevMonth: {
+      bills: {
+        total: prevBillStats?.total_bills ?? 0,
+        paid: prevBillStats?.total_paid ?? 0,
+      },
+      rent: { collected: prevRentStats?.total_rent_collected ?? 0 },
+    },
+    billsHistory: billsHistory.results,
+    sponsorships: {
+      totalContractValue: sponsorshipSummary?.total_contract_value ?? 0,
+      collected: sponsorshipSummary?.total_collected ?? 0,
+      pending: Math.max(0, (sponsorshipSummary?.total_contract_value ?? 0) - (sponsorshipSummary?.total_collected ?? 0) - (sponsorshipSummary?.total_overdue ?? 0)),
+      overdue: sponsorshipSummary?.total_overdue ?? 0,
+      activeCount: sponsorshipSummary?.active_sponsors ?? 0,
+    },
+    activeSponsors: activeSponsors.results,
+    expiringSponsors: expiringSponsors.results,
     priorityPayments: priorityRows.results,
     upcomingBills: upcomingRows.results,
     rentByBuilding: rentByBuilding.results,
