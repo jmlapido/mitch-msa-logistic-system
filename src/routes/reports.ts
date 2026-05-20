@@ -6,7 +6,9 @@ import type { Env } from '../types';
 const reports = new Hono<{ Bindings: Env }>();
 reports.use('*', requireAuth, requireAdmin);
 
-// GET /api/reports?type=bills|rental|combined&from=YYYY-MM&to=YYYY-MM&building_id=N&category_id=N
+const EXPECTED_RENT = `CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE ROUND(c.annual_rent/12,2) END`;
+
+// GET /api/reports?type=bills|rental|combined|outstanding|expiring&from=YYYY-MM&to=YYYY-MM&building_id=N
 reports.get('/', async (c) => {
   const type = c.req.query('type') ?? 'bills';
   const from = c.req.query('from') ?? new Date().toISOString().slice(0, 7);
@@ -15,10 +17,10 @@ reports.get('/', async (c) => {
   const categoryId = c.req.query('category_id') ? Number(c.req.query('category_id')) : null;
   const db = c.env.DB;
 
+  // ── Bills ────────────────────────────────────────────────────────────────
   if (type === 'bills' || type === 'combined') {
     let billsQuery = `
-      SELECT
-        be.month,
+      SELECT be.month,
         c.name as category_name, c.color as category_color, c.icon as category_icon,
         b.particulars, b.account_no,
         be.amount, be.status, be.paid_date, be.invoice_no,
@@ -33,7 +35,6 @@ reports.get('/', async (c) => {
     if (buildingId) { billsQuery += ' AND b.building_id = ?'; binds.push(buildingId); }
     if (categoryId) { billsQuery += ' AND c.id = ?'; binds.push(categoryId); }
     billsQuery += ' ORDER BY be.month, c.sort_order, b.particulars';
-
     const { results: billRows } = await db.prepare(billsQuery).bind(...binds).all();
 
     let monthQuery = `
@@ -65,10 +66,11 @@ reports.get('/', async (c) => {
       return c.json({ type, from, to, rows: billRows, monthSummary, catSummary });
     }
 
+    // Combined — rent side (fixed: use amount_paid, payment_frequency-aware expected)
     const { results: rentMonthly } = await db.prepare(`
       SELECT rp.month,
-        SUM(ROUND(c.annual_rent/12,2)) as expected,
-        SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END) as collected
+        SUM(${EXPECTED_RENT}) as expected,
+        SUM(rp.amount_paid) as collected
       FROM rent_payments rp JOIN contracts c ON rp.contract_id = c.id
       WHERE rp.month BETWEEN ? AND ?
       GROUP BY rp.month ORDER BY rp.month
@@ -77,11 +79,13 @@ reports.get('/', async (c) => {
     return c.json({ type, from, to, billRows, monthSummary, catSummary, rentMonthly });
   }
 
+  // ── Rental Collection ────────────────────────────────────────────────────
   if (type === 'rental') {
     let rentQuery = `
-      SELECT rp.month, rp.amount, rp.status, rp.paid_date, rp.receipt_no,
-        t.name as tenant_name, u.unit_no, u.type as unit_type,
-        b.id as building_id, b.name as building_name, ROUND(c.annual_rent/12,2) as expected_rent
+      SELECT rp.month, rp.amount_paid, rp.status, rp.paid_date, rp.receipt_no,
+        t.name as tenant_name, u.unit_no,
+        b.id as building_id, b.name as building_name,
+        ${EXPECTED_RENT} as expected_rent
       FROM rent_payments rp
       JOIN contracts c ON rp.contract_id = c.id
       JOIN tenants t ON c.tenant_id = t.id
@@ -92,14 +96,16 @@ reports.get('/', async (c) => {
     const binds: unknown[] = [from, to];
     if (buildingId) { rentQuery += ' AND b.id = ?'; binds.push(buildingId); }
     rentQuery += ' ORDER BY rp.month, b.name, u.unit_no';
-
     const { results: rentRows } = await db.prepare(rentQuery).bind(...binds).all();
 
     const { results: buildingSummary } = await db.prepare(`
       SELECT b.name as building_name,
-        COUNT(DISTINCT u.id) as unit_count,
-        SUM(ROUND(c.annual_rent/12,2)) as total_expected,
-        SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END) as total_collected
+        COUNT(DISTINCT rp.id) as unit_count,
+        SUM(${EXPECTED_RENT}) as total_expected,
+        SUM(rp.amount_paid) as total_collected,
+        COUNT(CASE WHEN rp.status = 'collected' THEN 1 END) as count_collected,
+        COUNT(CASE WHEN rp.status = 'partial' THEN 1 END) as count_partial,
+        COUNT(CASE WHEN rp.status IN ('overdue','pending') THEN 1 END) as count_unpaid
       FROM rent_payments rp
       JOIN contracts c ON rp.contract_id = c.id
       JOIN tenants t ON c.tenant_id = t.id
@@ -110,6 +116,67 @@ reports.get('/', async (c) => {
     `).bind(from, to).all();
 
     return c.json({ type, from, to, rows: rentRows, buildingSummary });
+  }
+
+  // ── Outstanding Balances ─────────────────────────────────────────────────
+  if (type === 'outstanding') {
+    const { results: rows } = await db.prepare(`
+      SELECT
+        t.name as tenant_name, u.unit_no, b.name as building_name,
+        rp.month, rp.status, rp.amount_paid,
+        ${EXPECTED_RENT} as expected_rent,
+        (${EXPECTED_RENT} - rp.amount_paid) as balance
+      FROM rent_payments rp
+      JOIN contracts c ON rp.contract_id = c.id
+      JOIN tenants t ON c.tenant_id = t.id
+      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN buildings b ON u.building_id = b.id
+      WHERE rp.status IN ('overdue', 'partial')
+        AND t.status = 'active'
+      ORDER BY t.name, rp.month
+    `).all();
+
+    const { results: tenantSummary } = await db.prepare(`
+      SELECT
+        t.name as tenant_name, u.unit_no, b.name as building_name,
+        COUNT(rp.id) as months_overdue,
+        SUM(CASE WHEN rp.status = 'partial'
+          THEN ${EXPECTED_RENT} - rp.amount_paid
+          ELSE ${EXPECTED_RENT}
+        END) as total_balance
+      FROM rent_payments rp
+      JOIN contracts c ON rp.contract_id = c.id
+      JOIN tenants t ON c.tenant_id = t.id
+      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN buildings b ON u.building_id = b.id
+      WHERE rp.status IN ('overdue', 'partial')
+        AND t.status = 'active'
+      GROUP BY t.id ORDER BY total_balance DESC
+    `).all();
+
+    return c.json({ type, rows, tenantSummary });
+  }
+
+  // ── Expiring Leases ───────────────────────────────────────────────────────
+  if (type === 'expiring') {
+    const fromDate = from + '-01';
+    const toDate = to + '-28';
+    const { results: rows } = await db.prepare(`
+      SELECT
+        t.name as tenant_name, u.unit_no, b.name as building_name,
+        c.end_date, c.annual_rent, c.payment_frequency,
+        ROUND(c.annual_rent/12, 2) as monthly_rent,
+        CAST(julianday(c.end_date) - julianday('now') AS INTEGER) as days_left
+      FROM contracts c
+      JOIN tenants t ON c.tenant_id = t.id
+      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN buildings b ON u.building_id = b.id
+      WHERE date(c.end_date) BETWEEN ? AND ?
+        AND t.status = 'active'
+      ORDER BY c.end_date ASC
+    `).bind(fromDate, toDate).all();
+
+    return c.json({ type, from, to, rows });
   }
 
   return c.json({ error: 'Invalid report type' }, 400);
