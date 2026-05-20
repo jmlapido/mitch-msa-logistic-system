@@ -8,6 +8,7 @@ import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Bills from '@/pages/Bills';
 import Rentals from '@/pages/Rentals';
+import Partners from '@/pages/Partners';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import AuditLogs from '@/pages/AuditLogs';
@@ -42,6 +43,7 @@ export default function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/bills" element={<Bills />} />
                     <Route path="/rentals" element={<Rentals />} />
+                    <Route path="/partners" element={<Partners />} />
                     <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
                     <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
                     <Route path="/logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
