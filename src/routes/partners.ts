@@ -151,7 +151,7 @@ partners.post('/:id/logo', requireAdmin, async (c) => {
     await c.env.R2.delete(existing.logo_key).catch(err => console.error('[partners] R2 old logo delete failed', err));
   }
 
-  await auditLog(c.env.DB, c.get('user').id, 'upload_partner_logo', { partner_id: id, key });
+  await auditLog(c.env.DB, c.get('user'), 'upload_partner_logo', 'partner', id, 'Uploaded logo');
   return c.json({ key });
 });
 
@@ -183,7 +183,7 @@ partners.delete('/:id/logo', requireAdmin, async (c) => {
 
   await c.env.DB.prepare('UPDATE partners SET logo_key = NULL WHERE id = ?').bind(id).run();
   await c.env.R2.delete(row.logo_key).catch(err => console.error('[partners] R2 logo delete failed', err));
-  await auditLog(c.env.DB, user.id, 'delete_partner_logo', { partner_id: id });
+  await auditLog(c.env.DB, user, 'delete_partner_logo', 'partner', id, 'Deleted logo');
   return c.json({ ok: true });
 });
 
