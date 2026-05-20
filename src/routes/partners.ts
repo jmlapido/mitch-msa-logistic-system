@@ -137,8 +137,12 @@ partners.post('/:id/logo', requireAdmin, async (c) => {
   try {
     await c.env.R2.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
   } catch (err) {
-    await c.env.DB.prepare('UPDATE partners SET logo_key = ? WHERE id = ?').bind(existing.logo_key, id).run();
     console.error('[partners] R2 logo upload failed', err);
+    try {
+      await c.env.DB.prepare('UPDATE partners SET logo_key = ? WHERE id = ?').bind(existing.logo_key, id).run();
+    } catch (rollbackErr) {
+      console.error('[partners] CRITICAL: logo_key rollback failed — DB and R2 may be inconsistent', rollbackErr);
+    }
     return c.json({ error: 'Upload failed' }, 500);
   }
 
@@ -147,6 +151,7 @@ partners.post('/:id/logo', requireAdmin, async (c) => {
     await c.env.R2.delete(existing.logo_key).catch(err => console.error('[partners] R2 old logo delete failed', err));
   }
 
+  await auditLog(c.env.DB, c.get('user').id, 'upload_partner_logo', { partner_id: id, key });
   return c.json({ key });
 });
 
@@ -170,12 +175,14 @@ partners.get('/:id/logo', async (c) => {
 
 // DELETE /api/partners/:id/logo — delete logo (admin only)
 partners.delete('/:id/logo', requireAdmin, async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
   const row = await c.env.DB.prepare('SELECT logo_key FROM partners WHERE id = ?').bind(id).first<{ logo_key: string | null }>();
   if (!row) return c.json({ error: 'Not found' }, 404);
   if (!row.logo_key) return c.json({ ok: true }); // already no logo
 
   await c.env.DB.prepare('UPDATE partners SET logo_key = NULL WHERE id = ?').bind(id).run();
+  await auditLog(c.env.DB, user.id, 'delete_partner_logo', { partner_id: id });
   await c.env.R2.delete(row.logo_key).catch(err => console.error('[partners] R2 logo delete failed', err));
   return c.json({ ok: true });
 });
