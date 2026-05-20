@@ -6,7 +6,7 @@ export default defineConfig({
     alias: { '@': path.resolve(__dirname, './client/src') },
   },
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     globals: true,
   },
 });
