@@ -1,6 +1,6 @@
 import { type LucideIcon } from 'lucide-react';
 
-type DeltaDirection = 'up' | 'down' | 'neutral';
+export type DeltaDirection = 'up' | 'down' | 'neutral';
 
 export type Delta = { value: string; direction: DeltaDirection };
 
@@ -42,14 +42,16 @@ export function deltaClass(direction: DeltaDirection): string {
 }
 
 export function StatCard({ label, value, icon: Icon, color = 'default', delta, onClick }: Props) {
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div
+    <Tag
       onClick={onClick}
+      type={onClick ? 'button' : undefined}
       className={[
-        'bg-card border border-t-2 rounded-lg p-4 flex items-start gap-3',
+        'w-full text-left bg-card rounded-lg p-4 flex items-start gap-3 border-b border-l border-r border-t-2',
         BORDER_MAP[color],
         onClick ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all' : '',
-      ].join(' ')}
+      ].filter(Boolean).join(' ')}
     >
       <div className="bg-muted rounded-md p-2 shrink-0">
         <Icon size={18} className={COLOR_MAP[color]} />
@@ -61,6 +63,6 @@ export function StatCard({ label, value, icon: Icon, color = 'default', delta, o
           <p className={`text-xs mt-0.5 ${deltaClass(delta.direction)}`}>{delta.value}</p>
         )}
       </div>
-    </div>
+    </Tag>
   );
 }
