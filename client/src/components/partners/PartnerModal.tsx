@@ -92,6 +92,11 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                   </a>
                 )}
                 {partner.notes && <p className="text-xs text-muted-foreground italic mt-1">{partner.notes}</p>}
+                {(partner.address_street || partner.address_city || partner.address_country) && (
+                  <p className="text-xs text-muted-foreground">
+                    📍 {[partner.address_street, partner.address_city, partner.address_country].filter(Boolean).join(', ')}
+                  </p>
+                )}
               </div>
             </section>
 
