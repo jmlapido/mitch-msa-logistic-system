@@ -24,6 +24,9 @@ const partnerSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   notes: z.string().optional(),
+  address_street: z.string().max(200).optional(),
+  address_city: z.string().max(100).optional(),
+  address_country: z.string().max(100).optional(),
 });
 
 const contactSchema = z.object({
@@ -79,8 +82,17 @@ partners.post('/', requireAdmin, zValidator('json', partnerSchema), async (c) =>
   const user = c.get('user');
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
-    'INSERT INTO partners (company_name, phone, email, notes) VALUES (?,?,?,?) RETURNING *'
-  ).bind(d.company_name, d.phone ?? null, d.email || null, d.notes ?? null).first<{ id: number }>();
+    `INSERT INTO partners (company_name, phone, email, notes, address_street, address_city, address_country)
+     VALUES (?,?,?,?,?,?,?) RETURNING *`
+  ).bind(
+    d.company_name,
+    d.phone ?? null,
+    d.email || null,
+    d.notes ?? null,
+    d.address_street ?? null,
+    d.address_city ?? null,
+    d.address_country ?? null,
+  ).first<{ id: number }>();
   await auditLog(c.env.DB, user, 'partner.created', 'partner', result?.id ?? null, `Created partner: ${d.company_name}`);
   return c.json(result, 201);
 });
@@ -101,13 +113,85 @@ partners.put('/:id', requireAdmin, zValidator('json', partnerSchema.partial()), 
   return c.json(updated);
 });
 
+// POST /api/partners/:id/logo — upload logo (admin only)
+partners.post('/:id/logo', requireAdmin, async (c) => {
+  const id = Number(c.req.param('id'));
+  const existing = await c.env.DB.prepare('SELECT logo_key FROM partners WHERE id = ?').bind(id).first<{ logo_key: string | null }>();
+  if (!existing) return c.json({ error: 'Not found' }, 404);
+
+  const formData = await c.req.formData();
+  const file = formData.get('file') as File | null;
+  if (!file) return c.json({ error: 'No file' }, 400);
+
+  const LOGO_ALLOWED = ['image/jpeg', 'image/png', 'image/heic'];
+  if (!LOGO_ALLOWED.includes(file.type)) return c.json({ error: 'Images only (JPEG, PNG, HEIC)' }, 400);
+  if (file.size > 2 * 1024 * 1024) return c.json({ error: 'Logo too large (max 2 MB)' }, 400);
+
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/heic' ? 'heic' : 'jpg';
+  const key = `partner-logos/${id}/${crypto.randomUUID()}.${ext}`;
+
+  // DB first
+  await c.env.DB.prepare('UPDATE partners SET logo_key = ? WHERE id = ?').bind(key, id).run();
+
+  // Then R2 — roll back on failure
+  try {
+    await c.env.R2.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
+  } catch (err) {
+    await c.env.DB.prepare('UPDATE partners SET logo_key = ? WHERE id = ?').bind(existing.logo_key, id).run();
+    console.error('[partners] R2 logo upload failed', err);
+    return c.json({ error: 'Upload failed' }, 500);
+  }
+
+  // Delete old logo from R2 if it existed
+  if (existing.logo_key) {
+    await c.env.R2.delete(existing.logo_key).catch(err => console.error('[partners] R2 old logo delete failed', err));
+  }
+
+  return c.json({ key });
+});
+
+// GET /api/partners/:id/logo — serve logo (any authenticated user)
+partners.get('/:id/logo', async (c) => {
+  const id = Number(c.req.param('id'));
+  const row = await c.env.DB.prepare('SELECT logo_key FROM partners WHERE id = ?').bind(id).first<{ logo_key: string | null }>();
+  if (!row || !row.logo_key) return c.json({ error: 'No logo' }, 404);
+
+  const obj = await c.env.R2.get(row.logo_key);
+  if (!obj) return c.json({ error: 'Not found' }, 404);
+
+  const contentType = obj.httpMetadata?.contentType ?? 'image/jpeg';
+  return new Response(obj.body, {
+    headers: {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+});
+
+// DELETE /api/partners/:id/logo — delete logo (admin only)
+partners.delete('/:id/logo', requireAdmin, async (c) => {
+  const id = Number(c.req.param('id'));
+  const row = await c.env.DB.prepare('SELECT logo_key FROM partners WHERE id = ?').bind(id).first<{ logo_key: string | null }>();
+  if (!row) return c.json({ error: 'Not found' }, 404);
+  if (!row.logo_key) return c.json({ ok: true }); // already no logo
+
+  await c.env.DB.prepare('UPDATE partners SET logo_key = NULL WHERE id = ?').bind(id).run();
+  await c.env.R2.delete(row.logo_key).catch(err => console.error('[partners] R2 logo delete failed', err));
+  return c.json({ ok: true });
+});
+
 // DELETE /api/partners/:id
 partners.delete('/:id', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
-  const partner = await c.env.DB.prepare('SELECT company_name FROM partners WHERE id = ?')
-    .bind(id).first<{ company_name: string }>();
+  const partner = await c.env.DB.prepare('SELECT company_name, logo_key FROM partners WHERE id = ?')
+    .bind(id).first<{ company_name: string; logo_key: string | null }>();
   if (!partner) return c.json({ error: 'Partner not found' }, 404);
+
+  // Clean up logo from R2
+  if (partner.logo_key) {
+    await c.env.R2.delete(partner.logo_key).catch(err => console.error('[partners] R2 logo delete on cascade failed', err));
+  }
 
   const [{ results: payAttachments }, { results: docs }] = await Promise.all([
     c.env.DB.prepare(
