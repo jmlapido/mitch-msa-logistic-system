@@ -9,6 +9,10 @@ export type Partner = {
   phone?: string;
   email?: string;
   notes?: string;
+  logo_key?: string;
+  address_street?: string;
+  address_city?: string;
+  address_country?: string;
   created_at: string;
   contract_id?: number;
   contract_end?: string;
@@ -314,6 +318,30 @@ export function usePartnerMutations() {
     return data;
   };
 
+  // ── Logo ──
+
+  const uploadLogo = async (partnerId: number, file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`/api/partners/${partnerId}/logo`, {
+      method: 'POST',
+      body: fd,
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error((body as { error?: string }).error ?? 'Upload failed');
+    }
+    invalidatePartners();
+  };
+
+  const deleteLogo = useMutation({
+    mutationFn: (partnerId: number) =>
+      fetch(`/api/partners/${partnerId}/logo`, { method: 'DELETE', credentials: 'include' })
+        .then(r => { if (!r.ok) throw new Error('Delete failed'); }),
+    onSuccess: invalidatePartners,
+  });
+
   return {
     createPartner,
     updatePartner,
@@ -330,5 +358,7 @@ export function usePartnerMutations() {
     uploadPaymentAttachment,
     deleteDocument,
     uploadDocument,
+    uploadLogo,
+    deleteLogo,
   };
 }
