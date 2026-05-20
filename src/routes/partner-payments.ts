@@ -54,6 +54,7 @@ partnerPayments.get('/', async (c) => {
     SELECT
       pc.id as contract_id,
       pc.partner_id,
+      pc.contract_no,
       p.company_name as partner_name,
       pc.start_date,
       pc.end_date,
@@ -75,6 +76,7 @@ partnerPayments.get('/', async (c) => {
   `).bind(...bindings).all<{
     contract_id: number;
     partner_id: number;
+    contract_no: string | null;
     partner_name: string;
     start_date: string;
     end_date: string;
@@ -116,6 +118,7 @@ partnerPayments.get('/by-partner/:id', async (c) => {
       pc.start_date as contract_start,
       pc.end_date as contract_end,
       pc.expected_amount,
+      pc.contract_no,
       (SELECT json_group_array(json_object(
         'id', ppa.id, 'file_name', ppa.file_name, 'file_type', ppa.file_type
       )) FROM partner_payment_attachments ppa WHERE ppa.payment_id = pp.id) as attachments_json
@@ -136,6 +139,7 @@ partnerPayments.get('/by-partner/:id', async (c) => {
     contract_start: string;
     contract_end: string;
     expected_amount: number;
+    contract_no: string | null;
     attachments_json: string | null;
   }>();
 

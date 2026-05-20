@@ -23,6 +23,7 @@ const contactSchema = z.object({
 });
 
 const contractSchema = z.object({
+  contract_no: z.string().max(50).optional(),
   start_date: z.string().min(1, 'Required'),
   end_date: z.string().min(1, 'Required'),
   expected_amount: z.string().min(1, 'Required'),
@@ -209,6 +210,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
+                          {c.contract_no && <span className="font-semibold text-foreground">#{c.contract_no}</span>}
                           <span className="font-medium capitalize">{c.payment_frequency}</span>
                           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${STATUS_STYLE[c.payment_status] ?? ''}`}>
                             {c.payment_status}
@@ -273,7 +275,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                             <td className="px-2 py-1.5 text-right text-green-600 font-medium">{formatAED(p.amount)}</td>
                             <td className="px-2 py-1.5 capitalize">{p.payment_method}</td>
                             <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">
-                              {formatDate(p.contract_start)} – {formatDate(p.contract_end)}
+                              {p.contract_no ? `#${p.contract_no}` : `${formatDate(p.contract_start)} – ${formatDate(p.contract_end)}`}
                             </td>
                             <td className="px-2 py-1.5 text-muted-foreground">{p.receipt_no ?? '—'}</td>
                             <td className="px-2 py-1.5">
@@ -387,7 +389,7 @@ function ContactFormDialog({ open, onClose, partnerId, editing, onSave }: {
 function ContractFormDialog({ open, onClose, partnerId, editing, onSave }: {
   open: boolean; onClose: () => void; partnerId: number;
   editing?: PartnerContract | null;
-  onSave: (d: { partnerId: number; start_date: string; end_date: string; expected_amount: number; payment_frequency: 'monthly' | 'quarterly' | 'annual' | 'one-time'; notes?: string }) => Promise<unknown>;
+  onSave: (d: { partnerId: number; contract_no?: string; start_date: string; end_date: string; expected_amount: number; payment_frequency: 'monthly' | 'quarterly' | 'annual' | 'one-time'; notes?: string }) => Promise<unknown>;
 }) {
   const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting } } = useForm<ContractF>({
     resolver: zodResolver(contractSchema),
@@ -398,13 +400,14 @@ function ContractFormDialog({ open, onClose, partnerId, editing, onSave }: {
     if (open) {
       reset(editing
         ? {
+            contract_no: editing.contract_no ?? '',
             start_date: editing.start_date,
             end_date: editing.end_date,
             expected_amount: String(editing.expected_amount),
             payment_frequency: editing.payment_frequency,
             notes: editing.notes ?? '',
           }
-        : { payment_frequency: 'annual', start_date: '', end_date: '', expected_amount: '', notes: '' }
+        : { contract_no: '', payment_frequency: 'annual', start_date: '', end_date: '', expected_amount: '', notes: '' }
       );
     }
   }, [open, editing, reset]);
@@ -420,6 +423,7 @@ function ContractFormDialog({ open, onClose, partnerId, editing, onSave }: {
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>{editing ? 'Edit Contract' : 'Add Contract'}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <div><Label>Contract No.</Label><Input {...register('contract_no')} placeholder="e.g. 2025-001" className="mt-1" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Start Date *</Label><Input {...register('start_date')} type="date" className="mt-1" /></div>
             <div><Label>End Date *</Label><Input {...register('end_date')} type="date" className="mt-1" /></div>
@@ -483,7 +487,7 @@ function PaymentFormDialog({ open, onClose, partnerId, contracts, onSave }: {
               <SelectContent>
                 {contracts.map(c => (
                   <SelectItem key={c.id} value={String(c.id)}>
-                    {formatDate(c.start_date)} → {formatDate(c.end_date)} · {formatAED(c.expected_amount)}
+                    {c.contract_no ? `#${c.contract_no} · ` : ''}{formatDate(c.start_date)} → {formatDate(c.end_date)} · {formatAED(c.expected_amount)}
                   </SelectItem>
                 ))}
               </SelectContent>

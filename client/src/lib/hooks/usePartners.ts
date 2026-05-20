@@ -33,6 +33,7 @@ export type PartnerContact = {
 export type PartnerContract = {
   id: number;
   partner_id: number;
+  contract_no?: string;
   start_date: string;
   end_date: string;
   expected_amount: number;
@@ -57,6 +58,7 @@ export type PartnerPayment = {
   contract_start: string;
   contract_end: string;
   expected_amount: number;
+  contract_no?: string | null;
   attachments: PartnerPaymentAttachment[];
 };
 
@@ -80,6 +82,7 @@ export type PaymentsTabRow = {
   partner_id: number;
   partner_name: string;
   contract_id: number;
+  contract_no?: string | null;
   start_date: string;
   end_date: string;
   expected_amount: number;
