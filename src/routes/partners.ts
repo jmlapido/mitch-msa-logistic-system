@@ -182,8 +182,8 @@ partners.delete('/:id/logo', requireAdmin, async (c) => {
   if (!row.logo_key) return c.json({ ok: true }); // already no logo
 
   await c.env.DB.prepare('UPDATE partners SET logo_key = NULL WHERE id = ?').bind(id).run();
-  await auditLog(c.env.DB, user.id, 'delete_partner_logo', { partner_id: id });
   await c.env.R2.delete(row.logo_key).catch(err => console.error('[partners] R2 logo delete failed', err));
+  await auditLog(c.env.DB, user.id, 'delete_partner_logo', { partner_id: id });
   return c.json({ ok: true });
 });
 
