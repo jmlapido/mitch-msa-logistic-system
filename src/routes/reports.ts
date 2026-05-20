@@ -179,6 +179,53 @@ reports.get('/', async (c) => {
     return c.json({ type, from, to, rows });
   }
 
+  // ── Partners Report ───────────────────────────────────────────────────────
+  if (type === 'partners') {
+    const fromDate = from + '-01';
+    const toDate = to + '-31';
+
+    const { results: rows } = await db.prepare(`
+      SELECT
+        p.company_name,
+        pc.id as contract_id,
+        pc.start_date,
+        pc.end_date,
+        pc.expected_amount,
+        pc.payment_frequency,
+        COALESCE(SUM(pp.amount), 0) as total_paid,
+        pc.expected_amount - COALESCE(SUM(pp.amount), 0) as balance,
+        CASE
+          WHEN COALESCE(SUM(pp.amount), 0) >= pc.expected_amount THEN 'paid'
+          WHEN date(pc.end_date) < date('now') AND COALESCE(SUM(pp.amount), 0) < pc.expected_amount THEN 'overdue'
+          WHEN COALESCE(SUM(pp.amount), 0) > 0 THEN 'partial'
+          ELSE 'pending'
+        END as status
+      FROM partner_contracts pc
+      JOIN partners p ON pc.partner_id = p.id
+      LEFT JOIN partner_payments pp ON pp.contract_id = pc.id
+        AND pp.paid_date BETWEEN ? AND ?
+      WHERE pc.start_date <= ? AND pc.end_date >= ?
+      GROUP BY pc.id
+      ORDER BY p.company_name, pc.end_date DESC
+    `).bind(fromDate, toDate, toDate, fromDate).all();
+
+    const { results: payments } = await db.prepare(`
+      SELECT
+        p.company_name,
+        pp.amount,
+        pp.paid_date,
+        pp.payment_method,
+        pp.receipt_no,
+        pp.notes
+      FROM partner_payments pp
+      JOIN partners p ON pp.partner_id = p.id
+      WHERE pp.paid_date BETWEEN ? AND ?
+      ORDER BY pp.paid_date DESC, p.company_name
+    `).bind(fromDate, toDate).all();
+
+    return c.json({ type, from, to, rows, payments });
+  }
+
   return c.json({ error: 'Invalid report type' }, 400);
 });
 
