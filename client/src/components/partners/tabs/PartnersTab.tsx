@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Paperclip } from 'lucide-react';
+import { Plus, Pencil, Trash2, Paperclip, Archive, ArchiveRestore } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,9 +36,16 @@ const STATUS_LABEL: Record<string, string> = {
   paid: 'Paid', partial: 'Partial', overdue: 'Overdue', pending: 'Pending', no_contract: 'No Contract',
 };
 
+const today = new Date().toISOString().slice(0, 10);
+
+function isArchivable(p: Partner) {
+  return p.status === 'no_contract' || (!!p.contract_end && p.contract_end < today);
+}
+
 export function PartnersTab() {
-  const { data: partners = [], isLoading } = usePartners();
-  const { createPartner, updatePartner, deletePartner, uploadLogo, deleteLogo } = usePartnerMutations();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: partners = [], isLoading } = usePartners(showArchived);
+  const { createPartner, updatePartner, deletePartner, uploadLogo, deleteLogo, archivePartner, unarchivePartner } = usePartnerMutations();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || user?.role === 'superadmin';
 
@@ -151,15 +158,25 @@ export function PartnersTab() {
             <option value="no_contract">No Contract</option>
           </select>
         </div>
-        {canEdit && (
-          <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Partner</Button>
-        )}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant={showArchived ? 'default' : 'outline'}
+            onClick={() => setShowArchived(v => !v)}
+          >
+            <Archive size={13} className="mr-1" />
+            {showArchived ? 'Active Partners' : 'Archived'}
+          </Button>
+          {canEdit && !showArchived && (
+            <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Partner</Button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No partners found.</p>
+        <p className="text-sm text-muted-foreground">{showArchived ? 'No archived partners.' : 'No partners found.'}</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(p => (
@@ -167,6 +184,7 @@ export function PartnersTab() {
               key={p.id}
               onClick={() => setDetail(p)}
               className={`border rounded-lg p-4 bg-card cursor-pointer hover:shadow-sm transition-shadow ${
+                showArchived ? 'opacity-70' :
                 p.status === 'overdue' ? 'border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900' : ''
               }`}
             >
@@ -189,8 +207,30 @@ export function PartnersTab() {
                 </div>
                 {canEdit && (
                   <div className="flex gap-1 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => openEdit(p)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
-                    <button onClick={() => handleDelete(p)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button>
+                    {!showArchived && (
+                      <>
+                        <button onClick={() => openEdit(p)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                        {isArchivable(p) && (
+                          <button
+                            title="Archive partner"
+                            onClick={() => archivePartner.mutateAsync(p.id).then(() => toast.success('Archived')).catch((err: unknown) => toast.error(err instanceof Error ? err.message : 'Failed'))}
+                            className="p-1 text-muted-foreground hover:text-orange-500"
+                          >
+                            <Archive size={12} />
+                          </button>
+                        )}
+                        <button onClick={() => handleDelete(p)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button>
+                      </>
+                    )}
+                    {showArchived && (
+                      <button
+                        title="Restore partner"
+                        onClick={() => unarchivePartner.mutateAsync(p.id).then(() => toast.success('Restored')).catch((err: unknown) => toast.error(err instanceof Error ? err.message : 'Failed'))}
+                        className="p-1 text-muted-foreground hover:text-green-600"
+                      >
+                        <ArchiveRestore size={12} />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

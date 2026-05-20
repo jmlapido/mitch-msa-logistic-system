@@ -36,6 +36,7 @@ const contactSchema = z.object({
 });
 
 const contractSchema = z.object({
+  contract_no: z.string().max(50).optional(),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   expected_amount: z.number().min(0),
@@ -44,8 +45,9 @@ const contractSchema = z.object({
   status: z.enum(['active', 'expired', 'terminated']).optional(),
 });
 
-// GET /api/partners — list all partners with computed status
+// GET /api/partners — list partners; ?archived=1 returns archived partners
 partners.get('/', async (c) => {
+  const archived = c.req.query('archived') === '1' ? 1 : 0;
   const { results } = await c.env.DB.prepare(`
     SELECT
       p.*,
@@ -72,9 +74,34 @@ partners.get('/', async (c) => {
       FROM partner_payments
       GROUP BY contract_id
     ) pay ON pay.contract_id = pc.id
+    WHERE p.is_archived = ?
     ORDER BY p.company_name
-  `).all();
+  `).bind(archived).all();
   return c.json(results);
+});
+
+// POST /api/partners/:id/archive
+partners.post('/:id/archive', requireAdmin, async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  const partner = await c.env.DB.prepare('SELECT id, company_name FROM partners WHERE id = ?')
+    .bind(id).first<{ id: number; company_name: string }>();
+  if (!partner) return c.json({ error: 'Partner not found' }, 404);
+  await c.env.DB.prepare('UPDATE partners SET is_archived = 1 WHERE id = ?').bind(id).run();
+  await auditLog(c.env.DB, user, 'partner.archived', 'partner', id, `Archived partner: ${partner.company_name}`);
+  return c.json({ ok: true });
+});
+
+// POST /api/partners/:id/unarchive
+partners.post('/:id/unarchive', requireAdmin, async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  const partner = await c.env.DB.prepare('SELECT id, company_name FROM partners WHERE id = ?')
+    .bind(id).first<{ id: number; company_name: string }>();
+  if (!partner) return c.json({ error: 'Partner not found' }, 404);
+  await c.env.DB.prepare('UPDATE partners SET is_archived = 0 WHERE id = ?').bind(id).run();
+  await auditLog(c.env.DB, user, 'partner.unarchived', 'partner', id, `Unarchived partner: ${partner.company_name}`);
+  return c.json({ ok: true });
 });
 
 // POST /api/partners
@@ -312,9 +339,9 @@ partners.post('/:id/contracts', requireAdmin, zValidator('json', contractSchema)
   if (!partner) return c.json({ error: 'Partner not found' }, 404);
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
-    `INSERT INTO partner_contracts (partner_id, start_date, end_date, expected_amount, payment_frequency, notes, status)
-     VALUES (?,?,?,?,?,?,?) RETURNING *`
-  ).bind(id, d.start_date, d.end_date, d.expected_amount, d.payment_frequency, d.notes ?? null, d.status ?? 'active').first<{ id: number }>();
+    `INSERT INTO partner_contracts (partner_id, contract_no, start_date, end_date, expected_amount, payment_frequency, notes, status)
+     VALUES (?,?,?,?,?,?,?,?) RETURNING *`
+  ).bind(id, d.contract_no ?? null, d.start_date, d.end_date, d.expected_amount, d.payment_frequency, d.notes ?? null, d.status ?? 'active').first<{ id: number }>();
   await auditLog(c.env.DB, user, 'partner.contract.created', 'partner', id, `Added contract ${d.start_date}–${d.end_date}`);
   return c.json(result, 201);
 });

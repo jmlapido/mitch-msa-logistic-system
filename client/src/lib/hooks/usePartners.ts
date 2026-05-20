@@ -13,6 +13,7 @@ export type Partner = {
   address_street?: string;
   address_city?: string;
   address_country?: string;
+  is_archived: number;
   created_at: string;
   contract_id?: number;
   contract_end?: string;
@@ -101,10 +102,10 @@ export type PaymentsTabStats = {
 
 // ─── Query Hooks ──────────────────────────────────────────────────────────────
 
-export function usePartners() {
+export function usePartners(archived = false) {
   return useQuery<Partner[]>({
-    queryKey: ['partners'],
-    queryFn: () => api.get('/api/partners'),
+    queryKey: ['partners', { archived }],
+    queryFn: () => api.get(`/api/partners${archived ? '?archived=1' : ''}`),
   });
 }
 
@@ -165,17 +166,17 @@ export function usePartnerPaymentsTab(params: {
 export function usePartnerMutations() {
   const qc = useQueryClient();
 
-  const invalidatePartners = () => qc.invalidateQueries({ queryKey: ['partners'] });
+  const invalidatePartners = () => qc.invalidateQueries({ queryKey: ['partners'], exact: false });
   const invalidateContacts = (partnerId: number) =>
     qc.invalidateQueries({ queryKey: ['partner-contacts', partnerId] });
   const invalidateContracts = (partnerId: number) => {
     qc.invalidateQueries({ queryKey: ['partner-contracts', partnerId] });
-    qc.invalidateQueries({ queryKey: ['partners'] });
+    invalidatePartners();
   };
   const invalidatePayments = (partnerId: number) => {
     qc.invalidateQueries({ queryKey: ['partner-payments-by-partner', partnerId] });
     qc.invalidateQueries({ queryKey: ['partner-payments-tab'] });
-    qc.invalidateQueries({ queryKey: ['partners'] });
+    invalidatePartners();
   };
   const invalidateDocuments = (partnerId: number) =>
     qc.invalidateQueries({ queryKey: ['partner-documents', partnerId] });
@@ -321,6 +322,18 @@ export function usePartnerMutations() {
     return data;
   };
 
+  // ── Archive ──
+
+  const archivePartner = useMutation({
+    mutationFn: (id: number) => api.post(`/api/partners/${id}/archive`, {}),
+    onSuccess: invalidatePartners,
+  });
+
+  const unarchivePartner = useMutation({
+    mutationFn: (id: number) => api.post(`/api/partners/${id}/unarchive`, {}),
+    onSuccess: invalidatePartners,
+  });
+
   // ── Logo ──
 
   const uploadLogo = async (partnerId: number, file: File) => {
@@ -369,5 +382,7 @@ export function usePartnerMutations() {
     uploadDocument,
     uploadLogo,
     deleteLogo,
+    archivePartner,
+    unarchivePartner,
   };
 }
