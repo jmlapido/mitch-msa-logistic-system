@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Trash2, Phone, Mail, FileText, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, Phone, Mail, FileText, Download, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   usePartnerContacts, usePartnerContracts, usePartnerPaymentsByPartner,
-  usePartnerDocuments, usePartnerMutations, type Partner, type PartnerContract,
+  usePartnerDocuments, usePartnerMutations, type Partner, type PartnerContact, type PartnerContract,
 } from '@/lib/hooks/usePartners';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { formatAED, formatDate } from '@/lib/utils';
@@ -61,7 +61,9 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
   const { data: documents = [] } = usePartnerDocuments(partner.id, open);
 
   const [contactOpen, setContactOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<PartnerContact | null>(null);
   const [contractOpen, setContractOpen] = useState(false);
+  const [editingContract, setEditingContract] = useState<PartnerContract | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
 
   return (
@@ -98,7 +100,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Contact Persons</h4>
                 {canEdit && (
-                  <button onClick={() => setContactOpen(true)} className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                  <button onClick={() => { setEditingContact(null); setContactOpen(true); }} className="text-xs text-primary hover:underline flex items-center gap-0.5">
                     <Plus size={11} /> Add
                   </button>
                 )}
@@ -114,12 +116,20 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                         {ct.phone && <p className="text-muted-foreground mt-0.5"><Phone size={10} className="inline mr-0.5" />{ct.phone}</p>}
                       </div>
                       {canEdit && (
-                        <button
-                          onClick={() => mutations.deleteContact.mutateAsync({ partnerId: partner.id, id: ct.id }).then(() => toast.success('Removed')).catch(() => toast.error('Failed'))}
-                          className="p-0.5 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 size={11} />
-                        </button>
+                        <div className="flex gap-0.5">
+                          <button
+                            onClick={() => { setEditingContact(ct); setContactOpen(true); }}
+                            className="p-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            onClick={() => mutations.deleteContact.mutateAsync({ partnerId: partner.id, id: ct.id }).then(() => toast.success('Removed')).catch(() => toast.error('Failed'))}
+                            className="p-0.5 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -182,7 +192,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Contracts</h4>
                 {canEdit && (
-                  <button onClick={() => setContractOpen(true)} className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                  <button onClick={() => { setEditingContract(null); setContractOpen(true); }} className="text-xs text-primary hover:underline flex items-center gap-0.5">
                     <Plus size={11} /> Add
                   </button>
                 )}
@@ -205,12 +215,20 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                         {c.notes && <p className="italic text-muted-foreground">{c.notes}</p>}
                       </div>
                       {canEdit && (
-                        <button
-                          onClick={() => mutations.deleteContract.mutateAsync({ partnerId: partner.id, id: c.id }).then(() => toast.success('Deleted')).catch(() => toast.error('Failed'))}
-                          className="p-0.5 text-muted-foreground hover:text-destructive ml-2"
-                        >
-                          <Trash2 size={11} />
-                        </button>
+                        <div className="flex gap-0.5 ml-2">
+                          <button
+                            onClick={() => { setEditingContract(c); setContractOpen(true); }}
+                            className="p-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          <button
+                            onClick={() => mutations.deleteContract.mutateAsync({ partnerId: partner.id, id: c.id }).then(() => toast.success('Deleted')).catch(() => toast.error('Failed'))}
+                            className="p-0.5 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -294,12 +312,24 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
 
         {/* Sub-dialogs */}
         <ContactFormDialog
-          open={contactOpen} onClose={() => setContactOpen(false)} partnerId={partner.id}
-          onSave={d => mutations.createContact.mutateAsync({ ...d, partner_id: d.partnerId })}
+          open={contactOpen}
+          onClose={() => { setContactOpen(false); setEditingContact(null); }}
+          partnerId={partner.id}
+          editing={editingContact}
+          onSave={editingContact
+            ? d => mutations.updateContact.mutateAsync({ id: editingContact.id, ...d })
+            : d => mutations.createContact.mutateAsync({ ...d, partner_id: d.partnerId })
+          }
         />
         <ContractFormDialog
-          open={contractOpen} onClose={() => setContractOpen(false)} partnerId={partner.id}
-          onSave={d => mutations.createContract.mutateAsync({ ...d, partner_id: d.partnerId, status: 'active' })}
+          open={contractOpen}
+          onClose={() => { setContractOpen(false); setEditingContract(null); }}
+          partnerId={partner.id}
+          editing={editingContract}
+          onSave={editingContract
+            ? d => mutations.updateContract.mutateAsync({ id: editingContract.id, ...d })
+            : d => mutations.createContract.mutateAsync({ ...d, partner_id: d.partnerId, status: 'active' })
+          }
         />
         <PaymentFormDialog open={paymentOpen} onClose={() => setPaymentOpen(false)} partnerId={partner.id} contracts={contracts} onSave={mutations.createPayment.mutateAsync} />
       </DialogContent>
@@ -307,26 +337,37 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
   );
 }
 
-function ContactFormDialog({ open, onClose, partnerId, onSave }: {
+function ContactFormDialog({ open, onClose, partnerId, editing, onSave }: {
   open: boolean; onClose: () => void; partnerId: number;
+  editing?: PartnerContact | null;
   onSave: (d: { partnerId: number; name: string; position?: string; phone?: string }) => Promise<unknown>;
 }) {
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<ContactF>({ resolver: zodResolver(contactSchema) });
+
+  useEffect(() => {
+    if (open) {
+      reset(editing
+        ? { name: editing.name, position: editing.position ?? '', phone: editing.phone ?? '' }
+        : { name: '', position: '', phone: '' }
+      );
+    }
+  }, [open, editing, reset]);
+
   async function onSubmit(v: ContactF) {
-    try { await onSave({ partnerId, ...v }); toast.success('Contact added'); reset(); onClose(); }
+    try { await onSave({ partnerId, ...v }); toast.success(editing ? 'Updated' : 'Contact added'); reset(); onClose(); }
     catch { toast.error('Failed'); }
   }
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Add Contact Person</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? 'Edit Contact' : 'Add Contact Person'}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div><Label>Name *</Label><Input {...register('name')} className="mt-1" /></div>
           <div><Label>Position</Label><Input {...register('position')} className="mt-1" /></div>
           <div><Label>Phone</Label><Input {...register('phone')} className="mt-1" /></div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Add'}</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : editing ? 'Save' : 'Add'}</Button>
           </div>
         </form>
       </DialogContent>
@@ -334,24 +375,41 @@ function ContactFormDialog({ open, onClose, partnerId, onSave }: {
   );
 }
 
-function ContractFormDialog({ open, onClose, partnerId, onSave }: {
+function ContractFormDialog({ open, onClose, partnerId, editing, onSave }: {
   open: boolean; onClose: () => void; partnerId: number;
+  editing?: PartnerContract | null;
   onSave: (d: { partnerId: number; start_date: string; end_date: string; expected_amount: number; payment_frequency: 'monthly' | 'quarterly' | 'annual' | 'one-time'; notes?: string }) => Promise<unknown>;
 }) {
   const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting } } = useForm<ContractF>({
     resolver: zodResolver(contractSchema),
     defaultValues: { payment_frequency: 'annual' },
   });
+
+  useEffect(() => {
+    if (open) {
+      reset(editing
+        ? {
+            start_date: editing.start_date,
+            end_date: editing.end_date,
+            expected_amount: String(editing.expected_amount),
+            payment_frequency: editing.payment_frequency,
+            notes: editing.notes ?? '',
+          }
+        : { payment_frequency: 'annual', start_date: '', end_date: '', expected_amount: '', notes: '' }
+      );
+    }
+  }, [open, editing, reset]);
+
   async function onSubmit(v: ContractF) {
     try {
       await onSave({ partnerId, ...v, expected_amount: Number(v.expected_amount) });
-      toast.success('Contract added'); reset(); onClose();
+      toast.success(editing ? 'Updated' : 'Contract added'); reset(); onClose();
     } catch { toast.error('Failed'); }
   }
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Add Contract</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? 'Edit Contract' : 'Add Contract'}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Start Date *</Label><Input {...register('start_date')} type="date" className="mt-1" /></div>
@@ -373,7 +431,7 @@ function ContractFormDialog({ open, onClose, partnerId, onSave }: {
           <div><Label>Notes</Label><Input {...register('notes')} className="mt-1" /></div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Add'}</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : editing ? 'Save' : 'Add'}</Button>
           </div>
         </form>
       </DialogContent>

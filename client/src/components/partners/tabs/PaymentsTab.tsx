@@ -100,6 +100,7 @@ export function PaymentsTab() {
               <thead className="text-xs text-muted-foreground bg-muted">
                 <tr>
                   <th className="text-left px-3 py-2">Partner</th>
+                  <th className="text-left px-3 py-2 hidden sm:table-cell">Start</th>
                   <th className="text-left px-3 py-2 hidden sm:table-cell">Frequency</th>
                   <th className="text-right px-3 py-2">Expected</th>
                   <th className="text-right px-3 py-2">Collected</th>
@@ -114,6 +115,7 @@ export function PaymentsTab() {
                   return (
                     <tr key={r.contract_id} className={`hover:bg-muted/20 ${r.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
                       <td className="px-3 py-2 font-medium text-sm">{r.partner_name}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{formatDate(r.start_date)}</td>
                       <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell capitalize">{r.payment_frequency}</td>
                       <td className="px-3 py-2 text-right text-xs">{formatAED(r.expected_amount)}</td>
                       <td className="px-3 py-2 text-right text-xs">
