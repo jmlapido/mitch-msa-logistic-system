@@ -5,6 +5,38 @@ export type DashboardData = {
   month: string;
   bills: { total: number; paid: number; unpaid: number; highest: number };
   rent: { due: number; collected: number; overdue: number };
+  prevMonth: {
+    bills: { total: number; paid: number };
+    rent: { collected: number };
+  };
+  billsHistory: Array<{ month: string; total: number; unpaid: number }>;
+  sponsorships: {
+    totalContractValue: number;
+    collected: number;
+    pending: number;
+    overdue: number;
+    activeCount: number;
+  };
+  activeSponsors: Array<{
+    partner_id: number;
+    company_name: string;
+    contract_id: number;
+    expected_amount: number;
+    total_paid: number;
+    payment_frequency: string;
+    contract_end: string;
+    status: string;
+  }>;
+  expiringSponsors: Array<{
+    partner_id: number;
+    company_name: string;
+    end_date: string;
+    expected_amount: number;
+    payment_frequency: string;
+    total_paid: number;
+    days_remaining: number;
+    status: string;
+  }>;
   priorityPayments: Array<{
     entry_id: number; amount: number; status: string; particulars: string; due_day: number | null;
     category_name: string; category_color: string; category_icon: string; priority_rank: number;
