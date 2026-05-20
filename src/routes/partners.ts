@@ -4,6 +4,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { requireAuth, type AuthVariables } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
+import { auditLog } from '../lib/auditLog';
 import type { Env } from '../types';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'application/pdf'];
@@ -34,7 +35,7 @@ const contractSchema = z.object({
   status: z.enum(['active', 'expired', 'terminated']).optional(),
 });
 
-// GET /api/partners — list all partners with active contract status
+// GET /api/partners — list all partners with computed status
 partners.get('/', async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT
@@ -69,15 +70,18 @@ partners.get('/', async (c) => {
 
 // POST /api/partners
 partners.post('/', requireAdmin, zValidator('json', partnerSchema), async (c) => {
+  const user = c.get('user');
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
     'INSERT INTO partners (company_name, phone, email, notes) VALUES (?,?,?,?) RETURNING *'
-  ).bind(d.company_name, d.phone ?? null, d.email || null, d.notes ?? null).first();
+  ).bind(d.company_name, d.phone ?? null, d.email || null, d.notes ?? null).first<{ id: number }>();
+  await auditLog(c.env.DB, user, 'partner.created', 'partner', result?.id ?? null, `Created partner: ${d.company_name}`);
   return c.json(result, 201);
 });
 
 // PUT /api/partners/:id
 partners.put('/:id', requireAdmin, zValidator('json', partnerSchema.partial()), async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);
@@ -85,32 +89,37 @@ partners.put('/:id', requireAdmin, zValidator('json', partnerSchema.partial()), 
   const fields = entries.map(([k]) => `${k} = ?`).join(', ');
   await c.env.DB.prepare(`UPDATE partners SET ${fields} WHERE id = ?`)
     .bind(...entries.map(([, v]) => v ?? null), id).run();
-  return c.json(await c.env.DB.prepare('SELECT * FROM partners WHERE id = ?').bind(id).first());
+  const updated = await c.env.DB.prepare('SELECT * FROM partners WHERE id = ?').bind(id).first();
+  if (!updated) return c.json({ error: 'Partner not found' }, 404);
+  await auditLog(c.env.DB, user, 'partner.updated', 'partner', id, `Updated: ${entries.map(([k]) => k).join(', ')}`);
+  return c.json(updated);
 });
 
 // DELETE /api/partners/:id
 partners.delete('/:id', requireAdmin, async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
+  const partner = await c.env.DB.prepare('SELECT company_name FROM partners WHERE id = ?')
+    .bind(id).first<{ company_name: string }>();
+  if (!partner) return c.json({ error: 'Partner not found' }, 404);
 
-  // Delete R2 files for payment attachments
-  const { results: payAttachments } = await c.env.DB.prepare(
-    `SELECT ppa.file_key FROM partner_payment_attachments ppa
-     JOIN partner_payments pp ON ppa.payment_id = pp.id
-     WHERE pp.partner_id = ?`
-  ).bind(id).all<{ file_key: string }>();
-  for (const { file_key } of payAttachments) {
-    await c.env.R2.delete(file_key).catch(() => {});
-  }
+  const [{ results: payAttachments }, { results: docs }] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT ppa.file_key FROM partner_payment_attachments ppa
+       JOIN partner_payments pp ON ppa.payment_id = pp.id
+       WHERE pp.partner_id = ?`
+    ).bind(id).all<{ file_key: string }>(),
+    c.env.DB.prepare('SELECT file_key FROM partner_documents WHERE partner_id = ?')
+      .bind(id).all<{ file_key: string }>(),
+  ]);
 
-  // Delete R2 files for partner documents
-  const { results: docs } = await c.env.DB.prepare(
-    'SELECT file_key FROM partner_documents WHERE partner_id = ?'
-  ).bind(id).all<{ file_key: string }>();
-  for (const { file_key } of docs) {
-    await c.env.R2.delete(file_key).catch(() => {});
-  }
+  await Promise.all([
+    ...payAttachments.map(({ file_key }) => c.env.R2.delete(file_key).catch(() => {})),
+    ...docs.map(({ file_key }) => c.env.R2.delete(file_key).catch(() => {})),
+  ]);
 
   await c.env.DB.prepare('DELETE FROM partners WHERE id = ?').bind(id).run();
+  await auditLog(c.env.DB, user, 'partner.deleted', 'partner', id, `Deleted partner: ${partner.company_name}`);
   return c.json({ ok: true });
 });
 
@@ -125,15 +134,21 @@ partners.get('/:id/contacts', async (c) => {
 });
 
 partners.post('/:id/contacts', requireAdmin, zValidator('json', contactSchema), async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
+  const partner = await c.env.DB.prepare('SELECT id FROM partners WHERE id = ?').bind(id).first();
+  if (!partner) return c.json({ error: 'Partner not found' }, 404);
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
     'INSERT INTO partner_contacts (partner_id, name, position, phone) VALUES (?,?,?,?) RETURNING *'
-  ).bind(id, d.name, d.position ?? null, d.phone ?? null).first();
+  ).bind(id, d.name, d.position ?? null, d.phone ?? null).first<{ id: number }>();
+  await auditLog(c.env.DB, user, 'partner.contact.created', 'partner', id, `Added contact: ${d.name}`);
   return c.json(result, 201);
 });
 
 partners.put('/:id/contacts/:cid', requireAdmin, zValidator('json', contactSchema.partial()), async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);
@@ -141,12 +156,18 @@ partners.put('/:id/contacts/:cid', requireAdmin, zValidator('json', contactSchem
   const fields = entries.map(([k]) => `${k} = ?`).join(', ');
   await c.env.DB.prepare(`UPDATE partner_contacts SET ${fields} WHERE id = ?`)
     .bind(...entries.map(([, v]) => v ?? null), cid).run();
-  return c.json(await c.env.DB.prepare('SELECT * FROM partner_contacts WHERE id = ?').bind(cid).first());
+  const updated = await c.env.DB.prepare('SELECT * FROM partner_contacts WHERE id = ?').bind(cid).first();
+  if (!updated) return c.json({ error: 'Contact not found' }, 404);
+  await auditLog(c.env.DB, user, 'partner.contact.updated', 'partner', id, `Updated contact ${cid}`);
+  return c.json(updated);
 });
 
 partners.delete('/:id/contacts/:cid', requireAdmin, async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
   await c.env.DB.prepare('DELETE FROM partner_contacts WHERE id = ?').bind(cid).run();
+  await auditLog(c.env.DB, user, 'partner.contact.deleted', 'partner', id, `Deleted contact ${cid}`);
   return c.json({ ok: true });
 });
 
@@ -173,16 +194,22 @@ partners.get('/:id/contracts', async (c) => {
 });
 
 partners.post('/:id/contracts', requireAdmin, zValidator('json', contractSchema), async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
+  const partner = await c.env.DB.prepare('SELECT id FROM partners WHERE id = ?').bind(id).first();
+  if (!partner) return c.json({ error: 'Partner not found' }, 404);
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
     `INSERT INTO partner_contracts (partner_id, start_date, end_date, expected_amount, payment_frequency, notes, status)
      VALUES (?,?,?,?,?,?,?) RETURNING *`
-  ).bind(id, d.start_date, d.end_date, d.expected_amount, d.payment_frequency, d.notes ?? null, d.status ?? 'active').first();
+  ).bind(id, d.start_date, d.end_date, d.expected_amount, d.payment_frequency, d.notes ?? null, d.status ?? 'active').first<{ id: number }>();
+  await auditLog(c.env.DB, user, 'partner.contract.created', 'partner', id, `Added contract ${d.start_date}–${d.end_date}`);
   return c.json(result, 201);
 });
 
 partners.put('/:id/contracts/:cid', requireAdmin, zValidator('json', contractSchema.partial()), async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);
@@ -190,12 +217,18 @@ partners.put('/:id/contracts/:cid', requireAdmin, zValidator('json', contractSch
   const fields = entries.map(([k]) => `${k} = ?`).join(', ');
   await c.env.DB.prepare(`UPDATE partner_contracts SET ${fields} WHERE id = ?`)
     .bind(...entries.map(([, v]) => v ?? null), cid).run();
-  return c.json(await c.env.DB.prepare('SELECT * FROM partner_contracts WHERE id = ?').bind(cid).first());
+  const updated = await c.env.DB.prepare('SELECT * FROM partner_contracts WHERE id = ?').bind(cid).first();
+  if (!updated) return c.json({ error: 'Contract not found' }, 404);
+  await auditLog(c.env.DB, user, 'partner.contract.updated', 'partner', id, `Updated contract ${cid}`);
+  return c.json(updated);
 });
 
 partners.delete('/:id/contracts/:cid', requireAdmin, async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
   await c.env.DB.prepare('DELETE FROM partner_contracts WHERE id = ?').bind(cid).run();
+  await auditLog(c.env.DB, user, 'partner.contract.deleted', 'partner', id, `Deleted contract ${cid}`);
   return c.json({ ok: true });
 });
 
@@ -210,6 +243,7 @@ partners.get('/:id/documents', async (c) => {
 });
 
 partners.post('/:id/documents', requireAdmin, async (c) => {
+  const user = c.get('user');
   const id = Number(c.req.param('id'));
   const partner = await c.env.DB.prepare('SELECT id FROM partners WHERE id = ?').bind(id).first();
   if (!partner) return c.json({ error: 'Partner not found' }, 404);
@@ -229,7 +263,8 @@ partners.post('/:id/documents', requireAdmin, async (c) => {
 
   const result = await c.env.DB.prepare(
     'INSERT INTO partner_documents (partner_id, doc_type, file_name, file_key, file_size, file_type) VALUES (?,?,?,?,?,?) RETURNING *'
-  ).bind(id, docType, file.name, key, file.size, file.type).first();
+  ).bind(id, docType, file.name, key, file.size, file.type).first<{ id: number }>();
+  await auditLog(c.env.DB, user, 'partner.document.uploaded', 'partner', id, `Uploaded doc: ${file.name}`);
   return c.json(result, 201);
 });
 
@@ -249,12 +284,15 @@ partners.get('/:id/documents/:did/download', async (c) => {
 });
 
 partners.delete('/:id/documents/:did', requireAdmin, async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
   const did = Number(c.req.param('did'));
-  const doc = await c.env.DB.prepare('SELECT file_key FROM partner_documents WHERE id = ?')
-    .bind(did).first<{ file_key: string }>();
+  const doc = await c.env.DB.prepare('SELECT file_key, file_name FROM partner_documents WHERE id = ?')
+    .bind(did).first<{ file_key: string; file_name: string }>();
   if (!doc) return c.json({ error: 'Not found' }, 404);
   await c.env.R2.delete(doc.file_key);
   await c.env.DB.prepare('DELETE FROM partner_documents WHERE id = ?').bind(did).run();
+  await auditLog(c.env.DB, user, 'partner.document.deleted', 'partner', id, `Deleted doc: ${doc.file_name}`);
   return c.json({ ok: true });
 });
 
