@@ -287,7 +287,7 @@ function PaymentPopover({
 
         <div className="border-t pt-2 space-y-2">
           <p className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wide">Add Payment</p>
-          <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} type="number" className="mt-0.5 h-7 text-xs" /></div>
+          <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} onFocus={e => e.target.select()} type="number" className="mt-0.5 h-7 text-xs" /></div>
           <div><Label className="text-xs">Date</Label><Input value={date} onChange={e => setDate(e.target.value)} type="date" className="mt-0.5 h-7 text-xs" /></div>
           <div>
             <Label className="text-xs">Method</Label>
