@@ -109,9 +109,12 @@ dashboard.get('/', async (c) => {
   `).bind(prevMonth).first<{ total_bills: number; total_paid: number }>();
 
   const prevRentStats = await db.prepare(`
-    SELECT COALESCE(SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as total_rent_collected
-    FROM rent_payments rp WHERE rp.month = ?
-  `).bind(prevMonth).first<{ total_rent_collected: number }>();
+    SELECT
+      COALESCE(SUM(ROUND(c.annual_rent/12,2)), 0) as total_rent_due,
+      COALESCE(SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as total_rent_collected
+    FROM rent_payments rp JOIN contracts c ON rp.contract_id = c.id
+    WHERE rp.month = ?
+  `).bind(prevMonth).first<{ total_rent_due: number; total_rent_collected: number }>();
 
   const billsHistory = await db.prepare(`
     SELECT month,
@@ -163,7 +166,7 @@ dashboard.get('/', async (c) => {
     WHERE p.is_archived = 0
     ORDER BY p.company_name
     LIMIT 8
-  `).all();
+  `).all<{ partner_id: number; company_name: string; contract_id: number; expected_amount: number; payment_frequency: string; contract_end: string; total_paid: number; status: string }>();
 
   const expiringSponsors = await db.prepare(`
     SELECT p.id as partner_id, p.company_name,
@@ -186,7 +189,7 @@ dashboard.get('/', async (c) => {
       AND p.is_archived = 0
     ORDER BY pc.end_date
     LIMIT 8
-  `).all();
+  `).all<{ partner_id: number; company_name: string; end_date: string; expected_amount: number; payment_frequency: string; total_paid: number; days_remaining: number; status: string }>();
 
   return c.json({
     month,
