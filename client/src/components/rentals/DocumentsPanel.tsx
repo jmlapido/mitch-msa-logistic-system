@@ -42,7 +42,7 @@ export function DocumentsPanel({ entityType, entityId }: Props) {
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="h-8 text-xs">
           <Paperclip size={12} className="mr-1" /> Attach
         </Button>
-        <input ref={fileRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic"
+        <input ref={fileRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx"
           onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])} />
       </div>
       {docs.length === 0 ? (

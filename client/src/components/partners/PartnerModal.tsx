@@ -144,7 +144,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                 {canEdit && (
                   <label className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-0.5">
                     <Plus size={11} /> Upload
-                    <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic"
+                    <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx"
                       onChange={async e => {
                         const file = e.target.files?.[0];
                         if (!file) return;

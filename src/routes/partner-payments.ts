@@ -8,7 +8,9 @@ import { auditLog } from '../lib/auditLog';
 import type { Env } from '../types';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'application/pdf'];
-const MAX_SIZE = 10 * 1024 * 1024;
+function maxSizeFor(type: string) {
+  return type === 'application/pdf' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+}
 
 const partnerPayments = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 partnerPayments.use('*', requireAuth);
@@ -217,7 +219,7 @@ partnerPayments.post('/:id/attachments', requireAdmin, async (c) => {
   const file = formData.get('file') as File | null;
   if (!file) return c.json({ error: 'No file provided' }, 400);
   if (!ALLOWED_TYPES.includes(file.type)) return c.json({ error: 'File type not allowed' }, 400);
-  if (file.size > MAX_SIZE) return c.json({ error: 'File exceeds 10MB limit' }, 400);
+  if (file.size > maxSizeFor(file.type)) return c.json({ error: 'File too large (images: 5 MB, PDF: 20 MB)' }, 400);
 
   const ext = file.name.split('.').pop() ?? 'bin';
   const key = `partners/payments/${id}/${crypto.randomUUID()}.${ext}`;

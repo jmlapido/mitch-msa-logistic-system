@@ -55,7 +55,8 @@ router.post('/upload', requireAdmin, async (c) => {
   if (!contractId || !pdcNumber || !file) return c.json({ error: 'Missing fields' }, 400);
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
   if (!allowed.includes(file.type)) return c.json({ error: 'Invalid file type (jpg/png/webp/heic/pdf)' }, 400);
-  if (file.size > 10 * 1024 * 1024) return c.json({ error: 'File too large (max 10MB)' }, 400);
+  const pdcMax = file.type === 'application/pdf' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+  if (file.size > pdcMax) return c.json({ error: 'File too large (images: 5 MB, PDF: 20 MB)' }, 400);
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
   const key = `pdc/${contractId}/${pdcNumber}/${Date.now()}.${ext}`;

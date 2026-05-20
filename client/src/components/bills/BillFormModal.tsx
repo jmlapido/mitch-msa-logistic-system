@@ -220,7 +220,7 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
           )}
           <input
             ref={fileRef} type="file" className="hidden"
-            accept=".pdf,.jpg,.jpeg,.png,.heic"
+            accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx"
             onChange={e => { setPendingFile(e.target.files?.[0] ?? null); e.target.value = ''; }}
           />
           <DialogFooter className="gap-2">

@@ -41,7 +41,7 @@ export function AttachmentCell({ entry, month }: Props) {
       </button>
       <input
         ref={fileRef} type="file" className="hidden"
-        accept=".pdf,.jpg,.jpeg,.png,.heic"
+        accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx"
         onChange={e => { if (e.target.files?.[0]) upload(e.target.files[0]); e.target.value = ''; }}
       />
     </div>

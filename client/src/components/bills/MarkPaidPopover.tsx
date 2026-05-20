@@ -116,7 +116,7 @@ export function MarkPaidPopover({ entry, month }: Props) {
             )}
             <input
               ref={fileRef} type="file" className="hidden"
-              accept=".pdf,.jpg,.jpeg,.png,.heic"
+              accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx"
               onChange={e => { setReceipt(e.target.files?.[0] ?? null); e.target.value = ''; }}
             />
           </div>

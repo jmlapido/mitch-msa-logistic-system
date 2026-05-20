@@ -5,8 +5,14 @@ import { auditLog } from '../lib/auditLog';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'application/pdf'];
-const MAX_SIZE = 10 * 1024 * 1024;
+const ALLOWED_TYPES = [
+  'image/jpeg', 'image/png', 'image/heic', 'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+];
+function maxSizeFor(type: string) {
+  return type === 'application/pdf' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+}
 
 const rentalDocs = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 rentalDocs.use('*', requireAuth);
@@ -31,7 +37,7 @@ rentalDocs.post('/', async (c) => {
 
   if (!file) return c.json({ error: 'No file' }, 400);
   if (!ALLOWED_TYPES.includes(file.type)) return c.json({ error: 'File type not allowed' }, 400);
-  if (file.size > MAX_SIZE) return c.json({ error: 'File exceeds 10MB' }, 400);
+  if (file.size > maxSizeFor(file.type)) return c.json({ error: 'File too large (images/docs: 5 MB, PDF: 20 MB)' }, 400);
   if (!['lease', 'tenant', 'unit'].includes(entityType)) return c.json({ error: 'Invalid entity_type' }, 400);
 
   const ext = file.name.split('.').pop() ?? 'bin';

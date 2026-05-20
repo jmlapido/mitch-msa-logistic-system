@@ -7,8 +7,14 @@ import { requireAdmin } from '../middleware/requireAdmin';
 import { auditLog } from '../lib/auditLog';
 import type { Env } from '../types';
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'application/pdf'];
-const MAX_SIZE = 10 * 1024 * 1024;
+const ALLOWED_TYPES = [
+  'image/jpeg', 'image/png', 'image/heic', 'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+];
+function maxSizeFor(type: string) {
+  return type === 'application/pdf' ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+}
 
 const partners = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 partners.use('*', requireAuth);
@@ -276,7 +282,7 @@ partners.post('/:id/documents', requireAdmin, async (c) => {
 
   if (!file) return c.json({ error: 'No file provided' }, 400);
   if (!ALLOWED_TYPES.includes(file.type)) return c.json({ error: 'File type not allowed' }, 400);
-  if (file.size > MAX_SIZE) return c.json({ error: 'File exceeds 10MB limit' }, 400);
+  if (file.size > maxSizeFor(file.type)) return c.json({ error: 'File too large (images/docs: 5 MB, PDF: 20 MB)' }, 400);
   if (!['contract', 'agreement', 'other'].includes(docType)) return c.json({ error: 'Invalid doc_type' }, 400);
 
   const ext = file.name.split('.').pop() ?? 'bin';
