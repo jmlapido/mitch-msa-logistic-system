@@ -40,7 +40,7 @@ export function PaymentsTab() {
   }, {});
 
   const totalExpected = payments.reduce((s, p) => s + p.expected_rent, 0);
-  const totalCollected = payments.filter(p => p.status === 'collected').reduce((s, p) => s + p.amount, 0);
+  const totalCollected = payments.reduce((s, p) => s + p.amount_paid, 0);
   const totalPending = totalExpected - totalCollected;
   const totalOverdue = payments.reduce((s, p) => s + (p.tenant_overdue ?? 0), 0);
 
@@ -70,7 +70,7 @@ export function PaymentsTab() {
         <div className="space-y-4">
           {Object.entries(grouped).map(([bid, group]) => {
             const groupExpected = group.items.reduce((s, p) => s + p.expected_rent, 0);
-            const groupCollected = group.items.filter(p => p.status === 'collected').reduce((s, p) => s + p.amount, 0);
+            const groupCollected = group.items.reduce((s, p) => s + p.amount_paid, 0);
             return (
               <div key={bid} className="border rounded-lg overflow-hidden">
                 <div className="bg-muted px-3 py-2 flex justify-between items-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
