@@ -9,6 +9,7 @@ import { RentalReportView } from '@/components/reports/RentalReportView';
 import { CombinedReportView } from '@/components/reports/CombinedReportView';
 import { OutstandingReportView } from '@/components/reports/OutstandingReportView';
 import { ExpiringLeasesReportView } from '@/components/reports/ExpiringLeasesReportView';
+import { PartnersReportView } from '@/components/reports/PartnersReportView';
 import { useBuildings } from '@/lib/hooks/useRentals';
 import { api } from '@/lib/api';
 import { currentMonth } from '@/lib/utils';
@@ -19,6 +20,7 @@ const TABS = [
   { value: 'bills',       label: 'Bills'            },
   { value: 'expiring',    label: 'Expiring Leases'  },
   { value: 'combined',    label: 'P&L Summary'      },
+  { value: 'partners',    label: 'Partners'         },
 ];
 
 export default function Reports() {
@@ -127,6 +129,14 @@ export default function Reports() {
               <CombinedReportView
                 monthSummary={arr('monthSummary')}
                 rentMonthly={arr('rentMonthly')}
+                from={from} to={to}
+              />
+            </TabsContent>
+
+            <TabsContent value="partners">
+              <PartnersReportView
+                rows={arr('rows')}
+                payments={arr('payments')}
                 from={from} to={to}
               />
             </TabsContent>
