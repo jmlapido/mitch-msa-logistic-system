@@ -114,8 +114,16 @@ partners.delete('/:id', requireAdmin, async (c) => {
   ]);
 
   await Promise.all([
-    ...payAttachments.map(({ file_key }) => c.env.R2.delete(file_key).catch(() => {})),
-    ...docs.map(({ file_key }) => c.env.R2.delete(file_key).catch(() => {})),
+    ...payAttachments.map(({ file_key }) =>
+      c.env.R2.delete(file_key).catch(err =>
+        console.error('[partners] R2 delete failed', { file_key, err })
+      )
+    ),
+    ...docs.map(({ file_key }) =>
+      c.env.R2.delete(file_key).catch(err =>
+        console.error('[partners] R2 delete failed', { file_key, err })
+      )
+    ),
   ]);
 
   await c.env.DB.prepare('DELETE FROM partners WHERE id = ?').bind(id).run();
@@ -150,6 +158,10 @@ partners.put('/:id/contacts/:cid', requireAdmin, zValidator('json', contactSchem
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM partner_contacts WHERE id = ? AND partner_id = ?'
+  ).bind(cid, id).first();
+  if (!existing) return c.json({ error: 'Contact not found' }, 404);
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);
   if (!entries.length) return c.json({ error: 'No fields to update' }, 400);
@@ -157,7 +169,6 @@ partners.put('/:id/contacts/:cid', requireAdmin, zValidator('json', contactSchem
   await c.env.DB.prepare(`UPDATE partner_contacts SET ${fields} WHERE id = ?`)
     .bind(...entries.map(([, v]) => v ?? null), cid).run();
   const updated = await c.env.DB.prepare('SELECT * FROM partner_contacts WHERE id = ?').bind(cid).first();
-  if (!updated) return c.json({ error: 'Contact not found' }, 404);
   await auditLog(c.env.DB, user, 'partner.contact.updated', 'partner', id, `Updated contact ${cid}`);
   return c.json(updated);
 });
@@ -166,6 +177,10 @@ partners.delete('/:id/contacts/:cid', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
+  const contact = await c.env.DB.prepare(
+    'SELECT id FROM partner_contacts WHERE id = ? AND partner_id = ?'
+  ).bind(cid, id).first();
+  if (!contact) return c.json({ error: 'Contact not found' }, 404);
   await c.env.DB.prepare('DELETE FROM partner_contacts WHERE id = ?').bind(cid).run();
   await auditLog(c.env.DB, user, 'partner.contact.deleted', 'partner', id, `Deleted contact ${cid}`);
   return c.json({ ok: true });
@@ -211,6 +226,10 @@ partners.put('/:id/contracts/:cid', requireAdmin, zValidator('json', contractSch
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM partner_contracts WHERE id = ? AND partner_id = ?'
+  ).bind(cid, id).first();
+  if (!existing) return c.json({ error: 'Contract not found' }, 404);
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);
   if (!entries.length) return c.json({ error: 'No fields to update' }, 400);
@@ -218,7 +237,6 @@ partners.put('/:id/contracts/:cid', requireAdmin, zValidator('json', contractSch
   await c.env.DB.prepare(`UPDATE partner_contracts SET ${fields} WHERE id = ?`)
     .bind(...entries.map(([, v]) => v ?? null), cid).run();
   const updated = await c.env.DB.prepare('SELECT * FROM partner_contracts WHERE id = ?').bind(cid).first();
-  if (!updated) return c.json({ error: 'Contract not found' }, 404);
   await auditLog(c.env.DB, user, 'partner.contract.updated', 'partner', id, `Updated contract ${cid}`);
   return c.json(updated);
 });
@@ -227,6 +245,10 @@ partners.delete('/:id/contracts/:cid', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
+  const contract = await c.env.DB.prepare(
+    'SELECT id FROM partner_contracts WHERE id = ? AND partner_id = ?'
+  ).bind(cid, id).first();
+  if (!contract) return c.json({ error: 'Contract not found' }, 404);
   await c.env.DB.prepare('DELETE FROM partner_contracts WHERE id = ?').bind(cid).run();
   await auditLog(c.env.DB, user, 'partner.contract.deleted', 'partner', id, `Deleted contract ${cid}`);
   return c.json({ ok: true });
@@ -259,11 +281,20 @@ partners.post('/:id/documents', requireAdmin, async (c) => {
 
   const ext = file.name.split('.').pop() ?? 'bin';
   const key = `partners/${id}/docs/${crypto.randomUUID()}.${ext}`;
-  await c.env.R2.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
 
   const result = await c.env.DB.prepare(
     'INSERT INTO partner_documents (partner_id, doc_type, file_name, file_key, file_size, file_type) VALUES (?,?,?,?,?,?) RETURNING *'
   ).bind(id, docType, file.name, key, file.size, file.type).first<{ id: number }>();
+
+  try {
+    await c.env.R2.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } });
+  } catch (err) {
+    await c.env.DB.prepare('DELETE FROM partner_documents WHERE id = ?')
+      .bind((result as { id: number }).id).run().catch(() => {});
+    console.error('[partners] R2 upload failed, rolled back DB record', { key, err });
+    return c.json({ error: 'File upload failed' }, 500);
+  }
+
   await auditLog(c.env.DB, user, 'partner.document.uploaded', 'partner', id, `Uploaded doc: ${file.name}`);
   return c.json(result, 201);
 });
