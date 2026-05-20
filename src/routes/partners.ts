@@ -47,8 +47,8 @@ partners.get('/', async (c) => {
       CASE
         WHEN pc.id IS NULL THEN 'no_contract'
         WHEN COALESCE(pay.total_paid, 0) >= pc.expected_amount THEN 'paid'
+        WHEN date(pc.end_date) < date('now') AND COALESCE(pay.total_paid, 0) < pc.expected_amount THEN 'overdue'
         WHEN COALESCE(pay.total_paid, 0) > 0 THEN 'partial'
-        WHEN date(pc.end_date) < date('now') THEN 'overdue'
         ELSE 'pending'
       END as status
     FROM partners p
@@ -159,8 +159,8 @@ partners.get('/:id/contracts', async (c) => {
       COALESCE(SUM(pp.amount), 0) as total_paid,
       CASE
         WHEN COALESCE(SUM(pp.amount), 0) >= pc.expected_amount THEN 'paid'
+        WHEN date(pc.end_date) < date('now') AND COALESCE(SUM(pp.amount), 0) < pc.expected_amount THEN 'overdue'
         WHEN COALESCE(SUM(pp.amount), 0) > 0 THEN 'partial'
-        WHEN date(pc.end_date) < date('now') THEN 'overdue'
         ELSE 'pending'
       END as payment_status
     FROM partner_contracts pc
