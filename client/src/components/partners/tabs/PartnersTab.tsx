@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, Handshake } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Pencil, Trash2, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +18,9 @@ const schema = z.object({
   phone: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   notes: z.string().optional(),
+  address_street: z.string().optional(),
+  address_city: z.string().optional(),
+  address_country: z.string().optional(),
 });
 type F = z.infer<typeof schema>;
 
@@ -35,7 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function PartnersTab() {
   const { data: partners = [], isLoading } = usePartners();
-  const { createPartner, updatePartner, deletePartner } = usePartnerMutations();
+  const { createPartner, updatePartner, deletePartner, uploadLogo, deleteLogo } = usePartnerMutations();
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || user?.role === 'superadmin';
 
@@ -45,16 +48,43 @@ export function PartnersTab() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'collected' | 'status'>('name');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const logoRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<F>({ resolver: zodResolver(schema) });
 
-  function openAdd() { reset({ company_name: '', phone: '', email: '', notes: '' }); setEditing(null); setOpen(true); }
-  function openEdit(p: Partner) { reset({ company_name: p.company_name, phone: p.phone ?? '', email: p.email ?? '', notes: p.notes ?? '' }); setEditing(p); setOpen(true); }
+  function openAdd() {
+    reset({ company_name: '', phone: '', email: '', notes: '', address_street: '', address_city: '', address_country: '' });
+    setEditing(null);
+    setLogoFile(null);
+    setOpen(true);
+  }
+
+  function openEdit(p: Partner) {
+    reset({
+      company_name: p.company_name,
+      phone: p.phone ?? '',
+      email: p.email ?? '',
+      notes: p.notes ?? '',
+      address_street: p.address_street ?? '',
+      address_city: p.address_city ?? '',
+      address_country: p.address_country ?? '',
+    });
+    setEditing(p);
+    setLogoFile(null);
+    setOpen(true);
+  }
 
   async function onSubmit(v: F) {
     try {
-      if (editing) { await updatePartner.mutateAsync({ id: editing.id, ...v }); toast.success('Updated'); }
-      else { await createPartner.mutateAsync(v); toast.success('Partner added'); }
+      if (editing) {
+        await updatePartner.mutateAsync({ id: editing.id, ...v });
+        if (logoFile) await uploadLogo(editing.id, logoFile);
+        toast.success('Updated');
+      } else {
+        await createPartner.mutateAsync(v);
+        toast.success('Partner added');
+      }
       setOpen(false);
     } catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); }
   }
@@ -131,10 +161,20 @@ export function PartnersTab() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Handshake size={16} className="text-primary shrink-0" />
+                  <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden text-sm font-bold text-muted-foreground">
+                    {p.logo_key
+                      ? <img src={`/api/partners/${p.id}/logo`} alt="" className="w-full h-full object-cover" />
+                      : p.company_name.slice(0, 2).toUpperCase()
+                    }
+                  </div>
                   <div className="min-w-0">
                     <div className="font-semibold text-sm truncate">{p.company_name}</div>
                     {p.email && <div className="text-xs text-muted-foreground truncate">{p.email}</div>}
+                    {(p.address_city || p.address_country) && (
+                      <div className="text-xs text-muted-foreground/70 truncate">
+                        {[p.address_city, p.address_country].filter(Boolean).join(', ')}
+                      </div>
+                    )}
                   </div>
                 </div>
                 {canEdit && (
@@ -173,6 +213,38 @@ export function PartnersTab() {
               <Input {...register('company_name')} className="mt-1" />
               {errors.company_name && <p className="text-xs text-destructive mt-0.5">{errors.company_name.message}</p>}
             </div>
+            {editing && (
+              <div>
+                <Label>Logo</Label>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="w-12 h-12 rounded-lg border border-border bg-muted flex items-center justify-center overflow-hidden text-sm font-bold text-muted-foreground shrink-0">
+                    {logoFile
+                      ? <img src={URL.createObjectURL(logoFile)} alt="" className="w-full h-full object-cover" />
+                      : editing.logo_key
+                        ? <img src={`/api/partners/${editing.id}/logo`} alt="" className="w-full h-full object-cover" />
+                        : editing.company_name.slice(0, 2).toUpperCase()
+                    }
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => logoRef.current?.click()}>
+                      <Paperclip size={12} className="mr-1" /> {editing.logo_key || logoFile ? 'Change' : 'Upload Logo'}
+                    </Button>
+                    {(editing.logo_key || logoFile) && (
+                      <Button
+                        type="button" size="sm" variant="ghost"
+                        className="h-7 text-xs text-destructive hover:text-destructive"
+                        onClick={() => { setLogoFile(null); deleteLogo.mutate(editing.id); }}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                    <span className="text-xs text-muted-foreground">Images only · max 2 MB</span>
+                  </div>
+                  <input ref={logoRef} type="file" className="hidden" accept=".jpg,.jpeg,.png,.heic"
+                    onChange={e => { setLogoFile(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+                </div>
+              </div>
+            )}
             <div><Label>Phone</Label><Input {...register('phone')} className="mt-1" /></div>
             <div>
               <Label>Email</Label>
@@ -180,6 +252,20 @@ export function PartnersTab() {
               {errors.email && <p className="text-xs text-destructive mt-0.5">{errors.email.message}</p>}
             </div>
             <div><Label>Notes</Label><Input {...register('notes')} className="mt-1" /></div>
+            <div>
+              <Label>Street</Label>
+              <Input {...register('address_street')} placeholder="e.g. 12 Sheikh Zayed Rd" className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>City</Label>
+                <Input {...register('address_city')} placeholder="Dubai" className="mt-1" />
+              </div>
+              <div>
+                <Label>Country</Label>
+                <Input {...register('address_country')} placeholder="UAE" className="mt-1" />
+              </div>
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Save'}</Button>
