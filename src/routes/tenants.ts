@@ -29,6 +29,7 @@ tenants.get('/', async (c) => {
              ELSE 'active' END
       ELSE NULL END as lease_status,
       c.start_date, c.end_date,
+      c.annual_rent, c.payment_frequency,
       ROUND(c.annual_rent / 12, 2) as monthly_rent,
       u.unit_no, bld.name as building_name,
       (SELECT COALESCE(SUM(

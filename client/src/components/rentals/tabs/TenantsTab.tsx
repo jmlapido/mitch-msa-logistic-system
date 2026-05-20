@@ -176,13 +176,16 @@ export function TenantsTab() {
                               {t.phone && <span className="ml-2">{t.phone}</span>}
                             </div>
                             {(t.total_balance ?? 0) > 0 && (
-                              <div className="text-xs text-red-600 font-medium">{formatAED(t.total_balance!)} outstanding</div>
+                              <div className="text-xs text-red-600 font-medium">{formatAED(t.total_balance!)} total rental balance due</div>
                             )}
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            {t.monthly_rent && (
+                            {(t.annual_rent || t.monthly_rent) && (
                               <div className="text-right hidden sm:block">
-                                <div className="text-sm font-semibold">{formatAED(t.monthly_rent)}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
+                                {t.payment_frequency === 'annual'
+                                  ? <div className="text-sm font-semibold">{formatAED(t.annual_rent!)}<span className="text-xs font-normal text-muted-foreground">/yr</span></div>
+                                  : <div className="text-sm font-semibold">{formatAED(t.monthly_rent!)}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
+                                }
                                 {t.end_date && <div className="text-xs text-muted-foreground">until {formatDate(t.end_date)}</div>}
                               </div>
                             )}
