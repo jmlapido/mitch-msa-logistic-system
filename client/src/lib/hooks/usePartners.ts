@@ -244,10 +244,18 @@ export function usePartnerMutations() {
 
   const createPayment = useMutation({
     mutationFn: ({
-      partnerId,
+      partnerId: _pid,
       ...data
-    }: Omit<PartnerPayment, 'id' | 'created_at' | 'contract_start' | 'contract_end' | 'expected_amount' | 'attachments'> & { partnerId: number }) =>
-      api.post<PartnerPayment>('/api/partner-payments', data),
+    }: {
+      partnerId: number;
+      partner_id: number;
+      contract_id: number;
+      amount: number;
+      paid_date: string;
+      payment_method: 'cash' | 'cheque';
+      receipt_no?: string;
+      notes?: string;
+    }) => api.post<PartnerPayment>('/api/partner-payments', data),
     onSuccess: (_data, vars) => invalidatePayments(vars.partnerId),
   });
 
@@ -260,8 +268,8 @@ export function usePartnerMutations() {
   // ── Payment Attachment ──
 
   const deletePaymentAttachment = useMutation({
-    mutationFn: ({ id, partnerId }: { id: number; partnerId: number; paymentId: number }) =>
-      api.del(`/api/partner-payment-attachments/${id}`),
+    mutationFn: ({ paymentId, id }: { id: number; partnerId: number; paymentId: number }) =>
+      api.del(`/api/partner-payments/${paymentId}/attachments/${id}`),
     onSuccess: (_data, vars) => invalidatePayments(vars.partnerId),
   });
 
