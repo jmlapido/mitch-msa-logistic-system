@@ -338,9 +338,13 @@ export function usePartnerMutations() {
   };
 
   const deleteLogo = useMutation({
-    mutationFn: (partnerId: number) =>
-      fetch(`/api/partners/${partnerId}/logo`, { method: 'DELETE', credentials: 'include' })
-        .then(r => { if (!r.ok) throw new Error('Delete failed'); }),
+    mutationFn: async (partnerId: number) => {
+      const res = await fetch(`/api/partners/${partnerId}/logo`, { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? 'Delete failed');
+      }
+    },
     onSuccess: invalidatePartners,
   });
 
