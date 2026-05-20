@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePartners, usePartnerPaymentsTab } from '@/lib/hooks/usePartners';
 import { formatAED, formatDate } from '@/lib/utils';
 
@@ -28,6 +28,27 @@ export function PaymentsTab() {
 
   const rows = data?.rows ?? [];
   const stats = data?.stats ?? { totalPartners: 0, totalExpected: 0, totalCollected: 0, overdue: 0, partial: 0 };
+
+  const sidebar = useMemo(() => {
+    const statusOrder = ['overdue', 'partial', 'pending', 'paid'] as const;
+    const byStatus: Record<string, { count: number; amount: number }> = {};
+    const bySponsors: Record<number, { name: string; expected: number; collected: number }> = {};
+
+    for (const r of rows) {
+      if (!byStatus[r.status]) byStatus[r.status] = { count: 0, amount: 0 };
+      byStatus[r.status]!.count += 1;
+      byStatus[r.status]!.amount += r.status === 'paid' ? r.total_paid : r.expected_amount - r.total_paid;
+
+      if (!bySponsors[r.partner_id]) bySponsors[r.partner_id] = { name: r.partner_name, expected: 0, collected: 0 };
+      bySponsors[r.partner_id]!.expected += r.expected_amount;
+      bySponsors[r.partner_id]!.collected += r.total_paid;
+    }
+
+    return {
+      statusRows: statusOrder.filter(s => byStatus[s]).map(s => ({ status: s, ...byStatus[s]! })),
+      sponsorRows: Object.values(bySponsors).sort((a, b) => b.expected - a.expected),
+    };
+  }, [rows]);
 
   function apply() {
     setApplied({ from, to, partnerId, status: filterStatus });
@@ -89,59 +110,106 @@ export function PaymentsTab() {
         </button>
       </div>
 
-      {/* Table */}
+      {/* Table + Sidebar */}
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No contracts found.</p>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs text-muted-foreground bg-muted">
-                <tr>
-                  <th className="text-left px-3 py-2">Sponsor</th>
-                  <th className="text-left px-3 py-2 hidden sm:table-cell">Contract #</th>
-                  <th className="text-left px-3 py-2 hidden sm:table-cell">Start</th>
-                  <th className="text-left px-3 py-2 hidden sm:table-cell">Frequency</th>
-                  <th className="text-right px-3 py-2">Expected</th>
-                  <th className="text-right px-3 py-2">Collected</th>
-                  <th className="text-right px-3 py-2 hidden sm:table-cell">Balance</th>
-                  <th className="text-center px-3 py-2 hidden sm:table-cell">Contract End</th>
-                  <th className="text-center px-3 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map(r => {
-                  const balance = r.expected_amount - r.total_paid;
-                  return (
-                    <tr key={r.contract_id} className={`hover:bg-muted/20 ${r.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
-                      <td className="px-3 py-2 font-medium text-sm">{r.partner_name}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{r.contract_no ? `#${r.contract_no}` : '—'}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{formatDate(r.start_date)}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell capitalize">{r.payment_frequency}</td>
-                      <td className="px-3 py-2 text-right text-xs">{formatAED(r.expected_amount)}</td>
-                      <td className="px-3 py-2 text-right text-xs">
-                        {r.total_paid > 0
-                          ? <span className="text-green-600">{formatAED(r.total_paid)}</span>
-                          : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="px-3 py-2 text-right text-xs hidden sm:table-cell">
-                        {balance > 0
-                          ? <span className="text-red-600 font-medium">{formatAED(balance)}</span>
-                          : <span className="text-green-600">—</span>}
-                      </td>
-                      <td className="px-3 py-2 text-center text-xs hidden sm:table-cell">{formatDate(r.end_date)}</td>
-                      <td className="px-3 py-2 text-center">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLE[r.status] ?? ''}`}>
-                          {r.status}
-                        </span>
-                      </td>
+        <div className="flex flex-col-reverse gap-6 md:flex-row">
+          {/* Table */}
+          <div className="flex-1 min-w-0">
+            <div className="border rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-muted-foreground bg-muted">
+                    <tr>
+                      <th className="text-left px-3 py-2">Sponsor</th>
+                      <th className="text-left px-3 py-2 hidden sm:table-cell">Contract #</th>
+                      <th className="text-left px-3 py-2 hidden sm:table-cell">Start</th>
+                      <th className="text-left px-3 py-2 hidden sm:table-cell">Frequency</th>
+                      <th className="text-right px-3 py-2">Expected</th>
+                      <th className="text-right px-3 py-2">Collected</th>
+                      <th className="text-right px-3 py-2 hidden sm:table-cell">Balance</th>
+                      <th className="text-center px-3 py-2 hidden sm:table-cell">Contract End</th>
+                      <th className="text-center px-3 py-2">Status</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {rows.map(r => {
+                      const balance = r.expected_amount - r.total_paid;
+                      return (
+                        <tr key={r.contract_id} className={`hover:bg-muted/20 ${r.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
+                          <td className="px-3 py-2 font-medium text-sm">{r.partner_name}</td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{r.contract_no ? `#${r.contract_no}` : '—'}</td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{formatDate(r.start_date)}</td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell capitalize">{r.payment_frequency}</td>
+                          <td className="px-3 py-2 text-right text-xs">{formatAED(r.expected_amount)}</td>
+                          <td className="px-3 py-2 text-right text-xs">
+                            {r.total_paid > 0
+                              ? <span className="text-green-600">{formatAED(r.total_paid)}</span>
+                              : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-3 py-2 text-right text-xs hidden sm:table-cell">
+                            {balance > 0
+                              ? <span className="text-red-600 font-medium">{formatAED(balance)}</span>
+                              : <span className="text-green-600">—</span>}
+                          </td>
+                          <td className="px-3 py-2 text-center text-xs hidden sm:table-cell">{formatDate(r.end_date)}</td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLE[r.status] ?? ''}`}>
+                              {r.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="md:w-52 md:shrink-0 md:border-l md:pl-4 space-y-5">
+            {/* By Status */}
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">By Status</h3>
+              <div className="space-y-2">
+                {sidebar.statusRows.map(({ status, count, amount }) => (
+                  <div key={status} className="text-xs">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className={`px-1.5 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLE[status] ?? ''}`}>{status}</span>
+                      <span className="text-muted-foreground">{count} contract{count !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{status === 'paid' ? 'Collected' : status === 'overdue' ? 'Overdue' : 'Remaining'}</span>
+                      <span className={status === 'paid' ? 'text-green-600 font-medium' : status === 'overdue' ? 'text-red-600 font-medium' : 'text-yellow-600 font-medium'}>
+                        {formatAED(amount)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* By Sponsor */}
+            {sidebar.sponsorRows.length > 1 && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">By Sponsor</h3>
+                <div className="space-y-1.5">
+                  {sidebar.sponsorRows.map(s => (
+                    <div key={s.name} className="text-xs">
+                      <p className="font-medium truncate max-w-[180px]">{s.name}</p>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span className="text-green-600">{formatAED(s.collected)}</span>
+                        <span>{formatAED(s.expected)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
