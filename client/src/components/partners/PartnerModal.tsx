@@ -261,6 +261,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                           <th className="text-left px-2 py-1.5">Date</th>
                           <th className="text-right px-2 py-1.5">Amount</th>
                           <th className="text-left px-2 py-1.5">Method</th>
+                          <th className="text-left px-2 py-1.5">Contract</th>
                           <th className="text-left px-2 py-1.5">Receipt</th>
                           <th className="px-2 py-1.5"></th>
                         </tr>
@@ -271,6 +272,9 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                             <td className="px-2 py-1.5">{formatDate(p.paid_date)}</td>
                             <td className="px-2 py-1.5 text-right text-green-600 font-medium">{formatAED(p.amount)}</td>
                             <td className="px-2 py-1.5 capitalize">{p.payment_method}</td>
+                            <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">
+                              {formatDate(p.contract_start)} – {formatDate(p.contract_end)}
+                            </td>
                             <td className="px-2 py-1.5 text-muted-foreground">{p.receipt_no ?? '—'}</td>
                             <td className="px-2 py-1.5">
                               <div className="flex items-center gap-1">
