@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Check, Phone, Mail, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -44,6 +44,30 @@ export function PaymentsTab() {
   const totalPending = totalExpected - totalCollected;
   const totalOverdue = payments.reduce((s, p) => s + (p.tenant_overdue ?? 0), 0);
 
+  const sidebar = useMemo(() => {
+    const statusOrder = ['overdue', 'partial', 'pending', 'collected'] as const;
+    const byStatus: Record<string, { count: number; amount: number }> = {};
+
+    for (const p of payments) {
+      if (!byStatus[p.status]) byStatus[p.status] = { count: 0, amount: 0 };
+      byStatus[p.status]!.count += 1;
+      if (p.status === 'collected') byStatus[p.status]!.amount += p.amount_paid;
+      else if (p.status === 'overdue') byStatus[p.status]!.amount += p.tenant_overdue ?? 0;
+      else byStatus[p.status]!.amount += p.expected_rent - p.amount_paid;
+    }
+
+    const byBuilding = Object.values(grouped).map(g => ({
+      name: g.name,
+      expected: g.items.reduce((s, p) => s + p.expected_rent, 0),
+      collected: g.items.reduce((s, p) => s + p.amount_paid, 0),
+    })).sort((a, b) => b.expected - a.expected);
+
+    return {
+      statusRows: statusOrder.filter(s => byStatus[s]).map(s => ({ status: s, ...byStatus[s]! })),
+      byBuilding,
+    };
+  }, [payments, grouped]);
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -67,79 +91,139 @@ export function PaymentsTab() {
       </div>
 
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
-        <div className="space-y-4">
-          {Object.entries(grouped).map(([bid, group]) => {
-            const groupExpected = group.items.reduce((s, p) => s + p.expected_rent, 0);
-            const groupCollected = group.items.reduce((s, p) => s + p.amount_paid, 0);
-            return (
-              <div key={bid} className="border rounded-lg overflow-hidden">
-                <div className="bg-muted px-3 py-2 flex justify-between items-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  <span>{group.name}</span>
-                  <span><span className="text-green-600">{formatAED(groupCollected)}</span> / {formatAED(groupExpected)}</span>
+        <div className="flex flex-col-reverse gap-6 md:flex-row">
+          {/* Main table */}
+          <div className="flex-1 min-w-0 space-y-4">
+            {Object.entries(grouped).map(([bid, group]) => {
+              const groupExpected = group.items.reduce((s, p) => s + p.expected_rent, 0);
+              const groupCollected = group.items.reduce((s, p) => s + p.amount_paid, 0);
+              return (
+                <div key={bid} className="border rounded-lg overflow-hidden">
+                  <div className="bg-muted px-3 py-2 flex justify-between items-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    <span>{group.name}</span>
+                    <span><span className="text-green-600">{formatAED(groupCollected)}</span> / {formatAED(groupExpected)}</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-xs text-muted-foreground">
+                        <tr>
+                          <th className="text-left px-3 py-1.5">Unit</th>
+                          <th className="text-left px-3 py-1.5">Tenant</th>
+                          <th className="text-right px-3 py-1.5">Rent</th>
+                          <th className="hidden sm:table-cell text-right px-3 py-1.5">Collected</th>
+                          <th className="hidden sm:table-cell text-right px-3 py-1.5 text-red-500">Overdue</th>
+                          <th className="hidden sm:table-cell text-right px-3 py-1.5">Balance</th>
+                          <th className="hidden sm:table-cell text-center px-3 py-1.5">Paid Date</th>
+                          <th className="hidden sm:table-cell text-center px-3 py-1.5">Due Date</th>
+                          <th className="text-center px-3 py-1.5">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {group.items.map(p => {
+                          const shouldHighlight = p.status === 'overdue' || p.status === 'partial' || (p.balance ?? 0) > 0;
+                          return (
+                            <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
+                              <td className="px-3 py-2 font-medium">{p.unit_no}</td>
+                              <td className="px-3 py-2 text-xs">
+                                <button
+                                  onClick={() => setTenantDetail(p)}
+                                  className="text-primary hover:underline text-left"
+                                >
+                                  {p.tenant_name}
+                                </button>
+                              </td>
+                              <td className="px-3 py-2 text-right text-xs">{formatAED(p.expected_rent)}</td>
+                              <td className="hidden sm:table-cell px-3 py-2 text-right">
+                                {p.status === 'collected' && <span className="text-green-600">{formatAED(p.amount_paid)}</span>}
+                                {p.status === 'partial' && (
+                                  <span className="text-orange-600 text-xs">{formatAED(p.amount_paid)} <span className="text-muted-foreground">/ {formatAED(p.expected_rent)}</span></span>
+                                )}
+                                {p.status !== 'collected' && p.status !== 'partial' && <span className="text-muted-foreground">—</span>}
+                              </td>
+                              <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
+                                {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium">{formatAED(p.tenant_overdue)}</span> : '—'}
+                              </td>
+                              <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
+                                {(p.balance ?? 0) > 0 ? <span className="text-red-600 font-semibold">{formatAED(p.balance)}</span> : <span className="text-green-600">—</span>}
+                              </td>
+                              <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">{formatDate(p.paid_date)}</td>
+                              <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">
+                                {p.due_date ? (
+                                  <span className={dueDateColor(p.due_date, p.status)}>{formatDate(p.due_date)}</span>
+                                ) : '—'}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <PaymentPopover payment={p} onAdd={addPaymentEntry.mutateAsync} onDelete={deletePaymentEntry.mutateAsync} />
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="text-xs text-muted-foreground">
-                      <tr>
-                        <th className="text-left px-3 py-1.5">Unit</th>
-                        <th className="text-left px-3 py-1.5">Tenant</th>
-                        <th className="text-right px-3 py-1.5">Rent</th>
-                        <th className="hidden sm:table-cell text-right px-3 py-1.5">Collected</th>
-                        <th className="hidden sm:table-cell text-right px-3 py-1.5 text-red-500">Overdue</th>
-                        <th className="hidden sm:table-cell text-right px-3 py-1.5">Balance</th>
-                        <th className="hidden sm:table-cell text-center px-3 py-1.5">Paid Date</th>
-                        <th className="hidden sm:table-cell text-center px-3 py-1.5">Due Date</th>
-                        <th className="text-center px-3 py-1.5">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {group.items.map(p => {
-                        const shouldHighlight = p.status === 'overdue' || p.status === 'partial' || (p.balance ?? 0) > 0;
-                        return (
-                          <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
-                            <td className="px-3 py-2 font-medium">{p.unit_no}</td>
-                            <td className="px-3 py-2 text-xs">
-                              <button
-                                onClick={() => setTenantDetail(p)}
-                                className="text-primary hover:underline text-left"
-                              >
-                                {p.tenant_name}
-                              </button>
-                            </td>
-                            <td className="px-3 py-2 text-right text-xs">{formatAED(p.expected_rent)}</td>
-                            <td className="hidden sm:table-cell px-3 py-2 text-right">
-                              {p.status === 'collected' && <span className="text-green-600">{formatAED(p.amount_paid)}</span>}
-                              {p.status === 'partial' && (
-                                <span className="text-orange-600 text-xs">{formatAED(p.amount_paid)} <span className="text-muted-foreground">/ {formatAED(p.expected_rent)}</span></span>
-                              )}
-                              {p.status !== 'collected' && p.status !== 'partial' && <span className="text-muted-foreground">—</span>}
-                            </td>
-                            <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
-                              {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium">{formatAED(p.tenant_overdue)}</span> : '—'}
-                            </td>
-                            <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
-                              {(p.balance ?? 0) > 0 ? <span className="text-red-600 font-semibold">{formatAED(p.balance)}</span> : <span className="text-green-600">—</span>}
-                            </td>
-                            <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">{formatDate(p.paid_date)}</td>
-                            <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">
-                              {p.due_date ? (
-                                <span className={dueDateColor(p.due_date, p.status)}>{formatDate(p.due_date)}</span>
-                              ) : '—'}
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <div className="flex flex-col items-center gap-0.5">
-                                <PaymentPopover payment={p} onAdd={addPaymentEntry.mutateAsync} onDelete={deletePaymentEntry.mutateAsync} />
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+              );
+            })}
+          </div>
+
+          {/* Sidebar */}
+          <div className="md:w-52 md:shrink-0 md:border-l md:pl-4 space-y-5">
+            {/* By Status */}
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">By Status</h3>
+              <div className="space-y-2">
+                {sidebar.statusRows.map(({ status, count, amount }) => {
+                  const amountColor =
+                    status === 'collected' ? 'text-green-600' :
+                    status === 'overdue'   ? 'text-red-600'   :
+                    status === 'partial'   ? 'text-orange-600' :
+                    'text-yellow-600';
+                  const amountLabel =
+                    status === 'collected' ? 'Collected' :
+                    status === 'overdue'   ? 'Overdue'   :
+                    'Remaining';
+                  const badgeStyle: Record<string, string> = {
+                    collected: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                    partial:   'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+                    pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+                    overdue:   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+                  };
+                  return (
+                    <div key={status} className="text-xs">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className={`px-1.5 py-0.5 rounded-full font-medium capitalize ${badgeStyle[status] ?? ''}`}>{status}</span>
+                        <span className="text-muted-foreground">{count} unit{count !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{amountLabel}</span>
+                        <span className={`font-medium ${amountColor}`}>{formatAED(amount)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* By Building */}
+            {sidebar.byBuilding.length > 1 && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">By Building</h3>
+                <div className="space-y-1.5">
+                  {sidebar.byBuilding.map(b => (
+                    <div key={b.name} className="text-xs">
+                      <p className="font-medium truncate max-w-[180px]">{b.name}</p>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span className="text-green-600">{formatAED(b.collected)}</span>
+                        <span>{formatAED(b.expected)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
       )}
 
