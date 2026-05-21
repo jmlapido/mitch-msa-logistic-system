@@ -49,7 +49,7 @@ export type DashboardData = {
     building_id: number; building_name: string; unit_count: number; expected: number; collected: number;
   }>;
   expiringLeases: Array<{
-    id: number; end_date: string; monthly_rent: number;
+    id: number; tenant_id: number; end_date: string; monthly_rent: number;
     tenant_name: string; unit_no: string; building_name: string;
   }>;
 };

@@ -2,6 +2,16 @@ import { useNavigate } from 'react-router-dom';
 import { formatAED } from '@/lib/utils';
 import type { DashboardData } from '@/lib/hooks/useDashboard';
 
+function ordinal(n: number): string {
+  if (n === 11 || n === 12 || n === 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
 type Props = { items: DashboardData['upcomingBills']; month: string };
 
 export function UpcomingBillsWidget({ items, month: _month }: Props) {
@@ -24,7 +34,7 @@ export function UpcomingBillsWidget({ items, month: _month }: Props) {
                 <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{item.particulars}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                {item.due_day && <span className="text-xs text-muted-foreground">{item.due_day}th</span>}
+                {item.due_day && <span className="text-xs text-muted-foreground">{ordinal(item.due_day)}</span>}
                 <span className="text-sm font-semibold">{formatAED(item.amount)}</span>
                 <span className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity text-xs">›</span>
               </div>

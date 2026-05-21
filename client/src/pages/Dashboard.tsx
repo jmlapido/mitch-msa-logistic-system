@@ -76,7 +76,7 @@ export default function Dashboard() {
               />
               <StatCard
                 label="Rent Collected" value={formatAED(data.rent.collected)} icon={TrendingUp} color="green"
-                delta={{ value: data.rent.due > 0 ? `${pctDir(data.rent.collected, data.prevMonth.rent.collected) === 'up' ? '▲' : '▼'} ${Math.round((data.rent.collected / data.rent.due) * 100)}% rate` : '—', direction: pctDir(data.rent.collected, data.prevMonth.rent.collected) }}
+                delta={{ value: data.rent.due > 0 ? `${Math.round((data.rent.collected / data.rent.due) * 100)}% collection rate` : '—', direction: pctDir(data.rent.collected, data.prevMonth.rent.collected) }}
                 onClick={() => navigate('/rentals')}
               />
               <StatCard

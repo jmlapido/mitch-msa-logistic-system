@@ -85,7 +85,7 @@ dashboard.get('/', async (c) => {
   `).bind(month).all();
 
   const expiringLeases = await db.prepare(`
-    SELECT c.id, c.end_date, ROUND(c.annual_rent/12,2) as monthly_rent,
+    SELECT c.id, t.id as tenant_id, c.end_date, ROUND(c.annual_rent/12,2) as monthly_rent,
       t.name as tenant_name, u.unit_no, b.name as building_name
     FROM contracts c
     JOIN tenants t ON c.tenant_id = t.id
