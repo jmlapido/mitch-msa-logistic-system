@@ -6,11 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatAED(amount: number): string {
-  return new Intl.NumberFormat('en-AE', {
+  const formatted = new Intl.NumberFormat('en-AE', {
     style: 'currency',
     currency: 'AED',
     minimumFractionDigits: 2,
   }).format(amount);
+  return formatted.replace(/AED\s?/, 'AED ');
 }
 
 export function formatDate(dateStr: string | null | undefined): string {

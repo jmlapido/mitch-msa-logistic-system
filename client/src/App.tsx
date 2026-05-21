@@ -21,9 +21,20 @@ const queryClient = new QueryClient({
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <TopNav />
-      <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">{children}</main>
+      <footer className="no-print border-t mt-8 py-2 text-center text-xs text-muted-foreground">
+        Designed and Developed for MSA Logistic by{' '}
+        <a
+          href="https://fb.com/jmlapido"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-foreground underline underline-offset-2 transition-colors"
+        >
+          JMLapido
+        </a>
+      </footer>
     </div>
   );
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useArchivedTenants, useRentalMutations, useContracts, type ArchivedTenant } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { formatDate, formatAED } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import { Button } from '@/components/ui/button';
 
 function ArchivedTenantRow({ tenant }: { tenant: ArchivedTenant }) {
@@ -65,7 +66,7 @@ function ArchivedTenantRow({ tenant }: { tenant: ArchivedTenant }) {
                   <div key={c.id} className="text-xs border rounded p-2">
                     <span className="font-semibold">#{c.contract_no}</span>
                     <span className="text-muted-foreground ml-2">{formatDate(c.start_date)} → {formatDate(c.end_date)}</span>
-                    <span className="text-muted-foreground ml-2">{formatAED(c.annual_rent)}/yr</span>
+                    <span className="text-muted-foreground ml-2"><AedAmount amount={c.annual_rent} />/yr</span>
                   </div>
                 ))}
               </div>

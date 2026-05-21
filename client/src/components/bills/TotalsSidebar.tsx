@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import type { BillEntry } from '@/lib/hooks/useBills';
 import { useBillsYearlySummary } from '@/lib/hooks/useBills';
 
@@ -44,11 +44,11 @@ export function TotalsSidebar({ entries, month }: Props) {
                 <div key={r.name} className="text-xs">
                   <div className="flex justify-between font-medium">
                     <span className="truncate max-w-[120px]">{r.name}</span>
-                    <span>{formatAED(r.total)}</span>
+                    <span><AedAmount amount={r.total} /></span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
-                    <span className="text-green-600 dark:text-green-400">✓ {formatAED(r.paid)}</span>
-                    <span className="text-red-600 dark:text-red-400">{formatAED(r.unpaid)}</span>
+                    <span className="text-green-600 dark:text-green-400">✓ <AedAmount amount={r.paid} /></span>
+                    <span className="text-red-600 dark:text-red-400"><AedAmount amount={r.unpaid} /></span>
                   </div>
                 </div>
               ))}
@@ -74,7 +74,7 @@ export function TotalsSidebar({ entries, month }: Props) {
                   ) : unpaid === 0 ? (
                     <span className="text-green-600 dark:text-green-400">AED 0</span>
                   ) : (
-                    <span className="text-red-600 dark:text-red-400">{formatAED(unpaid)}</span>
+                    <span className="text-red-600 dark:text-red-400"><AedAmount amount={unpaid} /></span>
                   )}
                 </div>
               );
@@ -83,7 +83,7 @@ export function TotalsSidebar({ entries, month }: Props) {
           {ytdUnpaid > 0 && (
             <div className="flex justify-between text-xs font-semibold border-t mt-2 pt-2">
               <span className="text-muted-foreground">YTD Unpaid</span>
-              <span className="text-red-600 dark:text-red-400">{formatAED(ytdUnpaid)}</span>
+              <span className="text-red-600 dark:text-red-400"><AedAmount amount={ytdUnpaid} /></span>
             </div>
           )}
         </div>

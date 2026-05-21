@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+﻿import { useState, useRef, useMemo, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Paperclip, Archive, ArchiveRestore } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { usePartners, usePartnerMutations, type Partner } from '@/lib/hooks/usePartners';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { formatAED, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import { PartnerModal } from '../PartnerModal';
 
 const schema = z.object({
@@ -244,7 +245,7 @@ export function PartnersTab({ initialOpenId }: { initialOpenId?: number }) {
 
               <div className="mt-3 space-y-1">
                 {p.total_paid > 0 && (
-                  <p className="text-xs font-semibold text-green-600">{formatAED(p.total_paid)} collected</p>
+                  <p className="text-xs font-semibold text-green-600"><AedAmount amount={p.total_paid} /> collected</p>
                 )}
                 {p.contract_end && (
                   <p className="text-xs text-muted-foreground">

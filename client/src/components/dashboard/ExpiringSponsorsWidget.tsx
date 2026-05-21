@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import type { DashboardData } from '@/lib/hooks/useDashboard';
 import { STATUS_BADGE, STATUS_LABEL } from './sponsorBadges';
+import { formatDate } from '@/lib/utils';
 
 type Props = { sponsors: DashboardData['expiringSponsors'] };
 
 export function daysBadgeClass(days: number): string {
-  if (days < 14)  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-  if (days < 30)  return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+  if (days < 14) return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+  if (days < 30) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
   return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
 }
 
@@ -16,7 +17,7 @@ export function ExpiringSponsorsWidget({ sponsors }: Props) {
 
   return (
     <div className="bg-card border rounded-lg p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Expiring Sponsorships (90 days)</h3>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Expiring Sponsorships (60 days)</h3>
       {sponsors.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">No contracts expiring soon</p>
       ) : (
@@ -30,8 +31,9 @@ export function ExpiringSponsorsWidget({ sponsors }: Props) {
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{s.company_name}</p>
                 <p className="text-xs text-muted-foreground capitalize">
-                  {s.payment_frequency} · {formatAED(s.expected_amount)}/yr
+                  {s.payment_frequency} · <AedAmount amount={s.expected_amount} />/yr
                 </p>
+                <p className="text-xs text-muted-foreground">Expires {formatDate(s.end_date)}</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_BADGE[s.status] ?? ''}`}>

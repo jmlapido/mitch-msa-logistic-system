@@ -1,5 +1,6 @@
-import { PrintHeader } from './PrintHeader';
-import { formatAED, monthLabel } from '@/lib/utils';
+﻿import { PrintHeader } from './PrintHeader';
+import { monthLabel } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 type Row = {
   tenant_name: string; unit_no: string; building_name: string;
@@ -30,7 +31,7 @@ export function OutstandingReportView({ rows, tenantSummary }: Props) {
           {/* Grand total banner */}
           <div className="mb-6 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 flex justify-between items-center">
             <span className="text-sm font-semibold text-red-800 dark:text-red-200">Total Outstanding Balance</span>
-            <span className="text-lg font-bold text-red-600">{formatAED(grandTotal)}</span>
+            <span className="text-lg font-bold text-red-600">{<AedAmount amount={grandTotal} />}</span>
           </div>
 
           {/* Per-tenant summary */}
@@ -56,7 +57,7 @@ export function OutstandingReportView({ rows, tenantSummary }: Props) {
                       <span className="text-red-600 font-medium">{t.months_overdue}</span>
                     </td>
                     <td className="px-3 py-1.5 text-right font-semibold text-red-600">
-                      {formatAED(t.total_balance)}
+                      {<AedAmount amount={t.total_balance} />}
                     </td>
                   </tr>
                 ))}
@@ -92,9 +93,9 @@ export function OutstandingReportView({ rows, tenantSummary }: Props) {
                         ? <span className="text-orange-500 font-medium">Partial</span>
                         : <span className="text-red-600 font-semibold">Overdue</span>}
                     </td>
-                    <td className="px-3 py-1.5 text-right">{formatAED(r.expected_rent)}</td>
-                    <td className="px-3 py-1.5 text-right">{r.amount_paid > 0 ? formatAED(r.amount_paid) : '—'}</td>
-                    <td className="px-3 py-1.5 text-right font-semibold text-red-600">{formatAED(r.balance)}</td>
+                    <td className="px-3 py-1.5 text-right">{<AedAmount amount={r.expected_rent} />}</td>
+                    <td className="px-3 py-1.5 text-right">{r.amount_paid > 0 ? <AedAmount amount={r.amount_paid} /> : '—'}</td>
+                    <td className="px-3 py-1.5 text-right font-semibold text-red-600">{<AedAmount amount={r.balance} />}</td>
                   </tr>
                 ))}
               </tbody>

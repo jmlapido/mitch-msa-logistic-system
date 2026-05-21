@@ -1,6 +1,6 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { useNavigate } from 'react-router-dom';
-import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import type { DashboardData } from '@/lib/hooks/useDashboard';
 
 type Props = { buildings: DashboardData['rentByBuilding'] };
@@ -50,8 +50,8 @@ export function RentBarChart({ buildings }: Props) {
                 return (
                   <div className="bg-card border rounded-md p-2 text-xs shadow">
                     <p className="font-semibold mb-1">{d.name}</p>
-                    <p className="text-green-600">{formatAED(d.collected)} collected</p>
-                    <p className="text-muted-foreground">{formatAED(d.expected)} expected</p>
+                    <p className="text-green-600"><AedAmount amount={d.collected} /> collected</p>
+                    <p className="text-muted-foreground"><AedAmount amount={d.expected} /> expected</p>
                     <p className="font-bold mt-1">{d.rate}% rate</p>
                   </div>
                 );
@@ -61,6 +61,12 @@ export function RentBarChart({ buildings }: Props) {
               {data.map((entry) => (
                 <Cell key={entry.id} fill={barColor(entry.rate)} />
               ))}
+              <LabelList
+                dataKey="rate"
+                position="right"
+                formatter={(v: number) => `${v}%`}
+                style={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

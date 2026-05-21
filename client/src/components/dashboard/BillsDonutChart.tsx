@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 type Props = { paid: number; unpaid: number };
 
@@ -50,17 +51,17 @@ export function BillsDonutChart({ paid, unpaid }: Props) {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs">
             <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-            <span className="font-semibold">{formatAED(paid)}</span>
+            <span className="font-semibold"><AedAmount amount={paid} /></span>
             <span className="text-muted-foreground">Paid</span>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-            <span className="font-semibold">{formatAED(unpaid)}</span>
+            <span className="font-semibold"><AedAmount amount={unpaid} /></span>
             <span className="text-muted-foreground">Unpaid</span>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="w-2 h-2 rounded-full bg-muted shrink-0 border" />
-            <span className="font-semibold">{formatAED(total)}</span>
+            <span className="font-semibold"><AedAmount amount={total} /></span>
             <span className="text-muted-foreground">Total</span>
           </div>
         </div>

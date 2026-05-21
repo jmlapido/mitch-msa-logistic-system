@@ -1,5 +1,6 @@
-import { PrintHeader } from './PrintHeader';
-import { formatAED, formatDate } from '@/lib/utils';
+﻿import { PrintHeader } from './PrintHeader';
+import { formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 type ReportRow = {
   company_name: string;
@@ -49,15 +50,15 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="border rounded-lg px-4 py-3 bg-card">
           <p className="text-xs text-muted-foreground mb-1">Total Expected</p>
-          <p className="text-base font-semibold">{formatAED(totalExpected)}</p>
+          <p className="text-base font-semibold">{<AedAmount amount={totalExpected} />}</p>
         </div>
         <div className="border rounded-lg px-4 py-3 bg-card">
           <p className="text-xs text-muted-foreground mb-1">Total Collected</p>
-          <p className="text-base font-semibold text-green-600">{formatAED(totalCollected)}</p>
+          <p className="text-base font-semibold text-green-600">{<AedAmount amount={totalCollected} />}</p>
         </div>
         <div className="border rounded-lg px-4 py-3 bg-card">
           <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
-          <p className={`text-base font-semibold ${totalBalance > 0 ? 'text-red-600' : ''}`}>{formatAED(totalBalance)}</p>
+          <p className={`text-base font-semibold ${totalBalance > 0 ? 'text-red-600' : ''}`}>{<AedAmount amount={totalBalance} />}</p>
         </div>
       </div>
 
@@ -81,10 +82,10 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
               <tr key={r.contract_id} className={r.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/20' : 'hover:bg-muted/20'}>
                 <td className="px-3 py-1.5 font-medium">{r.company_name}</td>
                 <td className="px-3 py-1.5 text-xs capitalize text-muted-foreground">{r.payment_frequency}</td>
-                <td className="px-3 py-1.5 text-right">{formatAED(r.expected_amount)}</td>
-                <td className="px-3 py-1.5 text-right text-green-600">{r.total_paid > 0 ? formatAED(r.total_paid) : '—'}</td>
+                <td className="px-3 py-1.5 text-right">{<AedAmount amount={r.expected_amount} />}</td>
+                <td className="px-3 py-1.5 text-right text-green-600">{r.total_paid > 0 ? <AedAmount amount={r.total_paid} /> : '—'}</td>
                 <td className="px-3 py-1.5 text-right">
-                  {r.balance > 0 ? <span className="text-red-600 font-medium">{formatAED(r.balance)}</span> : <span className="text-green-600">—</span>}
+                  {r.balance > 0 ? <span className="text-red-600 font-medium">{<AedAmount amount={r.balance} />}</span> : <span className="text-green-600">—</span>}
                 </td>
                 <td className="px-3 py-1.5 text-center text-xs">{formatDate(r.end_date)}</td>
                 <td className="px-3 py-1.5 text-center">
@@ -114,7 +115,7 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
               {payments.map((p, i) => (
                 <tr key={`${p.company_name}-${p.paid_date}-${p.amount}-${i}`} className="hover:bg-muted/20">
                   <td className="px-3 py-1.5">{p.company_name}</td>
-                  <td className="px-3 py-1.5 text-right text-green-600 font-medium">{formatAED(p.amount)}</td>
+                  <td className="px-3 py-1.5 text-right text-green-600 font-medium">{<AedAmount amount={p.amount} />}</td>
                   <td className="px-3 py-1.5">{formatDate(p.paid_date)}</td>
                   <td className="px-3 py-1.5 capitalize">{p.payment_method}</td>
                   <td className="px-3 py-1.5 text-muted-foreground">{p.receipt_no ?? '—'}</td>

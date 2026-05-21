@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import type { DashboardData } from '@/lib/hooks/useDashboard';
 
 type Props = { leases: DashboardData['expiringLeases'] };
@@ -35,7 +35,7 @@ export function ExpiringLeasesWidget({ leases }: Props) {
                   <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${daysBadgeClass(days)}`}>
                     {days}d
                   </span>
-                  <span className="text-xs text-muted-foreground">{formatAED(l.monthly_rent)}/mo</span>
+                  <span className="text-xs text-muted-foreground"><AedAmount amount={l.monthly_rent} />/mo</span>
                   <span className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity text-xs">›</span>
                 </div>
               </div>

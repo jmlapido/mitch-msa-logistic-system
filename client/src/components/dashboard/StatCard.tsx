@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { type LucideIcon } from 'lucide-react';
 
 export type DeltaDirection = 'up' | 'down' | 'neutral';
@@ -6,7 +7,7 @@ export type Delta = { value: string; direction: DeltaDirection };
 
 type Props = {
   label: string;
-  value: string;
+  value: string | ReactNode;
   icon: LucideIcon;
   color?: 'green' | 'red' | 'yellow' | 'blue' | 'default' | 'teal' | 'purple' | 'rose';
   delta?: Delta;
@@ -57,10 +58,10 @@ export function StatCard({ label, value, icon: Icon, color = 'default', delta, o
         <Icon size={18} className={COLOR_MAP[color]} />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`text-lg font-bold truncate ${COLOR_MAP[color]}`}>{value}</p>
+        <p className="text-xs text-muted-foreground leading-tight">{label}</p>
+        <p className={`text-sm sm:text-base font-bold leading-tight break-words ${COLOR_MAP[color]}`}>{value}</p>
         {delta && (
-          <p className={`text-xs mt-0.5 ${deltaClass(delta.direction)}`}>{delta.value}</p>
+          <p className={`text-[10px] sm:text-xs mt-0.5 leading-tight ${deltaClass(delta.direction)}`}>{delta.value}</p>
         )}
       </div>
     </Tag>

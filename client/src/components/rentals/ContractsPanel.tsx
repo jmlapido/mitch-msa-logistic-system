@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useContracts, useRentalMutations, type Contract } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
-import { formatAED, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import { PdcPanel } from './PdcPanel';
 
 const schema = z.object({
@@ -163,7 +164,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                   </div>
                   <div className="text-muted-foreground space-y-0.5">
                     <p>{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
-                    <p>Annual Rent: <span className="font-medium text-foreground">{formatAED(c.annual_rent)}</span></p>
+                    <p>Annual Rent: <span className="font-medium text-foreground"><AedAmount amount={c.annual_rent} /></span></p>
                     <p>
                       Frequency:{' '}
                       <span className="font-medium text-foreground">

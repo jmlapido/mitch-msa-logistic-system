@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo, type ReactNode } from 'react';
 import { usePartners, usePartnerPaymentsTab } from '@/lib/hooks/usePartners';
-import { formatAED, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 const STATUS_STYLE: Record<string, string> = {
   paid:    'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -59,9 +60,9 @@ export function PaymentsTab() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="Total Sponsors" value={String(stats.totalPartners)} />
-        <StatCard label="Total Collected" value={formatAED(stats.totalCollected)} valueClass="text-green-600" />
-        <StatCard label="Partial Remaining" value={formatAED(stats.partial)} valueClass={stats.partial > 0 ? 'text-yellow-600' : undefined} />
-        <StatCard label="Overdue" value={formatAED(stats.overdue)} valueClass={stats.overdue > 0 ? 'text-red-600' : undefined} />
+        <StatCard label="Total Collected" value={<AedAmount amount={stats.totalCollected} />} valueClass="text-green-600" />
+        <StatCard label="Partial Remaining" value={<AedAmount amount={stats.partial} />} valueClass={stats.partial > 0 ? 'text-yellow-600' : undefined} />
+        <StatCard label="Overdue" value={<AedAmount amount={stats.overdue} />} valueClass={stats.overdue > 0 ? 'text-red-600' : undefined} />
       </div>
 
       {/* Filters */}
@@ -144,15 +145,15 @@ export function PaymentsTab() {
                           <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{r.contract_no ? `#${r.contract_no}` : '—'}</td>
                           <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell">{formatDate(r.start_date)}</td>
                           <td className="px-3 py-2 text-xs text-muted-foreground hidden sm:table-cell capitalize">{r.payment_frequency}</td>
-                          <td className="px-3 py-2 text-right text-xs">{formatAED(r.expected_amount)}</td>
+                          <td className="px-3 py-2 text-right text-xs"><AedAmount amount={r.expected_amount} /></td>
                           <td className="px-3 py-2 text-right text-xs">
                             {r.total_paid > 0
-                              ? <span className="text-green-600">{formatAED(r.total_paid)}</span>
+                              ? <span className="text-green-600"><AedAmount amount={r.total_paid} /></span>
                               : <span className="text-muted-foreground">—</span>}
                           </td>
                           <td className="px-3 py-2 text-right text-xs hidden sm:table-cell">
                             {balance > 0
-                              ? <span className="text-red-600 font-medium">{formatAED(balance)}</span>
+                              ? <span className="text-red-600 font-medium"><AedAmount amount={balance} /></span>
                               : <span className="text-green-600">—</span>}
                           </td>
                           <td className="px-3 py-2 text-center text-xs hidden sm:table-cell">{formatDate(r.end_date)}</td>
@@ -185,7 +186,7 @@ export function PaymentsTab() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{status === 'paid' ? 'Collected' : status === 'overdue' ? 'Overdue' : 'Remaining'}</span>
                       <span className={status === 'paid' ? 'text-green-600 font-medium' : status === 'overdue' ? 'text-red-600 font-medium' : 'text-yellow-600 font-medium'}>
-                        {formatAED(amount)}
+                        <AedAmount amount={amount} />
                       </span>
                     </div>
                   </div>
@@ -202,8 +203,8 @@ export function PaymentsTab() {
                     <div key={s.name} className="text-xs">
                       <p className="font-medium truncate max-w-[180px]">{s.name}</p>
                       <div className="flex justify-between text-muted-foreground">
-                        <span className="text-green-600">{formatAED(s.collected)}</span>
-                        <span>{formatAED(s.expected)}</span>
+                        <span className="text-green-600"><AedAmount amount={s.collected} /></span>
+                        <span><AedAmount amount={s.expected} /></span>
                       </div>
                     </div>
                   ))}
@@ -217,7 +218,7 @@ export function PaymentsTab() {
   );
 }
 
-function StatCard({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+function StatCard({ label, value, valueClass }: { label: string; value: ReactNode; valueClass?: string }) {
   return (
     <div className="border rounded-lg px-4 py-3 bg-card">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>

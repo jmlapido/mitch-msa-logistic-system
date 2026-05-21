@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -14,7 +14,8 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
 import { DocumentsPanel } from '../DocumentsPanel';
 import { ContractsPanel } from '../ContractsPanel';
-import { formatAED, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 const schema = z.object({
   name: z.string().min(1), phone: z.string().optional(),
@@ -189,21 +190,21 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
                             {t.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm">{t.name}</div>
+                            <div className="font-medium text-sm capitalize">{t.name}</div>
                             <div className="text-xs text-muted-foreground truncate">
                               {t.unit_no ? `Unit ${t.unit_no}` : 'No unit assigned'}
                               {t.phone && <span className="ml-2">{t.phone}</span>}
                             </div>
                             {(t.total_balance ?? 0) > 0 && (
-                              <div className="text-xs text-red-600 font-medium">{formatAED(t.total_balance!)} total rental balance due</div>
+                              <div className="text-xs text-red-600 font-medium"><AedAmount amount={t.total_balance!} /> total rental balance due</div>
                             )}
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             {(t.annual_rent || t.monthly_rent) && (
                               <div className="text-right hidden sm:block">
                                 {t.payment_frequency === 'annual'
-                                  ? <div className="text-sm font-semibold">{formatAED(t.annual_rent!)}<span className="text-xs font-normal text-muted-foreground">/yr</span></div>
-                                  : <div className="text-sm font-semibold">{formatAED(t.monthly_rent!)}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
+                                  ? <div className="text-sm font-semibold"><AedAmount amount={t.annual_rent!} /><span className="text-xs font-normal text-muted-foreground">/yr</span></div>
+                                  : <div className="text-sm font-semibold"><AedAmount amount={t.monthly_rent!} /><span className="text-xs font-normal text-muted-foreground">/mo</span></div>
                                 }
                                 {t.end_date && <div className="text-xs text-muted-foreground">until {formatDate(t.end_date)}</div>}
                               </div>

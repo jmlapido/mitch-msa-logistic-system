@@ -1,5 +1,6 @@
-import { PrintHeader } from './PrintHeader';
-import { formatAED, monthLabel, formatDate } from '@/lib/utils';
+﻿import { PrintHeader } from './PrintHeader';
+import { monthLabel, formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 type Row = {
   tenant_name: string; unit_no: string; building_name: string;
@@ -68,8 +69,8 @@ export function ExpiringLeasesReportView({ rows, from, to }: Props) {
                     <td className="px-3 py-1.5 text-center"><span className={u.cls}>{u.label}</span></td>
                     <td className="px-3 py-1.5 text-right text-xs">
                       {isAnnual
-                        ? <>{formatAED(r.annual_rent)}<span className="text-muted-foreground">/yr</span></>
-                        : <>{formatAED(r.monthly_rent)}<span className="text-muted-foreground">/mo</span></>}
+                        ? <>{<AedAmount amount={r.annual_rent} />}<span className="text-muted-foreground">/yr</span></>
+                        : <>{<AedAmount amount={r.monthly_rent} />}<span className="text-muted-foreground">/mo</span></>}
                     </td>
                   </tr>
                 );

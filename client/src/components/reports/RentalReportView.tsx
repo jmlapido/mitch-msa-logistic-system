@@ -1,5 +1,6 @@
-import { PrintHeader } from './PrintHeader';
-import { formatAED, monthLabel, formatDate } from '@/lib/utils';
+﻿import { PrintHeader } from './PrintHeader';
+import { monthLabel, formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 type Row = {
   month: string; tenant_name: string; unit_no: string; building_name: string;
@@ -50,8 +51,8 @@ export function RentalReportView({ rows, buildingSummary, from, to }: Props) {
             {buildingSummary.map(b => (
               <tr key={b.building_name}>
                 <td className="px-3 py-1.5 font-medium">{b.building_name}</td>
-                <td className="px-3 py-1.5 text-right">{formatAED(b.total_expected)}</td>
-                <td className="px-3 py-1.5 text-right text-green-600">{formatAED(b.total_collected)}</td>
+                <td className="px-3 py-1.5 text-right">{<AedAmount amount={b.total_expected} />}</td>
+                <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={b.total_collected} />}</td>
                 <td className="px-3 py-1.5 text-right">
                   {b.total_expected > 0 ? `${Math.round((b.total_collected / b.total_expected) * 100)}%` : '—'}
                 </td>
@@ -66,8 +67,8 @@ export function RentalReportView({ rows, buildingSummary, from, to }: Props) {
             ))}
             <tr className="font-semibold bg-muted text-xs">
               <td className="px-3 py-1.5">Total</td>
-              <td className="px-3 py-1.5 text-right">{formatAED(grandExpected)}</td>
-              <td className="px-3 py-1.5 text-right text-green-600">{formatAED(grandCollected)}</td>
+              <td className="px-3 py-1.5 text-right">{<AedAmount amount={grandExpected} />}</td>
+              <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={grandCollected} />}</td>
               <td className="px-3 py-1.5 text-right">
                 {grandExpected > 0 ? `${Math.round((grandCollected / grandExpected) * 100)}%` : '—'}
               </td>
@@ -110,9 +111,9 @@ export function RentalReportView({ rows, buildingSummary, from, to }: Props) {
                   <td className="px-3 py-1.5">{r.building_name}</td>
                   <td className="px-3 py-1.5 font-medium">{r.unit_no}</td>
                   <td className="px-3 py-1.5">{r.tenant_name}</td>
-                  <td className="px-3 py-1.5 text-right">{formatAED(r.expected_rent)}</td>
-                  <td className="px-3 py-1.5 text-right">{r.amount_paid > 0 ? formatAED(r.amount_paid) : '—'}</td>
-                  <td className="px-3 py-1.5 text-right">{balance > 0 ? <span className="text-red-600">{formatAED(balance)}</span> : '—'}</td>
+                  <td className="px-3 py-1.5 text-right">{<AedAmount amount={r.expected_rent} />}</td>
+                  <td className="px-3 py-1.5 text-right">{r.amount_paid > 0 ? <AedAmount amount={r.amount_paid} /> : '—'}</td>
+                  <td className="px-3 py-1.5 text-right">{balance > 0 ? <span className="text-red-600">{<AedAmount amount={balance} />}</span> : '—'}</td>
                   <td className="px-3 py-1.5 text-center"><span className={s.cls}>{s.label}</span></td>
                   <td className="px-3 py-1.5 text-center">{formatDate(r.paid_date)}</td>
                 </tr>

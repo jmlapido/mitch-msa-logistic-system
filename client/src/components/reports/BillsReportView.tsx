@@ -1,5 +1,6 @@
-import { PrintHeader } from './PrintHeader';
-import { formatAED, monthLabel } from '@/lib/utils';
+﻿import { PrintHeader } from './PrintHeader';
+import { monthLabel } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 type Row = {
   month: string; category_name: string; category_icon: string; category_color: string;
@@ -48,16 +49,16 @@ export function BillsReportView({ rows, monthSummary, catSummary, from, to, buil
             {monthSummary.map(r => (
               <tr key={r.month}>
                 <td className="px-3 py-1.5 text-xs">{monthLabel(r.month)}</td>
-                <td className="px-3 py-1.5 text-right">{formatAED(r.total)}</td>
-                <td className="px-3 py-1.5 text-right text-green-600">{formatAED(r.paid)}</td>
-                <td className="px-3 py-1.5 text-right text-red-600">{formatAED(r.unpaid)}</td>
+                <td className="px-3 py-1.5 text-right">{<AedAmount amount={r.total} />}</td>
+                <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={r.paid} />}</td>
+                <td className="px-3 py-1.5 text-right text-red-600">{<AedAmount amount={r.unpaid} />}</td>
               </tr>
             ))}
             <tr className="font-semibold bg-muted">
               <td className="px-3 py-1.5 text-xs">Total</td>
-              <td className="px-3 py-1.5 text-right">{formatAED(grandTotal)}</td>
-              <td className="px-3 py-1.5 text-right text-green-600">{formatAED(grandPaid)}</td>
-              <td className="px-3 py-1.5 text-right text-red-600">{formatAED(grandTotal - grandPaid)}</td>
+              <td className="px-3 py-1.5 text-right">{<AedAmount amount={grandTotal} />}</td>
+              <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={grandPaid} />}</td>
+              <td className="px-3 py-1.5 text-right text-red-600">{<AedAmount amount={grandTotal - grandPaid} />}</td>
             </tr>
           </tbody>
         </table>
@@ -78,9 +79,9 @@ export function BillsReportView({ rows, monthSummary, catSummary, from, to, buil
             {catSummary.map(r => (
               <tr key={r.name}>
                 <td className="px-3 py-1.5 text-xs">{r.icon} {r.name}</td>
-                <td className="px-3 py-1.5 text-right">{formatAED(r.total)}</td>
-                <td className="px-3 py-1.5 text-right text-green-600">{formatAED(r.paid)}</td>
-                <td className="px-3 py-1.5 text-right text-red-600">{formatAED(r.total - r.paid)}</td>
+                <td className="px-3 py-1.5 text-right">{<AedAmount amount={r.total} />}</td>
+                <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={r.paid} />}</td>
+                <td className="px-3 py-1.5 text-right text-red-600">{<AedAmount amount={r.total - r.paid} />}</td>
               </tr>
             ))}
           </tbody>
@@ -111,7 +112,7 @@ export function BillsReportView({ rows, monthSummary, catSummary, from, to, buil
                     <div className="text-xs text-muted-foreground">{r.building_name}</div>
                   )}
                 </td>
-                <td className="px-3 py-1.5 text-right font-medium">{formatAED(r.amount)}</td>
+                <td className="px-3 py-1.5 text-right font-medium">{<AedAmount amount={r.amount} />}</td>
                 <td className="px-3 py-1.5 text-center">
                   <span className={r.status === 'paid' ? 'text-green-600' : 'text-red-600'}>{r.status}</span>
                 </td>

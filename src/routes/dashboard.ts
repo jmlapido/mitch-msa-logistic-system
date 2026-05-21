@@ -84,6 +84,24 @@ dashboard.get('/', async (c) => {
     GROUP BY b.id ORDER BY b.name
   `).bind(month).all();
 
+  const buildingOccupancy = await db.prepare(`
+    SELECT b.id as building_id, b.name as building_name, b.type,
+      COUNT(u.id) as total_units,
+      SUM(CASE WHEN (
+        EXISTS (SELECT 1 FROM leases l WHERE l.unit_id = u.id AND l.status = 'active')
+        OR EXISTS (SELECT 1 FROM tenants t WHERE t.unit_id = u.id)
+      ) THEN 1 ELSE 0 END) as occupied,
+      SUM(CASE WHEN NOT (
+        EXISTS (SELECT 1 FROM leases l WHERE l.unit_id = u.id AND l.status = 'active')
+        OR EXISTS (SELECT 1 FROM tenants t WHERE t.unit_id = u.id)
+      ) THEN 1 ELSE 0 END) as vacant
+    FROM buildings b
+    LEFT JOIN units u ON u.building_id = b.id
+    WHERE b.name != 'MSA Office'
+    GROUP BY b.id
+    ORDER BY b.name
+  `).all<{ building_id: number; building_name: string; type: string; total_units: number; occupied: number; vacant: number }>();
+
   const expiringLeases = await db.prepare(`
     SELECT c.id, t.id as tenant_id, c.end_date, ROUND(c.annual_rent/12,2) as monthly_rent,
       t.name as tenant_name, u.unit_no, b.name as building_name
@@ -125,6 +143,22 @@ dashboard.get('/', async (c) => {
     GROUP BY month
     ORDER BY month
   `).bind(month).all<{ month: string; total: number; unpaid: number }>();
+
+  const rentHistory = await db.prepare(`
+    SELECT rp.month,
+      COALESCE(SUM(CASE WHEN c.payment_frequency = 'monthly' OR c.payment_frequency IS NULL
+                        THEN ROUND(c.annual_rent/12,2) ELSE 0 END), 0) as due_monthly,
+      COALESCE(SUM(CASE WHEN (c.payment_frequency = 'monthly' OR c.payment_frequency IS NULL)
+                        AND rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected_monthly,
+      COALESCE(SUM(CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE 0 END), 0) as due_annual,
+      COALESCE(SUM(CASE WHEN c.payment_frequency = 'annual'
+                        AND rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected_annual
+    FROM rent_payments rp
+    JOIN contracts c ON rp.contract_id = c.id
+    WHERE rp.month >= strftime('%Y-%m', date(? || '-01', '-5 months'))
+    GROUP BY rp.month
+    ORDER BY rp.month
+  `).bind(month).all<{ month: string; due_monthly: number; collected_monthly: number; due_annual: number; collected_annual: number }>();
 
   const sponsorshipSummary = await db.prepare(`
     SELECT
@@ -185,7 +219,7 @@ dashboard.get('/', async (c) => {
       SELECT contract_id, SUM(amount) as total_paid
       FROM partner_payments GROUP BY contract_id
     ) pp ON pp.contract_id = pc.id
-    WHERE date(pc.end_date) BETWEEN date('now') AND date('now', '+90 days')
+    WHERE date(pc.end_date) BETWEEN date('now') AND date('now', '+60 days')
       AND p.is_archived = 0
     ORDER BY pc.end_date
     LIMIT 8
@@ -212,6 +246,7 @@ dashboard.get('/', async (c) => {
       rent: { collected: prevRentStats?.total_rent_collected ?? 0 },
     },
     billsHistory: billsHistory.results,
+    rentHistory: rentHistory.results,
     sponsorships: {
       totalContractValue: sponsorshipSummary?.total_contract_value ?? 0,
       collected: sponsorshipSummary?.total_collected ?? 0,
@@ -225,6 +260,7 @@ dashboard.get('/', async (c) => {
     upcomingBills: upcomingRows.results,
     rentByBuilding: rentByBuilding.results,
     expiringLeases: expiringLeases.results,
+    buildingOccupancy: buildingOccupancy.results,
   });
 });
 

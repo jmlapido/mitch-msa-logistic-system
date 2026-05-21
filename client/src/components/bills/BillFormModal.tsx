@@ -169,6 +169,25 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
             <Input {...register('particulars')} placeholder="e.g. FEWA, DU Mobile" />
             {errors.particulars && <p className="text-xs text-destructive">{errors.particulars.message}</p>}
           </div>
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="is_recurring"
+              checked={isRecurring}
+              onChange={e => {
+                const checked = e.target.checked;
+                setValue('is_recurring', checked);
+                const currentDay = watch('due_day');
+                if (checked && currentDay && Number(currentDay) > 28) {
+                  setValue('due_day', undefined);
+                }
+              }}
+              className="w-4 h-4 accent-primary cursor-pointer"
+            />
+            <label htmlFor="is_recurring" className="text-sm cursor-pointer select-none">
+              Recurring — due date repeats every month
+            </label>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Account No.</Label>
@@ -180,7 +199,7 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
                 <SelectTrigger><SelectValue placeholder="Select day" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No due date</SelectItem>
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                  {Array.from({ length: isRecurring ? 28 : 31 }, (_, i) => i + 1).map(d => (
                     <SelectItem key={d} value={String(d)}>
                       {d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'} of month
                     </SelectItem>
@@ -196,18 +215,6 @@ export function BillFormModal({ open, onClose, editing, month }: Props) {
           <div>
             <Label>Notes</Label>
             <Input {...register('notes')} />
-          </div>
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="is_recurring"
-              checked={isRecurring}
-              onChange={e => setValue('is_recurring', e.target.checked)}
-              className="w-4 h-4 accent-primary cursor-pointer"
-            />
-            <label htmlFor="is_recurring" className="text-sm cursor-pointer select-none">
-              Recurring — due date repeats every month
-            </label>
           </div>
           {!editing && pendingFile && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded px-2 py-1">

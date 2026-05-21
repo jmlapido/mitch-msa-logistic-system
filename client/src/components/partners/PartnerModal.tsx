@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Plus, Trash2, Phone, Mail, FileText, Download, Pencil, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -14,7 +14,8 @@ import {
   usePartnerDocuments, usePartnerMutations, type Partner, type PartnerContact, type PartnerContract,
 } from '@/lib/hooks/usePartners';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { formatAED, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 const contactSchema = z.object({
   name: z.string().min(1, 'Required'),
@@ -217,8 +218,8 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                           </span>
                         </div>
                         <p className="text-muted-foreground mt-0.5">{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
-                        <p>Expected: <span className="font-medium text-foreground">{formatAED(c.expected_amount)}</span></p>
-                        <p>Collected: <span className={`font-medium ${c.total_paid >= c.expected_amount ? 'text-green-600' : 'text-orange-500'}`}>{formatAED(c.total_paid)}</span></p>
+                        <p>Expected: <span className="font-medium text-foreground"><AedAmount amount={c.expected_amount} /></span></p>
+                        <p>Collected: <span className={`font-medium ${c.total_paid >= c.expected_amount ? 'text-green-600' : 'text-orange-500'}`}><AedAmount amount={c.total_paid} /></span></p>
                         {c.notes && <p className="italic text-muted-foreground">{c.notes}</p>}
                       </div>
                       {canEdit && (
@@ -272,7 +273,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                         {payments.map(p => (
                           <tr key={p.id} className="hover:bg-muted/20">
                             <td className="px-2 py-1.5">{formatDate(p.paid_date)}</td>
-                            <td className="px-2 py-1.5 text-right text-green-600 font-medium">{formatAED(p.amount)}</td>
+                            <td className="px-2 py-1.5 text-right text-green-600 font-medium"><AedAmount amount={p.amount} /></td>
                             <td className="px-2 py-1.5 capitalize">{p.payment_method}</td>
                             <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">
                               {p.contract_no ? `#${p.contract_no}` : `${formatDate(p.contract_start)} – ${formatDate(p.contract_end)}`}
@@ -487,7 +488,7 @@ function PaymentFormDialog({ open, onClose, partnerId, contracts, onSave }: {
               <SelectContent>
                 {contracts.map(c => (
                   <SelectItem key={c.id} value={String(c.id)}>
-                    {c.contract_no ? `#${c.contract_no} · ` : ''}{formatDate(c.start_date)} → {formatDate(c.end_date)} · {formatAED(c.expected_amount)}
+                    {c.contract_no ? `#${c.contract_no} · ` : ''}{formatDate(c.start_date)} → {formatDate(c.end_date)} · <AedAmount amount={c.expected_amount} />
                   </SelectItem>
                 ))}
               </SelectContent>

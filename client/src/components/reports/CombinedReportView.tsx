@@ -1,5 +1,6 @@
-import { PrintHeader } from './PrintHeader';
-import { formatAED, monthLabel } from '@/lib/utils';
+﻿import { PrintHeader } from './PrintHeader';
+import { monthLabel } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 type MonthSummary = { month: string; total: number; paid: number; unpaid: number };
@@ -40,7 +41,7 @@ export function CombinedReportView({ monthSummary, rentMonthly, from, to }: Prop
         ].map(c => (
           <div key={c.label} className="bg-card border rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">{c.label}</p>
-            <p className={`text-base font-bold ${c.color}`}>{formatAED(c.value)}</p>
+            <p className={`text-base font-bold ${c.color}`}>{<AedAmount amount={c.value} />}</p>
           </div>
         ))}
       </div>
@@ -52,7 +53,7 @@ export function CombinedReportView({ monthSummary, rentMonthly, from, to }: Prop
             <BarChart data={chartData}>
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v: number) => formatAED(v)} />
+              <Tooltip formatter={(v: number) => <AedAmount amount={v} />} />
               <Legend />
               <Bar dataKey="Bills" fill="#f87171" />
               <Bar dataKey="Rent In" fill="#4ade80" />
@@ -78,9 +79,9 @@ export function CombinedReportView({ monthSummary, rentMonthly, from, to }: Prop
             return (
               <tr key={month}>
                 <td className="px-3 py-1.5">{monthLabel(month)}</td>
-                <td className="px-3 py-1.5 text-right text-red-600">{formatAED(bills?.total ?? 0)}</td>
-                <td className="px-3 py-1.5 text-right text-green-600">{formatAED(rent?.collected ?? 0)}</td>
-                <td className={`px-3 py-1.5 text-right font-semibold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatAED(net)}</td>
+                <td className="px-3 py-1.5 text-right text-red-600">{<AedAmount amount={bills?.total ?? 0} />}</td>
+                <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={rent?.collected ?? 0} />}</td>
+                <td className={`px-3 py-1.5 text-right font-semibold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{<AedAmount amount={net} />}</td>
               </tr>
             );
           })}

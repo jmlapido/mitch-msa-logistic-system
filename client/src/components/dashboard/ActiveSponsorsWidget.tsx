@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import type { DashboardData } from '@/lib/hooks/useDashboard';
 import { STATUS_BADGE, STATUS_LABEL } from './sponsorBadges';
 
@@ -28,14 +28,16 @@ export function ActiveSponsorsWidget({ sponsors }: Props) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{s.company_name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{s.payment_frequency}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {s.payment_frequency} · <AedAmount amount={s.expected_amount} />/yr
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_BADGE[s.status] ?? ''}`}>
                       {STATUS_LABEL[s.status] ?? s.status}
                     </span>
                     {!showBar && (
-                      <span className="text-sm font-semibold">{formatAED(s.total_paid)}</span>
+                      <span className="text-sm font-semibold"><AedAmount amount={s.total_paid} /></span>
                     )}
                     <span className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity text-xs">›</span>
                   </div>
@@ -43,7 +45,7 @@ export function ActiveSponsorsWidget({ sponsors }: Props) {
                 {showBar && (
                   <div>
                     <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
-                      <span>{formatAED(s.total_paid)} / {formatAED(s.expected_amount)}</span>
+                      <span><AedAmount amount={s.total_paid} /> / <AedAmount amount={s.expected_amount} /></span>
                       <span>{pct}%</span>
                     </div>
                     <div className="h-1 bg-muted rounded-full overflow-hidden">

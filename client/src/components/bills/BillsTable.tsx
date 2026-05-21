@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { MarkPaidPopover } from './MarkPaidPopover';
 import { AttachmentCell } from './AttachmentCell';
-import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import { useBillMutations, type BillEntry, type BillTemplate } from '@/lib/hooks/useBills';
 import { useAuth } from '@/lib/hooks/useAuth';
 
@@ -132,13 +132,13 @@ export function BillsTable({ entries, month, onEdit, initialStatusFilter, highli
           </span>
         </td>
         <td className="px-3 py-2">
-          <div className="text-sm font-medium">{entry.particulars}</div>
+          <div className="text-sm font-medium capitalize">{entry.particulars}</div>
           {entry.building_name && (
             <div className="text-xs text-muted-foreground">{entry.building_name}</div>
           )}
         </td>
         <td className="hidden sm:table-cell px-3 py-2 text-xs text-muted-foreground">{entry.account_no ?? '—'}</td>
-        <td className="px-3 py-2 text-right font-semibold">{formatAED(entry.amount)}</td>
+        <td className="px-3 py-2 text-right font-semibold"><AedAmount amount={entry.amount} /></td>
         <td className="hidden sm:table-cell px-3 py-2 text-center text-xs text-muted-foreground">
           {entry.due_day ? ordinal(entry.due_day) : '—'}
         </td>

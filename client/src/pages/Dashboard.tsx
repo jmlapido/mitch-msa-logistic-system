@@ -6,13 +6,16 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { BillsDonutChart } from '@/components/dashboard/BillsDonutChart';
 import { RentBarChart } from '@/components/dashboard/RentBarChart';
 import { BillsTrendChart } from '@/components/dashboard/BillsTrendChart';
+import { RentTrendChart } from '@/components/dashboard/RentTrendChart';
 import { SponsorshipStatCards } from '@/components/dashboard/SponsorshipStatCards';
 import { PriorityPaymentsWidget } from '@/components/dashboard/PriorityPaymentsWidget';
 import { UpcomingBillsWidget } from '@/components/dashboard/UpcomingBillsWidget';
 import { ExpiringLeasesWidget } from '@/components/dashboard/ExpiringLeasesWidget';
 import { ActiveSponsorsWidget } from '@/components/dashboard/ActiveSponsorsWidget';
 import { ExpiringSponsorsWidget } from '@/components/dashboard/ExpiringSponsorsWidget';
-import { currentMonth, monthLabel, formatAED } from '@/lib/utils';
+import { BuildingOccupancyWidget } from '@/components/dashboard/BuildingOccupancyWidget';
+import { currentMonth, monthLabel } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 function pctDelta(current: number, prev: number): string {
   if (prev === 0) return '—';
@@ -39,10 +42,10 @@ export default function Dashboard() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={() => changeMonth(-1)} className="p-1 hover:text-primary"><ChevronLeft size={18} /></button>
-          <span className="text-sm font-medium w-36 text-center">{monthLabel(month)}</span>
-          <button onClick={() => changeMonth(1)} className="p-1 hover:text-primary"><ChevronRight size={18} /></button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => changeMonth(-1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronLeft size={20} /></button>
+          <span className="text-base font-semibold w-36 text-center">{monthLabel(month)}</span>
+          <button onClick={() => changeMonth(1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronRight size={20} /></button>
         </div>
       </div>
 
@@ -56,31 +59,31 @@ export default function Dashboard() {
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 px-0.5">Bills &amp; Rent</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <StatCard
-                label="Total Bills" value={formatAED(data.bills.total)} icon={Receipt}
+                label="Total Bills" value={<AedAmount amount={data.bills.total} />} icon={Receipt}
                 delta={{ value: pctDelta(data.bills.total, data.prevMonth.bills.total), direction: pctDir(data.bills.total, data.prevMonth.bills.total) }}
                 onClick={() => navigate('/bills')}
               />
               <StatCard
-                label="Bills Paid" value={formatAED(data.bills.paid)} icon={CheckCircle} color="green"
+                label="Bills Paid" value={<AedAmount amount={data.bills.paid} />} icon={CheckCircle} color="green"
                 delta={{ value: data.bills.total > 0 ? `▲ ${Math.round((data.bills.paid / data.bills.total) * 100)}% paid` : '—', direction: data.bills.paid > 0 ? 'up' : 'neutral' }}
                 onClick={() => navigate('/bills?status=paid')}
               />
               <StatCard
-                label="Bills Unpaid" value={formatAED(data.bills.unpaid)} icon={XCircle} color="red"
+                label="Bills Unpaid" value={<AedAmount amount={data.bills.unpaid} />} icon={XCircle} color="red"
                 delta={{ value: pctDelta(data.bills.unpaid, data.prevMonth.bills.total - data.prevMonth.bills.paid), direction: data.bills.unpaid > 0 ? 'down' : 'neutral' }}
                 onClick={() => navigate('/bills?status=unpaid')}
               />
               <StatCard
-                label="Rent Due" value={formatAED(data.rent.due)} icon={Home}
+                label="Rent Due" value={<AedAmount amount={data.rent.due} />} icon={Home}
                 onClick={() => navigate('/rentals')}
               />
               <StatCard
-                label="Rent Collected" value={formatAED(data.rent.collected)} icon={TrendingUp} color="green"
+                label="Rent Collected" value={<AedAmount amount={data.rent.collected} />} icon={TrendingUp} color="green"
                 delta={{ value: data.rent.due > 0 ? `${Math.round((data.rent.collected / data.rent.due) * 100)}% collection rate` : '—', direction: pctDir(data.rent.collected, data.prevMonth.rent.collected) }}
                 onClick={() => navigate('/rentals')}
               />
               <StatCard
-                label="Overdue Rent" value={formatAED(data.rent.overdue)} icon={AlertTriangle}
+                label="Overdue Rent" value={<AedAmount amount={data.rent.overdue} />} icon={AlertTriangle}
                 color={data.rent.overdue > 0 ? 'red' : 'default'}
                 delta={{ value: data.rent.overdue > 0 ? '▼ needs collection' : '— all collected', direction: data.rent.overdue > 0 ? 'down' : 'neutral' }}
                 onClick={() => navigate('/rentals')}
@@ -97,23 +100,24 @@ export default function Dashboard() {
             <RentBarChart buildings={data.rentByBuilding} />
           </div>
 
-          {/* Area chart */}
-          <BillsTrendChart history={data.billsHistory} />
+          {/* Trend charts */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <BillsTrendChart history={data.billsHistory} />
+            <RentTrendChart history={data.rentHistory} />
+          </div>
 
           {/* Widget row 1 — Bills & Rent */}
           <div className="grid gap-4 md:grid-cols-3">
-            <PriorityPaymentsWidget items={data.priorityPayments} />
+            <PriorityPaymentsWidget items={data.priorityPayments} month={month} />
             <UpcomingBillsWidget items={data.upcomingBills} month={month} />
             <ExpiringLeasesWidget leases={data.expiringLeases} />
           </div>
 
-          {/* Widget row 2 — Sponsorships */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 px-0.5">Sponsorship Widgets</p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <ActiveSponsorsWidget sponsors={data.activeSponsors} />
-              <ExpiringSponsorsWidget sponsors={data.expiringSponsors} />
-            </div>
+          {/* Widget row 2 — Rentals & Sponsorships */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <BuildingOccupancyWidget buildings={data.buildingOccupancy} />
+            <ActiveSponsorsWidget sponsors={data.activeSponsors} />
+            <ExpiringSponsorsWidget sponsors={data.expiringSponsors} />
           </div>
 
         </div>

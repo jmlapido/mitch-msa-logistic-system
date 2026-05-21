@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import type { DashboardData } from '@/lib/hooks/useDashboard';
 
-type Props = { items: DashboardData['priorityPayments'] };
+type Props = { items: DashboardData['priorityPayments']; month: string };
 
 const RANK_LABEL: Record<number, { label: string; cls: string }> = {
   1: { label: 'Overdue',   cls: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
@@ -10,7 +10,13 @@ const RANK_LABEL: Record<number, { label: string; cls: string }> = {
   3: { label: 'Upcoming',  cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
 };
 
-export function PriorityPaymentsWidget({ items }: Props) {
+function dueDate(month: string, due_day: number | null): string | null {
+  if (due_day == null) return null;
+  const d = new Date(`${month}-${String(due_day).padStart(2, '0')}`);
+  return d.toLocaleDateString('en-AE', { day: 'numeric', month: 'short' });
+}
+
+export function PriorityPaymentsWidget({ items, month }: Props) {
   const navigate = useNavigate();
   return (
     <div className="bg-card border rounded-lg p-4">
@@ -21,6 +27,7 @@ export function PriorityPaymentsWidget({ items }: Props) {
         <div className="space-y-1">
           {items.map(item => {
             const badge = RANK_LABEL[item.priority_rank] ?? RANK_LABEL[3]!;
+            const date = dueDate(month, item.due_day);
             return (
               <div
                 key={item.entry_id}
@@ -29,11 +36,14 @@ export function PriorityPaymentsWidget({ items }: Props) {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm shrink-0">{item.category_icon}</span>
-                  <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{item.particulars}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{item.particulars}</p>
+                    {date && <p className="text-xs text-muted-foreground">{date}</p>}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>
-                  <span className="text-sm font-semibold">{formatAED(item.amount)}</span>
+                  <span className="text-sm font-semibold"><AedAmount amount={item.amount} /></span>
                   <span className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity text-xs">›</span>
                 </div>
               </div>

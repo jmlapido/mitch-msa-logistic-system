@@ -35,7 +35,7 @@ export function TopNav() {
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   return (
-    <nav className="bg-primary text-primary-foreground shadow-md no-print">
+    <nav className="bg-gradient-to-r from-[#3dd4ce] to-[#1a9994] dark:from-[#1e9e98] dark:to-[#0f6b67] text-white shadow-md no-print sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 flex items-center h-14 gap-4">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           {settings?.logo_url && (

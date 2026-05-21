@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, type ReactNode } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,10 +6,11 @@ import { BillsTable } from '@/components/bills/BillsTable';
 import { TotalsSidebar } from '@/components/bills/TotalsSidebar';
 import { BillFormModal } from '@/components/bills/BillFormModal';
 import { useBillEntries } from '@/lib/hooks/useBills';
-import { currentMonth, monthLabel, formatAED } from '@/lib/utils';
+import { currentMonth, monthLabel } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import type { BillTemplate } from '@/lib/hooks/useBills';
 
-function StatCard({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+function StatCard({ label, value, valueClass }: { label: string; value: ReactNode; valueClass?: string }) {
   return (
     <div className="border rounded-lg px-4 py-3 bg-card">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
@@ -51,19 +52,19 @@ export default function Bills() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">Bills</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <button onClick={() => changeMonth(-1)} className="hover:text-primary"><ChevronLeft size={16} /></button>
-            <span className="text-sm font-medium">{monthLabel(month)}</span>
-            <button onClick={() => changeMonth(1)} className="hover:text-primary"><ChevronRight size={16} /></button>
+          <div className="flex items-center gap-1 mt-1">
+            <button onClick={() => changeMonth(-1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronLeft size={20} /></button>
+            <span className="text-base font-semibold w-36 text-center">{monthLabel(month)}</span>
+            <button onClick={() => changeMonth(1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronRight size={20} /></button>
           </div>
         </div>
         <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Bill</Button>
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-5">
-        <StatCard label="Total" value={formatAED(grand.total)} />
-        <StatCard label="Paid" value={formatAED(grand.paid)} valueClass="text-green-600 dark:text-green-400" />
-        <StatCard label="Unpaid" value={formatAED(grand.unpaid)} valueClass={grand.unpaid > 0 ? 'text-red-600 dark:text-red-400' : undefined} />
+        <StatCard label="Total" value={<AedAmount amount={grand.total} />} />
+        <StatCard label="Paid" value={<AedAmount amount={grand.paid} />} valueClass="text-green-600 dark:text-green-400" />
+        <StatCard label="Unpaid" value={<AedAmount amount={grand.unpaid} />} valueClass={grand.unpaid > 0 ? 'text-red-600 dark:text-red-400' : undefined} />
       </div>
 
       {isLoading ? (

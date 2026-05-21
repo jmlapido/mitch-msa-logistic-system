@@ -1,14 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Check, Phone, Mail, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRentPayments, useBuildings, useRentalMutations, usePaymentEntries, type RentPayment, type PaymentEntry } from '@/lib/hooks/useRentals';
 import { ContractsPanel } from '../ContractsPanel';
-import { currentMonth, monthLabel, formatAED, formatDate } from '@/lib/utils';
+import { currentMonth, monthLabel, formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 
 function dueDateColor(dateStr: string, status: string): string {
   if (status === 'collected') return 'text-muted-foreground';
@@ -71,10 +71,10 @@ export function PaymentsTab() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <button onClick={() => changeMonth(-1)} className="hover:text-primary"><ChevronLeft size={16} /></button>
-          <span className="text-sm font-medium w-32 text-center">{monthLabel(month)}</span>
-          <button onClick={() => changeMonth(1)} className="hover:text-primary"><ChevronRight size={16} /></button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => changeMonth(-1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronLeft size={20} /></button>
+          <span className="text-base font-semibold w-36 text-center">{monthLabel(month)}</span>
+          <button onClick={() => changeMonth(1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronRight size={20} /></button>
         </div>
         <select value={buildingFilter ?? ''} onChange={e => setBuildingFilter(e.target.value ? Number(e.target.value) : undefined)}
           className="text-xs px-2 py-1 rounded border bg-background border-border">
@@ -84,10 +84,10 @@ export function PaymentsTab() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <StatCard label="Expected" value={formatAED(totalExpected)} />
-        <StatCard label="Collected" value={formatAED(totalCollected)} valueClass="text-green-600" />
-        <StatCard label="Pending" value={formatAED(totalPending)} valueClass={totalPending > 0 ? 'text-yellow-600' : undefined} />
-        <StatCard label="Total Overdue" value={formatAED(totalOverdue)} valueClass={totalOverdue > 0 ? 'text-red-600' : undefined} />
+        <StatCard label="Expected" value={<AedAmount amount={totalExpected} />} />
+        <StatCard label="Collected" value={<AedAmount amount={totalCollected} />} valueClass="text-green-600" />
+        <StatCard label="Pending" value={<AedAmount amount={totalPending} />} valueClass={totalPending > 0 ? 'text-yellow-600' : undefined} />
+        <StatCard label="Total Overdue" value={<AedAmount amount={totalOverdue} />} valueClass={totalOverdue > 0 ? 'text-red-600' : undefined} />
       </div>
 
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
@@ -101,7 +101,7 @@ export function PaymentsTab() {
                 <div key={bid} className="border rounded-lg overflow-hidden">
                   <div className="bg-muted px-3 py-2 flex justify-between items-center text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     <span>{group.name}</span>
-                    <span><span className="text-green-600">{formatAED(groupCollected)}</span> / {formatAED(groupExpected)}</span>
+                    <span><span className="text-green-600"><AedAmount amount={groupCollected} /></span> / <AedAmount amount={groupExpected} /></span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -129,22 +129,22 @@ export function PaymentsTab() {
                                   onClick={() => setTenantDetail(p)}
                                   className="text-primary hover:underline text-left"
                                 >
-                                  {p.tenant_name}
+                                  <span className="capitalize">{p.tenant_name}</span>
                                 </button>
                               </td>
-                              <td className="px-3 py-2 text-right text-xs">{formatAED(p.expected_rent)}</td>
+                              <td className="px-3 py-2 text-right text-xs"><AedAmount amount={p.expected_rent} /></td>
                               <td className="hidden sm:table-cell px-3 py-2 text-right">
-                                {p.status === 'collected' && <span className="text-green-600">{formatAED(p.amount_paid)}</span>}
+                                {p.status === 'collected' && <span className="text-green-600"><AedAmount amount={p.amount_paid} /></span>}
                                 {p.status === 'partial' && (
-                                  <span className="text-orange-600 text-xs">{formatAED(p.amount_paid)} <span className="text-muted-foreground">/ {formatAED(p.expected_rent)}</span></span>
+                                  <span className="text-orange-600 text-xs"><AedAmount amount={p.amount_paid} /> <span className="text-muted-foreground">/ <AedAmount amount={p.expected_rent} /></span></span>
                                 )}
                                 {p.status !== 'collected' && p.status !== 'partial' && <span className="text-muted-foreground">—</span>}
                               </td>
                               <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
-                                {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium">{formatAED(p.tenant_overdue)}</span> : '—'}
+                                {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium"><AedAmount amount={p.tenant_overdue} /></span> : '—'}
                               </td>
                               <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
-                                {(p.balance ?? 0) > 0 ? <span className="text-red-600 font-semibold">{formatAED(p.balance)}</span> : <span className="text-green-600">—</span>}
+                                {(p.balance ?? 0) > 0 ? <span className="text-red-600 font-semibold"><AedAmount amount={p.balance} /></span> : <span className="text-green-600">—</span>}
                               </td>
                               <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">{formatDate(p.paid_date)}</td>
                               <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">
@@ -198,7 +198,7 @@ export function PaymentsTab() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">{amountLabel}</span>
-                        <span className={`font-medium ${amountColor}`}>{formatAED(amount)}</span>
+                        <span className={`font-medium ${amountColor}`}><AedAmount amount={amount} /></span>
                       </div>
                     </div>
                   );
@@ -215,8 +215,8 @@ export function PaymentsTab() {
                     <div key={b.name} className="text-xs">
                       <p className="font-medium truncate max-w-[180px]">{b.name}</p>
                       <div className="flex justify-between text-muted-foreground">
-                        <span className="text-green-600">{formatAED(b.collected)}</span>
-                        <span>{formatAED(b.expected)}</span>
+                        <span className="text-green-600"><AedAmount amount={b.collected} /></span>
+                        <span><AedAmount amount={b.expected} /></span>
                       </div>
                     </div>
                   ))}
@@ -230,7 +230,7 @@ export function PaymentsTab() {
       <Dialog open={!!tenantDetail} onOpenChange={v => !v && setTenantDetail(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{tenantDetail?.tenant_name}</DialogTitle>
+            <DialogTitle className="capitalize">{tenantDetail?.tenant_name}</DialogTitle>
           </DialogHeader>
           {tenantDetail && (
             <div className="space-y-4">
@@ -260,7 +260,7 @@ export function PaymentsTab() {
   );
 }
 
-function StatCard({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+function StatCard({ label, value, valueClass }: { label: string; value: ReactNode; valueClass?: string }) {
   return (
     <div className="border rounded-lg px-4 py-3 bg-card">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
@@ -335,66 +335,79 @@ function PaymentPopover({
   const totalPaid = entries.reduce((s, e) => s + e.amount, 0);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLE[payment.status] ?? ''}`}>
-          {payment.status}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 p-3 space-y-2">
-        <p className="text-xs font-semibold">Unit {payment.unit_no} — {monthLabel(payment.month)}</p>
+    <>
+      <button
+        className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLE[payment.status] ?? ''}`}
+        onClick={() => setOpen(true)}
+      >
+        {payment.status}
+      </button>
 
-        {loadingEntries && <p className="text-xs text-muted-foreground">Loading…</p>}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Unit {payment.unit_no} — {monthLabel(payment.month)}</DialogTitle>
+            <p className="text-xs text-muted-foreground capitalize">{payment.tenant_name} · {payment.building_name}</p>
+          </DialogHeader>
 
-        {entries.length > 0 && (
-          <div className="space-y-0.5">
-            {entries.map(e => (
-              <div key={e.id} className="flex items-center justify-between text-xs py-1 border-b last:border-0">
-                <div className="flex flex-col">
-                  <span className="text-foreground">{formatDate(e.paid_date)} · <span className="capitalize">{e.payment_method ?? '—'}</span></span>
-                  {e.receipt_no && <span className="text-muted-foreground">#{e.receipt_no}</span>}
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">{formatAED(e.amount)}</span>
-                  <button onClick={() => handleDelete(e)} className="text-red-400 hover:text-red-600 ml-1 leading-none">✕</button>
+          <div className="space-y-3">
+            {loadingEntries && <p className="text-xs text-muted-foreground">Loading…</p>}
+
+            {entries.length > 0 && (
+              <div className="space-y-0.5">
+                {entries.map(e => (
+                  <div key={e.id} className="flex items-center justify-between text-xs py-1.5 border-b last:border-0">
+                    <div className="flex flex-col">
+                      <span className="text-foreground">{formatDate(e.paid_date)} · <span className="capitalize">{e.payment_method ?? '—'}</span></span>
+                      {e.receipt_no && <span className="text-muted-foreground">#{e.receipt_no}</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium"><AedAmount amount={e.amount} /></span>
+                      <button onClick={() => handleDelete(e)} className="text-red-400 hover:text-red-600 leading-none">✕</button>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-between text-xs font-semibold pt-1">
+                  <span>Total paid</span>
+                  <span className={totalPaid >= payment.expected_rent ? 'text-green-600' : 'text-orange-600'}>
+                    <AedAmount amount={totalPaid} /> / <AedAmount amount={payment.expected_rent} />
+                  </span>
                 </div>
               </div>
-            ))}
-            <div className="flex justify-between text-xs font-semibold pt-1">
-              <span>Total paid</span>
-              <span className={totalPaid >= payment.expected_rent ? 'text-green-600' : 'text-orange-600'}>
-                {formatAED(totalPaid)} / {formatAED(payment.expected_rent)}
-              </span>
-            </div>
-          </div>
-        )}
+            )}
 
-        <div className="border-t pt-2 space-y-2">
-          <p className="text-[10px] font-semibold uppercase text-muted-foreground tracking-wide">Add Payment</p>
-          <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} onFocus={e => e.target.select()} type="number" className="mt-0.5 h-7 text-xs" /></div>
-          <div><Label className="text-xs">Date</Label><Input value={date} onChange={e => setDate(e.target.value)} type="date" className="mt-0.5 h-7 text-xs" /></div>
-          <div>
-            <Label className="text-xs">Method</Label>
-            <div className="flex gap-1 mt-0.5">
-              {(['cash', 'cheque'] as const).map(m => (
-                <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                  className={`flex-1 text-xs py-1 rounded border capitalize transition-colors ${
-                    paymentMethod === m
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                  }`}>
-                  {m}
-                </button>
-              ))}
+            <div className="border-t pt-3 space-y-3">
+              <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Add Payment</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} onFocus={e => e.target.select()} type="number" className="mt-1 h-8 text-xs" /></div>
+                <div><Label className="text-xs">Date</Label><Input value={date} onChange={e => setDate(e.target.value)} type="date" className="mt-1 h-8 text-xs" /></div>
+              </div>
+              <div>
+                <Label className="text-xs">Method</Label>
+                <div className="flex gap-2 mt-1">
+                  {(['cash', 'cheque'] as const).map(m => (
+                    <button key={m} type="button" onClick={() => setPaymentMethod(m)}
+                      className={`flex-1 text-xs py-1.5 rounded border capitalize transition-colors ${
+                        paymentMethod === m
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                      }`}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label className="text-xs">Receipt No.</Label><Input value={receipt} onChange={e => setReceipt(e.target.value)} className="mt-1 h-8 text-xs" /></div>
+                <div><Label className="text-xs">Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} className="mt-1 h-8 text-xs" placeholder="Optional" /></div>
+              </div>
+              <Button className="w-full" onClick={handleAdd} disabled={submitting}>
+                <Check size={14} className="mr-1.5" /> Record Payment
+              </Button>
             </div>
           </div>
-          <div><Label className="text-xs">Receipt No.</Label><Input value={receipt} onChange={e => setReceipt(e.target.value)} className="mt-0.5 h-7 text-xs" /></div>
-          <div><Label className="text-xs">Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} className="mt-0.5 h-7 text-xs" placeholder="Optional" /></div>
-          <Button size="sm" className="w-full" onClick={handleAdd} disabled={submitting}>
-            <Check size={12} className="mr-1" /> Record Payment
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

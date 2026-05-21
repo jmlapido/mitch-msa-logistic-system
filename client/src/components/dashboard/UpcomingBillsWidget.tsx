@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { formatAED } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import type { DashboardData } from '@/lib/hooks/useDashboard';
 
 function ordinal(n: number): string {
@@ -35,7 +35,7 @@ export function UpcomingBillsWidget({ items, month: _month }: Props) {
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 {item.due_day && <span className="text-xs text-muted-foreground">{ordinal(item.due_day)}</span>}
-                <span className="text-sm font-semibold">{formatAED(item.amount)}</span>
+                <span className="text-sm font-semibold"><AedAmount amount={item.amount} /></span>
                 <span className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity text-xs">›</span>
               </div>
             </div>

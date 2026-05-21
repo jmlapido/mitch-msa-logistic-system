@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useUnits, useBuildings, useRentalMutations, type Unit } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { DocumentsPanel } from '../DocumentsPanel';
-import { formatAED, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { AedAmount } from '@/components/ui/AedAmount';
 import { api } from '@/lib/api';
 
 const schema = z.object({
@@ -80,8 +81,8 @@ export function UnitsTab({ readonly = false }: { readonly?: boolean }) {
   }
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row">
-      <div className="flex-1 min-w-0">
+    <div>
+      <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-semibold">Units</h2>
           {canEdit && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Unit</Button>}
@@ -125,12 +126,12 @@ export function UnitsTab({ readonly = false }: { readonly?: boolean }) {
                         <tbody className="divide-y divide-border">
                           {group.units.map(u => (
                             <tr key={u.id}
-                              className={`hover:bg-muted/30 cursor-pointer ${selectedUnit?.id === u.id ? 'bg-muted/50' : ''}`}
-                              onClick={() => setSelectedUnit(selectedUnit?.id === u.id ? null : u)}>
+                              className="hover:bg-muted/30 cursor-pointer"
+                              onClick={() => setSelectedUnit(u)}>
                               <td className="px-3 py-2 font-medium">{u.unit_no}</td>
                               <td className="hidden sm:table-cell px-3 py-2 text-xs capitalize">{u.type}</td>
                               <td className="px-3 py-2 text-xs">{u.tenant_name ?? '—'}</td>
-                              <td className="px-3 py-2 text-xs text-right">{u.monthly_rent ? formatAED(u.monthly_rent) : '—'}</td>
+                              <td className="px-3 py-2 text-xs text-right">{u.monthly_rent ? <AedAmount amount={u.monthly_rent} /> : '—'}</td>
                               <td className="hidden sm:table-cell px-3 py-2 text-xs">{formatDate(u.lease_end)}</td>
                               <td className="px-3 py-2">
                                 <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_STYLE[u.occupancy_status] ?? ''}`}>
@@ -158,13 +159,33 @@ export function UnitsTab({ readonly = false }: { readonly?: boolean }) {
         )}
       </div>
 
-      {selectedUnit && (
-        <div className="w-full md:w-64 md:shrink-0 border rounded-lg p-4">
-          <h3 className="font-semibold text-sm mb-1">{selectedUnit.unit_no} — {selectedUnit.building_name}</h3>
-          <p className="text-xs text-muted-foreground mb-3 capitalize">{selectedUnit.type} · Floor {selectedUnit.floor ?? '—'}</p>
-          <DocumentsPanel entityType="unit" entityId={selectedUnit.id} />
-        </div>
-      )}
+      <Dialog open={!!selectedUnit} onOpenChange={v => !v && setSelectedUnit(null)}>
+        <DialogContent className="max-w-md">
+          {selectedUnit && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedUnit.unit_no} — {selectedUnit.building_name}</DialogTitle>
+                <p className="text-xs text-muted-foreground capitalize">{selectedUnit.type}{selectedUnit.floor ? ` · Floor ${selectedUnit.floor}` : ''}</p>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">Tenant</span>
+                  <span>{selectedUnit.tenant_name ?? '—'}</span>
+                  <span className="text-muted-foreground">Rent/mo</span>
+                  <span>{selectedUnit.monthly_rent ? <AedAmount amount={selectedUnit.monthly_rent} /> : '—'}</span>
+                  <span className="text-muted-foreground">Lease End</span>
+                  <span>{formatDate(selectedUnit.lease_end)}</span>
+                  <span className="text-muted-foreground">Status</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize w-fit ${STATUS_STYLE[selectedUnit.occupancy_status] ?? ''}`}>
+                    {selectedUnit.occupancy_status}
+                  </span>
+                </div>
+                <DocumentsPanel entityType="unit" entityId={selectedUnit.id} />
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {!readonly && (
         <Dialog key={editing ? `edit-${editing.id}` : 'new'} open={open} onOpenChange={v => !v && setOpen(false)}>
