@@ -37,7 +37,7 @@ export function SponsorshipStatCards({ sponsorships: s }: Props) {
           value={formatAED(s.pending)}
           icon={Clock}
           color="yellow"
-          delta={{ value: `${s.activeCount - (s.overdue > 0 ? 1 : 0)} partial/pending`, direction: 'neutral' }}
+          delta={{ value: '— outstanding balance', direction: 'neutral' }}
           onClick={() => navigate('/partners')}
         />
         <StatCard
