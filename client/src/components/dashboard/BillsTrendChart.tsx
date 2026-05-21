@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { formatAED } from '@/lib/utils';
@@ -12,14 +13,17 @@ function shortMonth(m: string): string {
 
 export function BillsTrendChart({ history }: Props) {
   const navigate = useNavigate();
+  const uid = useId().replace(/:/g, '');
+  const gradTotalId = `gradTotal-${uid}`;
+  const gradUnpaidId = `gradUnpaid-${uid}`;
+
+  if (!history?.length) return null;
 
   const data = history.map(h => ({
     month: shortMonth(h.month),
     Total: h.total,
     Unpaid: h.unpaid,
   }));
-
-  if (data.length === 0) return null;
 
   return (
     <div
@@ -40,11 +44,11 @@ export function BillsTrendChart({ history }: Props) {
       <ResponsiveContainer width="100%" height={100}>
         <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
           <defs>
-            <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={gradTotalId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.3} />
               <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
             </linearGradient>
-            <linearGradient id="gradUnpaid" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={gradUnpaidId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.3} />
               <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
             </linearGradient>
@@ -56,8 +60,8 @@ export function BillsTrendChart({ history }: Props) {
             formatter={(value: number, name: string) => [formatAED(value), name]}
             contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }}
           />
-          <Area type="monotone" dataKey="Total"  stroke="#3b82f6" strokeWidth={2} fill="url(#gradTotal)"  dot={false} />
-          <Area type="monotone" dataKey="Unpaid" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5 3" fill="url(#gradUnpaid)" dot={false} />
+          <Area type="monotone" dataKey="Total"  stroke="#3b82f6" strokeWidth={2} fill={`url(#${gradTotalId})`}  dot={false} />
+          <Area type="monotone" dataKey="Unpaid" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="5 3" fill={`url(#${gradUnpaidId})`} dot={false} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
