@@ -62,7 +62,7 @@ export default function Dashboard() {
               />
               <StatCard
                 label="Bills Paid" value={formatAED(data.bills.paid)} icon={CheckCircle} color="green"
-                delta={{ value: data.bills.total > 0 ? `▲ ${Math.round((data.bills.paid / data.bills.total) * 100)}% paid` : '—', direction: 'up' }}
+                delta={{ value: data.bills.total > 0 ? `▲ ${Math.round((data.bills.paid / data.bills.total) * 100)}% paid` : '—', direction: data.bills.paid > 0 ? 'up' : 'neutral' }}
                 onClick={() => navigate('/bills?status=paid')}
               />
               <StatCard
@@ -72,12 +72,11 @@ export default function Dashboard() {
               />
               <StatCard
                 label="Rent Due" value={formatAED(data.rent.due)} icon={Home}
-                delta={{ value: '— monthly', direction: 'neutral' }}
                 onClick={() => navigate('/rentals')}
               />
               <StatCard
                 label="Rent Collected" value={formatAED(data.rent.collected)} icon={TrendingUp} color="green"
-                delta={{ value: data.rent.due > 0 ? `▲ ${Math.round((data.rent.collected / data.rent.due) * 100)}% rate` : '—', direction: 'up' }}
+                delta={{ value: data.rent.due > 0 ? `${pctDir(data.rent.collected, data.prevMonth.rent.collected) === 'up' ? '▲' : '▼'} ${Math.round((data.rent.collected / data.rent.due) * 100)}% rate` : '—', direction: pctDir(data.rent.collected, data.prevMonth.rent.collected) }}
                 onClick={() => navigate('/rentals')}
               />
               <StatCard
