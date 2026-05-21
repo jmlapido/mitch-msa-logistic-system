@@ -84,6 +84,15 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
     // Ensure the tenant's building group is not collapsed
     const groupKey = tenant.building_name ?? 'Unassigned';
     setCollapsedGroups(prev => ({ ...prev, [groupKey]: false }));
+    // Give the DOM time to render the expanded row, then scroll
+    setTimeout(() => {
+      const el = document.querySelector(`[data-tenant-id="${initialOpenId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-primary', 'ring-inset');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-primary', 'ring-inset'), 2500);
+      }
+    }, 100);
   }, [initialOpenId, tenants]);
 
   const buildings = [...new Map(units.map(u => [u.building_id, { id: u.building_id, name: u.building_name }])).values()]
@@ -167,7 +176,7 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
                 {!isCollapsed && (
                   <div className="divide-y">
                     {groupTenants.map(t => (
-                      <div key={t.id}>
+                      <div key={t.id} data-tenant-id={t.id}>
                         <div
                           className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/30 cursor-pointer"
                           onClick={() => setExpanded(expanded === t.id ? null : t.id)}

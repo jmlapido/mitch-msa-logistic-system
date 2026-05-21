@@ -46,5 +46,10 @@ module.exports = {
       },
     },
   },
+  safelist: [
+    'ring-2',
+    'ring-primary',
+    'ring-inset',
+  ],
   plugins: [],
 };
