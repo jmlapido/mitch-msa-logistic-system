@@ -1,8 +1,13 @@
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PartnersTab } from '@/components/partners/tabs/PartnersTab';
 import { PaymentsTab } from '@/components/partners/tabs/PaymentsTab';
 
 export default function Partners() {
+  const [searchParams] = useSearchParams();
+  const partnerParam = searchParams.get('partner');
+  const initialPartnerId = partnerParam ? Number(partnerParam) || null : null;
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">Sponsorships</h1>
@@ -11,7 +16,7 @@ export default function Partners() {
           <TabsTrigger value="partners">Sponsorships</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
         </TabsList>
-        <TabsContent value="partners"><PartnersTab /></TabsContent>
+        <TabsContent value="partners"><PartnersTab initialOpenId={initialPartnerId ?? undefined} /></TabsContent>
         <TabsContent value="payments"><PaymentsTab /></TabsContent>
       </Tabs>
     </div>

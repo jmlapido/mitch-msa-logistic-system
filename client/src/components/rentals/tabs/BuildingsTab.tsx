@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -18,13 +18,24 @@ const schema = z.object({
 });
 type F = z.infer<typeof schema>;
 
-export function BuildingsTab({ readonly = false }: { readonly?: boolean }) {
+export function BuildingsTab({ readonly = false, initialOpenId }: { readonly?: boolean; initialOpenId?: number }) {
   const { data: buildings = [], isLoading } = useBuildings();
   const { createBuilding, updateBuilding, deleteBuilding } = useRentalMutations();
   const { user } = useAuth();
   const [editing, setEditing] = useState<Building | null>(null);
   const [open, setOpen] = useState(false);
   const { register, handleSubmit, setValue, watch, reset, formState: { isSubmitting } } = useForm<F>({ resolver: zodResolver(schema) });
+
+  // When deep-linked with ?building=id, scroll to and highlight that building card
+  useEffect(() => {
+    if (!initialOpenId || !buildings.length) return;
+    const el = document.querySelector(`[data-building-id="${initialOpenId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-primary');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2500);
+    }
+  }, [initialOpenId, buildings]);
 
   function openAdd() { reset({}); setEditing(null); setOpen(true); }
   function openEdit(b: Building) { reset({ name: b.name, type: b.type as F['type'], address: b.address, notes: b.notes }); setEditing(b); setOpen(true); }
@@ -55,7 +66,7 @@ export function BuildingsTab({ readonly = false }: { readonly?: boolean }) {
       {isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {buildings.map(b => (
-            <div key={b.id} className="border rounded-lg p-4 bg-card">
+            <div key={b.id} data-building-id={b.id} className="border rounded-lg p-4 bg-card">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
                   <Building2 size={18} className="text-primary shrink-0" />

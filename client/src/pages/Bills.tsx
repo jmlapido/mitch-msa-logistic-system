@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BillsTable } from '@/components/bills/BillsTable';
 import { TotalsSidebar } from '@/components/bills/TotalsSidebar';
@@ -18,6 +19,10 @@ function StatCard({ label, value, valueClass }: { label: string; value: string; 
 }
 
 export default function Bills() {
+  const [searchParams] = useSearchParams();
+  const statusParam = searchParams.get('status');
+  const initialStatusFilter = useRef<string>((statusParam === 'paid' || statusParam === 'unpaid') ? statusParam : 'all');
+  const highlightEntryId = useRef<number | null>(Number(searchParams.get('highlight')) || null);
   const [month, setMonth] = useState(currentMonth());
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<BillTemplate | null>(null);
@@ -66,7 +71,13 @@ export default function Bills() {
       ) : (
         <div className="flex flex-col-reverse gap-6 md:flex-row">
           <div className="flex-1 min-w-0">
-            <BillsTable entries={entries} month={month} onEdit={openEdit} />
+            <BillsTable
+              entries={entries}
+              month={month}
+              onEdit={openEdit}
+              initialStatusFilter={initialStatusFilter.current}
+              highlightEntryId={highlightEntryId.current}
+            />
           </div>
           <TotalsSidebar entries={entries} month={month} />
         </div>

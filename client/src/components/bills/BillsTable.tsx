@@ -12,6 +12,8 @@ type Props = {
   entries: BillEntry[];
   month: string;
   onEdit: (template: BillTemplate) => void;
+  initialStatusFilter?: string;
+  highlightEntryId?: number | null;
 };
 
 const CHIPS = [
@@ -38,12 +40,22 @@ function GroupHeader({ icon, label, count }: { icon: React.ReactNode; label: str
   );
 }
 
-export function BillsTable({ entries, month, onEdit }: Props) {
+export function BillsTable({ entries, month, onEdit, initialStatusFilter, highlightEntryId }: Props) {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter ?? 'all');
   const [catFilter, setCatFilter] = useState<string>('all');
   const [buildingFilter, setBuildingFilter] = useState<string>('all');
   useEffect(() => { setBuildingFilter('all'); }, [month]);
+
+  useEffect(() => {
+    if (!highlightEntryId || !entries || entries.length === 0) return;
+    const el = document.querySelector(`[data-entry-id="${highlightEntryId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-primary');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2500);
+    }
+  }, [highlightEntryId, entries]);
   const { deleteTemplate } = useBillMutations(month);
   const { user } = useAuth();
 
@@ -112,7 +124,7 @@ export function BillsTable({ entries, month, onEdit }: Props) {
 
   function BillRow({ entry }: { entry: BillEntry }) {
     return (
-      <tr key={entry.entry_id} className="hover:bg-muted/30 transition-colors">
+      <tr key={entry.entry_id} data-entry-id={entry.entry_id} className="hover:bg-muted/30 transition-colors">
         <td className="px-3 py-2">
           <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium"
             style={{ background: entry.category_color + '22', color: entry.category_color }}>

@@ -42,7 +42,7 @@ function isArchivable(p: Partner) {
   return p.status === 'no_contract' || (!!p.contract_end && p.contract_end < today);
 }
 
-export function PartnersTab() {
+export function PartnersTab({ initialOpenId }: { initialOpenId?: number }) {
   const [showArchived, setShowArchived] = useState(false);
   const { data: partners = [], isLoading } = usePartners(showArchived);
   const { createPartner, updatePartner, deletePartner, uploadLogo, deleteLogo, archivePartner, unarchivePartner } = usePartnerMutations();
@@ -65,6 +65,13 @@ export function PartnersTab() {
   useEffect(() => {
     return () => { if (logoPreview) URL.revokeObjectURL(logoPreview); };
   }, [logoPreview]);
+
+  // When deep-linked with ?partner=id, open the detail modal for that partner
+  useEffect(() => {
+    if (!initialOpenId || !partners.length) return;
+    const match = partners.find(p => p.id === initialOpenId);
+    if (match) setDetail(match);
+  }, [initialOpenId, partners]);
 
   const livePartner = editing ? partners.find(p => p.id === editing.id) : null;
   const effectiveLogoKey = livePartner?.logo_key ?? editing?.logo_key;

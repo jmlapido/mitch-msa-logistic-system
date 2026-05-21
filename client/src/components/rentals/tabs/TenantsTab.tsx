@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -63,18 +63,28 @@ function LastEditedBy({ entityType, entityId }: { entityType: string; entityId: 
   );
 }
 
-export function TenantsTab() {
+export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
   const { data: tenants = [], isLoading } = useTenants();
   const { data: units = [] } = useUnits();
   const { createTenant, updateTenant, deleteTenant } = useRentalMutations();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Tenant | null>(null);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(initialOpenId ?? null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
   const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm<F>({ resolver: zodResolver(schema) });
+
+  // When deep-linked with ?tenant=id, scroll to and reveal that tenant once data loads
+  useEffect(() => {
+    if (!initialOpenId || !tenants.length) return;
+    const tenant = tenants.find(t => t.id === initialOpenId);
+    if (!tenant) return;
+    // Ensure the tenant's building group is not collapsed
+    const groupKey = tenant.building_name ?? 'Unassigned';
+    setCollapsedGroups(prev => ({ ...prev, [groupKey]: false }));
+  }, [initialOpenId, tenants]);
 
   const buildings = [...new Map(units.map(u => [u.building_id, { id: u.building_id, name: u.building_name }])).values()]
     .sort((a, b) => a.name.localeCompare(b.name));
