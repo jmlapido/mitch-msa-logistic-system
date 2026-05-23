@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -73,7 +74,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   const [durationAmt, setDurationAmt] = useState('');
   const [durationUnit, setDurationUnit] = useState<'days' | 'months'>('months');
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting, errors } } = useForm<F>({
+  const { register, handleSubmit, reset, watch, setValue, control, formState: { isSubmitting, errors } } = useForm<F>({
     resolver: zodResolver(schema),
   });
 
@@ -225,11 +226,17 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Start Date *</Label>
-                <Input {...register('start_date')} type="date" className="mt-1" />
+                <Controller control={control} name="start_date" render={({ field }) => (
+                  <DateInput {...field} className="mt-1" />
+                )} />
+                {errors.start_date && <p className="text-xs text-destructive">{errors.start_date.message}</p>}
               </div>
               <div>
                 <Label>End Date *</Label>
-                <Input {...register('end_date')} type="date" className="mt-1" />
+                <Controller control={control} name="end_date" render={({ field }) => (
+                  <DateInput {...field} className="mt-1" />
+                )} />
+                {errors.end_date && <p className="text-xs text-destructive">{errors.end_date.message}</p>}
               </div>
             </div>
             <div>
