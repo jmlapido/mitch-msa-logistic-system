@@ -95,6 +95,19 @@ router.delete('/:id/file', requireAdmin, async (c) => {
   return c.json({ ok: true });
 });
 
+router.delete('/:id', requireAdmin, async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  const row = await c.env.DB.prepare(
+    'SELECT file_key FROM pdc_cheques WHERE id = ?'
+  ).bind(id).first<{ file_key: string | null }>();
+  if (!row) return c.json({ error: 'Not found' }, 404);
+  if (row.file_key) await c.env.R2.delete(row.file_key).catch(() => {});
+  await c.env.DB.prepare('DELETE FROM pdc_cheques WHERE id = ?').bind(id).run();
+  await auditLog(c.env.DB, user, 'pdc.slot_deleted', 'pdc', id, `Deleted slot #${id}`);
+  return c.json({ ok: true });
+});
+
 router.get('/:id/file', async (c) => {
   const id = Number(c.req.param('id'));
   const row = await c.env.DB.prepare(
