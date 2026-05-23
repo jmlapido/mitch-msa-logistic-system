@@ -6,7 +6,14 @@ import type { Env } from '../types';
 const reports = new Hono<{ Bindings: Env }>();
 reports.use('*', requireAuth, requireAdmin);
 
-const EXPECTED_RENT = `CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE ROUND(c.annual_rent/12,2) END`;
+const EXPECTED_RENT = `CASE
+  WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
+  WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
+  WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
+  WHEN c.payment_frequency = 'custom'      THEN
+    ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+  ELSE ROUND(c.annual_rent / 12.0, 2)
+END`;
 
 // GET /api/reports?type=bills|rental|combined|outstanding|expiring&from=YYYY-MM&to=YYYY-MM&building_id=N
 reports.get('/', async (c) => {

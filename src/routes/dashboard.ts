@@ -20,14 +20,28 @@ dashboard.get('/', async (c) => {
 
   const rentStats = await db.prepare(`
     SELECT
-      COALESCE(SUM(ROUND(c.annual_rent/12,2)), 0) as total_rent_due,
+      COALESCE(SUM(CASE
+        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
+        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
+        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
+        WHEN c.payment_frequency = 'custom'      THEN
+          ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+        ELSE ROUND(c.annual_rent / 12.0, 2)
+      END), 0) as total_rent_due,
       COALESCE(SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as total_rent_collected
     FROM rent_payments rp JOIN contracts c ON rp.contract_id = c.id
     WHERE rp.month = ?
   `).bind(month).first<{ total_rent_due: number; total_rent_collected: number }>();
 
   const overdueRent = await db.prepare(`
-    SELECT COALESCE(SUM(ROUND(c.annual_rent/12,2)), 0) as overdue
+    SELECT COALESCE(SUM(CASE
+      WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
+      WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
+      WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
+      WHEN c.payment_frequency = 'custom'      THEN
+        ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+      ELSE ROUND(c.annual_rent / 12.0, 2)
+    END), 0) as overdue
     FROM contracts c
     WHERE date(c.end_date) >= date('now')
       AND date(c.start_date) <= ? || '-28'
@@ -74,7 +88,14 @@ dashboard.get('/', async (c) => {
     SELECT
       b.id as building_id, b.name as building_name,
       COUNT(rp.id) as unit_count,
-      COALESCE(SUM(ROUND(c.annual_rent/12,2)), 0) as expected,
+      COALESCE(SUM(CASE
+        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
+        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
+        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
+        WHEN c.payment_frequency = 'custom'      THEN
+          ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+        ELSE ROUND(c.annual_rent / 12.0, 2)
+      END), 0) as expected,
       COALESCE(SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected
     FROM buildings b
     JOIN units u ON u.building_id = b.id
@@ -128,7 +149,14 @@ dashboard.get('/', async (c) => {
 
   const prevRentStats = await db.prepare(`
     SELECT
-      COALESCE(SUM(ROUND(c.annual_rent/12,2)), 0) as total_rent_due,
+      COALESCE(SUM(CASE
+        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
+        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
+        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
+        WHEN c.payment_frequency = 'custom'      THEN
+          ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+        ELSE ROUND(c.annual_rent / 12.0, 2)
+      END), 0) as total_rent_due,
       COALESCE(SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as total_rent_collected
     FROM rent_payments rp JOIN contracts c ON rp.contract_id = c.id
     WHERE rp.month = ?
@@ -147,18 +175,26 @@ dashboard.get('/', async (c) => {
   const rentHistory = await db.prepare(`
     SELECT rp.month,
       COALESCE(SUM(CASE WHEN c.payment_frequency = 'monthly' OR c.payment_frequency IS NULL
-                        THEN ROUND(c.annual_rent/12,2) ELSE 0 END), 0) as due_monthly,
+                        THEN ROUND(c.annual_rent / 12.0, 2) ELSE 0 END), 0) as due_monthly,
       COALESCE(SUM(CASE WHEN (c.payment_frequency = 'monthly' OR c.payment_frequency IS NULL)
                         AND rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected_monthly,
       COALESCE(SUM(CASE WHEN c.payment_frequency = 'annual' THEN c.annual_rent ELSE 0 END), 0) as due_annual,
       COALESCE(SUM(CASE WHEN c.payment_frequency = 'annual'
-                        AND rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected_annual
+                        AND rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected_annual,
+      COALESCE(SUM(CASE WHEN c.payment_frequency = 'quarterly'
+                        THEN ROUND(c.annual_rent / 4.0, 2) ELSE 0 END), 0) as due_quarterly,
+      COALESCE(SUM(CASE WHEN c.payment_frequency = 'quarterly'
+                        AND rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected_quarterly,
+      COALESCE(SUM(CASE WHEN c.payment_frequency = 'semi-annual'
+                        THEN ROUND(c.annual_rent / 2.0, 2) ELSE 0 END), 0) as due_semi_annual,
+      COALESCE(SUM(CASE WHEN c.payment_frequency = 'semi-annual'
+                        AND rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected_semi_annual
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
     WHERE rp.month >= strftime('%Y-%m', date(? || '-01', '-5 months'))
     GROUP BY rp.month
     ORDER BY rp.month
-  `).bind(month).all<{ month: string; due_monthly: number; collected_monthly: number; due_annual: number; collected_annual: number }>();
+  `).bind(month).all<{ month: string; due_monthly: number; collected_monthly: number; due_annual: number; collected_annual: number; due_quarterly: number; collected_quarterly: number; due_semi_annual: number; collected_semi_annual: number }>();
 
   const sponsorshipSummary = await db.prepare(`
     SELECT
