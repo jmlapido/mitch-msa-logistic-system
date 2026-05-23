@@ -27,6 +27,7 @@ rentPayments.get('/', async (c) => {
         WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
         WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
         ELSE ROUND(c.annual_rent / 12.0, 2)
+        -- 'custom' frequency excluded above; handled in the separate INSERT below
       END,
       'pending'
     FROM contracts c
