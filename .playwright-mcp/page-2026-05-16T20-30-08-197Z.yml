@@ -1,0 +1,18 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - img "Logo" [ref=e7]
+      - heading "MSA Logistic" [level=1] [ref=e8]
+      - paragraph [ref=e9]: Sign in to continue
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - text: Email
+        - textbox "Email" [ref=e13]:
+          - /placeholder: admin@example.com
+          - text: admin@example.com
+      - generic [ref=e14]:
+        - text: Password
+        - textbox "Password" [ref=e15]: admin123
+      - paragraph [ref=e17]: Invalid credentials
+      - button "Sign in" [ref=e16] [cursor=pointer]

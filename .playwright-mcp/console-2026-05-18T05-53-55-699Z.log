@@ -1,0 +1,2 @@
+[     851ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://mitch-app.jmlapido.workers.dev/api/bill-entries?month=2026-05:0
+[    2297ms] [ERROR] Failed to load resource: the server responded with a status of 500 () @ https://mitch-app.jmlapido.workers.dev/api/bill-entries?month=2026-05:0

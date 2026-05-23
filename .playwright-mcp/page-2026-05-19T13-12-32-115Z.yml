@@ -1,0 +1,17 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - heading "MSA Logistic Bill and Rental Tracking" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Sign in to continue
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - text: Email
+        - textbox "Email" [ref=e11]:
+          - /placeholder: admin@example.com
+          - text: admin@example.com
+      - generic [ref=e12]:
+        - text: Password
+        - textbox "Password" [ref=e13]: admin123
+      - paragraph [ref=e15]: Internal Server Error
+      - button "Sign in" [ref=e14] [cursor=pointer]

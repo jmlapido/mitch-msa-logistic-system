@@ -1,0 +1,170 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e318]:
+        - img [ref=e320]
+        - generic [ref=e323]: Bill created
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e116]:
+          - link "Dashboard" [ref=e117] [cursor=pointer]:
+            - /url: /
+          - link "Bills" [ref=e118] [cursor=pointer]:
+            - /url: /bills
+          - link "Rentals" [ref=e119] [cursor=pointer]:
+            - /url: /rentals
+          - link "Reports" [ref=e120] [cursor=pointer]:
+            - /url: /reports
+        - generic [ref=e10]:
+          - button [ref=e11] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e121] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - heading "Bills" [level=1] [ref=e17]
+            - generic [ref=e18]:
+              - button [ref=e19] [cursor=pointer]:
+                - img [ref=e20]
+              - generic [ref=e22]: May 2026
+              - button [ref=e23] [cursor=pointer]:
+                - img [ref=e24]
+          - button "Add Bill" [ref=e26] [cursor=pointer]:
+            - img
+            - text: Add Bill
+        - generic [ref=e27]:
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - button "All" [ref=e31] [cursor=pointer]
+              - button "Unpaid" [ref=e32] [cursor=pointer]
+              - button "Due Soon" [ref=e33] [cursor=pointer]
+              - button "Overdue" [ref=e34] [cursor=pointer]
+              - button "Paid" [ref=e35] [cursor=pointer]
+              - combobox [ref=e36]:
+                - option "All categories" [selected]
+                - option "⚡ FEWA & Sewerage"
+                - option "❤️ Charity"
+                - option "🚗 Car"
+              - textbox "Search…" [ref=e37]
+            - table [ref=e39]:
+              - rowgroup [ref=e40]:
+                - row "Category Particulars Acct No. Amount Due Status Invoice" [ref=e122]:
+                  - columnheader "Category" [ref=e42]
+                  - columnheader "Particulars" [ref=e43]
+                  - columnheader "Acct No." [ref=e123]
+                  - columnheader "Amount" [ref=e44]
+                  - columnheader "Due" [ref=e124]
+                  - columnheader "Status" [ref=e45]
+                  - columnheader "Invoice" [ref=e46]
+                  - columnheader [ref=e47]
+              - rowgroup [ref=e48]:
+                - row "Recurring (3)" [ref=e324]:
+                  - cell "Recurring (3)" [ref=e325]:
+                    - generic [ref=e51]:
+                      - img [ref=e52]
+                      - text: Recurring
+                      - generic [ref=e57]: (3)
+                - row "⚡ FEWA & Sewerage FEWA Electricity EW-123456 AED 350.00 15th Overdue No invoice" [ref=e326]:
+                  - cell "⚡ FEWA & Sewerage" [ref=e327]:
+                    - generic [ref=e328]: ⚡ FEWA & Sewerage
+                  - cell "FEWA Electricity" [ref=e329]
+                  - cell "EW-123456" [ref=e330]
+                  - cell "AED 350.00" [ref=e331]
+                  - cell "15th" [ref=e332]
+                  - cell "Overdue" [ref=e333]:
+                    - button "Overdue" [ref=e334] [cursor=pointer]
+                  - cell "No invoice" [ref=e335]:
+                    - generic [ref=e336]:
+                      - generic [ref=e337]: No invoice
+                      - button "Upload invoice" [ref=e338] [cursor=pointer]:
+                        - img [ref=e339]
+                  - cell [ref=e341]:
+                    - generic [ref=e342]:
+                      - button [ref=e343] [cursor=pointer]:
+                        - img [ref=e344]
+                      - button [ref=e347] [cursor=pointer]:
+                        - img [ref=e348]
+                - row "❤️ Charity jabal sina 130817 AED 0.00 1th Overdue No invoice" [ref=e351]:
+                  - cell "❤️ Charity" [ref=e352]:
+                    - generic [ref=e353]: ❤️ Charity
+                  - cell "jabal sina" [ref=e354]
+                  - cell "130817" [ref=e355]
+                  - cell "AED 0.00" [ref=e356]
+                  - cell "1th" [ref=e357]
+                  - cell "Overdue" [ref=e358]:
+                    - button "Overdue" [ref=e359] [cursor=pointer]
+                  - cell "No invoice" [ref=e360]:
+                    - generic [ref=e361]:
+                      - generic [ref=e362]: No invoice
+                      - button "Upload invoice" [ref=e363] [cursor=pointer]:
+                        - img [ref=e364]
+                  - cell [ref=e366]:
+                    - generic [ref=e367]:
+                      - button [ref=e368] [cursor=pointer]:
+                        - img [ref=e369]
+                      - button [ref=e372] [cursor=pointer]:
+                        - img [ref=e373]
+                - row "🚗 Car adnoc 45311 AED 0.00 25th Due Soon No invoice" [ref=e376]:
+                  - cell "🚗 Car" [ref=e377]:
+                    - generic [ref=e378]: 🚗 Car
+                  - cell "adnoc" [ref=e379]
+                  - cell "45311" [ref=e380]
+                  - cell "AED 0.00" [ref=e381]
+                  - cell "25th" [ref=e382]
+                  - cell "Due Soon" [ref=e383]:
+                    - button "Due Soon" [ref=e384] [cursor=pointer]
+                  - cell "No invoice" [ref=e385]:
+                    - generic [ref=e386]:
+                      - generic [ref=e387]: No invoice
+                      - button "Upload invoice" [ref=e388] [cursor=pointer]:
+                        - img [ref=e389]
+                  - cell [ref=e391]:
+                    - generic [ref=e392]:
+                      - button [ref=e393] [cursor=pointer]:
+                        - img [ref=e394]
+                      - button [ref=e397] [cursor=pointer]:
+                        - img [ref=e398]
+            - paragraph [ref=e104]: 3 of 3 bills shown
+          - generic [ref=e105]:
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - generic [ref=e108]: Total
+                - generic [ref=e109]: AED 350.00
+              - generic [ref=e110]:
+                - generic [ref=e111]: Paid
+                - generic [ref=e112]: AED 0.00
+              - generic [ref=e113]:
+                - generic [ref=e114]: Unpaid
+                - generic [ref=e115]: AED 350.00
+            - generic [ref=e401]:
+              - heading "By Category" [level=3] [ref=e402]
+              - generic [ref=e403]:
+                - generic [ref=e404]:
+                  - generic [ref=e405]:
+                    - generic [ref=e406]: FEWA & Sewerage
+                    - generic [ref=e407]: AED 350.00
+                  - generic [ref=e408]:
+                    - generic [ref=e409]: ✓ AED 0.00
+                    - generic [ref=e410]: AED 350.00
+                - generic [ref=e411]:
+                  - generic [ref=e412]:
+                    - generic [ref=e413]: Charity
+                    - generic [ref=e414]: AED 0.00
+                  - generic [ref=e415]:
+                    - generic [ref=e416]: ✓ AED 0.00
+                    - generic [ref=e417]: AED 0.00
+                - generic [ref=e418]:
+                  - generic [ref=e419]:
+                    - generic [ref=e420]: Car
+                    - generic [ref=e421]: AED 0.00
+                  - generic [ref=e422]:
+                    - generic [ref=e423]: ✓ AED 0.00
+                    - generic [ref=e424]: AED 0.00

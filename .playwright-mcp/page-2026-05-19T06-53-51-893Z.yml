@@ -1,0 +1,76 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Bills" [ref=e12] [cursor=pointer]:
+            - /url: /bills
+          - link "Rentals" [ref=e13] [cursor=pointer]:
+            - /url: /rentals
+          - link "Reports" [ref=e14] [cursor=pointer]:
+            - /url: /reports
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e17] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - heading "Bills" [level=1] [ref=e22]
+            - generic [ref=e23]:
+              - button [active] [ref=e24] [cursor=pointer]:
+                - img [ref=e25]
+              - generic [ref=e27]: February 2026
+              - button [ref=e28] [cursor=pointer]:
+                - img [ref=e29]
+          - button "Add Bill" [ref=e31] [cursor=pointer]:
+            - img
+            - text: Add Bill
+        - generic [ref=e32]:
+          - generic [ref=e154]:
+            - generic [ref=e155]:
+              - button "All" [ref=e156] [cursor=pointer]
+              - button "Unpaid" [ref=e157] [cursor=pointer]
+              - button "Due Soon" [ref=e158] [cursor=pointer]
+              - button "Overdue" [ref=e159] [cursor=pointer]
+              - button "Paid" [ref=e160] [cursor=pointer]
+              - combobox [ref=e161]:
+                - option "All categories" [selected]
+              - textbox "Search…" [ref=e162]
+            - table [ref=e164]:
+              - rowgroup [ref=e165]:
+                - row "Category Particulars Acct No. Amount Due Status Invoice" [ref=e166]:
+                  - columnheader "Category" [ref=e167]
+                  - columnheader "Particulars" [ref=e168]
+                  - columnheader "Acct No." [ref=e169]
+                  - columnheader "Amount" [ref=e170]
+                  - columnheader "Due" [ref=e171]
+                  - columnheader "Status" [ref=e172]
+                  - columnheader "Invoice" [ref=e173]
+                  - columnheader [ref=e174]
+              - rowgroup [ref=e175]:
+                - row "No bills found" [ref=e176]:
+                  - cell "No bills found" [ref=e177]
+            - paragraph [ref=e178]: 0 of 0 bills shown
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]:
+                - generic [ref=e182]: Total
+                - generic [ref=e183]: AED 0.00
+              - generic [ref=e184]:
+                - generic [ref=e185]: Paid
+                - generic [ref=e186]: AED 0.00
+              - generic [ref=e187]:
+                - generic [ref=e188]: Unpaid
+                - generic [ref=e189]: AED 0.00
+            - heading "By Category" [level=3] [ref=e192]

@@ -1,0 +1,127 @@
+- generic:
+  - generic:
+    - region "Notifications alt+T"
+    - generic:
+      - navigation:
+        - generic:
+          - link:
+            - /url: /
+            - img
+            - generic: MSA Logistic
+          - generic:
+            - link:
+              - /url: /
+              - text: Dashboard
+            - link:
+              - /url: /bills
+              - text: Bills
+            - link:
+              - /url: /rentals
+              - text: Rentals
+            - link:
+              - /url: /reports
+              - text: Reports
+          - generic:
+            - button:
+              - img
+            - button:
+              - img
+              - text: Admin
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=1]: Bills
+              - generic:
+                - button:
+                  - img
+                - generic: January 2026
+                - button:
+                  - img
+            - button:
+              - img
+              - text: Add Bill
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - button: All
+                  - button: Unpaid
+                  - button: Due Soon
+                  - button: Overdue
+                  - button: Paid
+                  - combobox
+                  - textbox:
+                    - /placeholder: Search…
+                - generic:
+                  - table:
+                    - rowgroup:
+                      - row:
+                        - columnheader: Category
+                        - columnheader: Particulars
+                        - columnheader: Acct No.
+                        - columnheader: Amount
+                        - columnheader: Due
+                        - columnheader: Status
+                        - columnheader: Invoice
+                        - columnheader
+                    - rowgroup:
+                      - row:
+                        - cell: No bills found
+                - paragraph: 0 of 0 bills shown
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Total
+                  - generic: AED 0.00
+                - generic:
+                  - generic: Paid
+                  - generic: AED 0.00
+                - generic:
+                  - generic: Unpaid
+                  - generic: AED 0.00
+              - generic:
+                - generic:
+                  - heading [level=3]: By Category
+  - dialog "Add Bill" [ref=e318]:
+    - generic [ref=e319]:
+      - heading "Add Bill" [level=2] [ref=e320]
+      - paragraph [ref=e321]: January 2026
+    - generic [ref=e322]:
+      - generic [ref=e323]:
+        - text: Category *
+        - combobox [active] [ref=e324] [cursor=pointer]:
+          - generic: Select category
+          - img [ref=e325]
+        - combobox [ref=e327]
+      - generic [ref=e328]:
+        - text: Particulars *
+        - textbox "e.g. FEWA, DU Mobile" [ref=e329]
+      - generic [ref=e330]:
+        - generic [ref=e331]:
+          - text: Account No.
+          - textbox "Optional" [ref=e332]
+        - generic [ref=e333]:
+          - generic [ref=e334]: Due Date (repeats monthly)
+          - combobox [ref=e335] [cursor=pointer]:
+            - generic: No due date
+            - img [ref=e336]
+          - combobox [ref=e338]
+      - generic [ref=e339]:
+        - text: Amount (AED)
+        - spinbutton [ref=e340]
+      - generic [ref=e341]:
+        - text: Notes
+        - textbox [ref=e342]
+      - generic [ref=e343]:
+        - checkbox "Recurring — due date repeats every month" [checked] [ref=e344] [cursor=pointer]
+        - generic [ref=e345] [cursor=pointer]: Recurring — due date repeats every month
+      - generic [ref=e346]:
+        - button "Cancel" [ref=e347] [cursor=pointer]
+        - button "Attach Bill/Invoice" [ref=e348] [cursor=pointer]:
+          - img
+          - text: Attach Bill/Invoice
+        - button "Save" [ref=e349] [cursor=pointer]
+    - button "Close" [ref=e350] [cursor=pointer]:
+      - img [ref=e351]
+      - generic [ref=e354]: Close

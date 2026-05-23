@@ -1,0 +1,23 @@
+[    9596ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:271
+[    9659ms] [ERROR] Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:272:19945
+    at zb (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:38:16998)
+    at ZS (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:1571)
+    at VN (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:46001)
+    at BN (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:39766)
+    at J3 (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:39694)
+    at Vp (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:39547)
+    at Zg (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:35914)
+    at l_ (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:36717)
+    at ta (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:38:3274) @ https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:39
+[    9673ms] Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:272:19945
+    at zb (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:38:16998)
+    at ZS (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:1571)
+    at VN (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:46001)
+    at BN (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:39766)
+    at J3 (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:39694)
+    at Vp (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:39547)
+    at Zg (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:35914)
+    at l_ (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:40:36717)
+    at ta (https://mitch-app.jmlapido.workers.dev/assets/index-QHy3XkE8.js:38:3274)

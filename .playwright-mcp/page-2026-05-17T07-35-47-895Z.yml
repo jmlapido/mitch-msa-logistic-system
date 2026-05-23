@@ -1,0 +1,85 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Bills" [ref=e12] [cursor=pointer]:
+            - /url: /bills
+          - link "Rentals" [ref=e13] [cursor=pointer]:
+            - /url: /rentals
+          - link "Reports" [ref=e14] [cursor=pointer]:
+            - /url: /reports
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e17] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Rentals" [level=1] [ref=e20]
+        - generic [ref=e21]:
+          - tablist [ref=e22]:
+            - tab "Payments" [ref=e23] [cursor=pointer]
+            - tab "Tenants" [active] [selected] [ref=e24] [cursor=pointer]
+            - tab "Units" [ref=e25] [cursor=pointer]
+            - tab "Buildings" [ref=e26] [cursor=pointer]
+          - tabpanel "Tenants" [ref=e79]:
+            - generic [ref=e80]:
+              - generic [ref=e81]:
+                - heading "Tenants" [level=2] [ref=e82]
+                - generic [ref=e83]:
+                  - combobox [ref=e84]:
+                    - 'option "Sort: Name" [selected]'
+                    - 'option "Sort: Unit"'
+                    - 'option "Sort: Expiring First"'
+                  - button "Add Tenant" [ref=e85] [cursor=pointer]:
+                    - img
+                    - text: Add Tenant
+              - generic [ref=e86]:
+                - generic [ref=e87]:
+                  - generic [ref=e88] [cursor=pointer]:
+                    - img [ref=e89]
+                    - generic [ref=e91]: RIzal Park
+                    - generic [ref=e92]: · 1 tenant
+                  - generic [ref=e95] [cursor=pointer]:
+                    - img [ref=e96]
+                    - generic [ref=e98]: J
+                    - generic [ref=e99]:
+                      - generic [ref=e100]: jm
+                      - generic [ref=e101]: Unit 0123123
+                    - generic [ref=e102]:
+                      - generic [ref=e103]: No Lease
+                      - generic [ref=e104]:
+                        - button [ref=e105]:
+                          - img [ref=e106]
+                        - button [ref=e109]:
+                          - img [ref=e110]
+                - generic [ref=e113]:
+                  - generic [ref=e114] [cursor=pointer]:
+                    - img [ref=e115]
+                    - generic [ref=e117]: Saeed Plaza
+                    - generic [ref=e118]: · 1 tenant
+                  - generic [ref=e121] [cursor=pointer]:
+                    - img [ref=e122]
+                    - generic [ref=e124]: M
+                    - generic [ref=e125]:
+                      - generic [ref=e126]: mich
+                      - generic [ref=e127]: Unit 2123
+                    - generic [ref=e128]:
+                      - generic [ref=e129]:
+                        - generic [ref=e130]: AED 1,583.33/mo
+                        - generic [ref=e131]: until 4 May 2027
+                      - generic [ref=e132]: Active
+                      - generic [ref=e133]:
+                        - button [ref=e134]:
+                          - img [ref=e135]
+                        - button [ref=e138]:
+                          - img [ref=e139]

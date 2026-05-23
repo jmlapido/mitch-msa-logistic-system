@@ -1,0 +1,213 @@
+- generic:
+  - generic:
+    - region "Notifications alt+T"
+    - generic:
+      - navigation:
+        - generic:
+          - link:
+            - /url: /
+            - img
+            - generic: MSA Logistic
+          - generic:
+            - link:
+              - /url: /
+              - text: Dashboard
+            - link:
+              - /url: /bills
+              - text: Bills
+            - link:
+              - /url: /rentals
+              - text: Rentals
+            - link:
+              - /url: /reports
+              - text: Reports
+          - generic:
+            - button:
+              - img
+            - button:
+              - img
+              - text: Admin
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=1]: Bills
+              - generic:
+                - button:
+                  - img
+                - generic: May 2026
+                - button:
+                  - img
+            - button:
+              - img
+              - text: Add Bill
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - button: All
+                  - button: Unpaid
+                  - button: Due Soon
+                  - button: Overdue
+                  - button: Paid
+                  - combobox
+                  - textbox:
+                    - /placeholder: Search…
+                - generic:
+                  - table:
+                    - rowgroup:
+                      - row:
+                        - columnheader: Category
+                        - columnheader: Particulars
+                        - columnheader: Acct No.
+                        - columnheader: Amount
+                        - columnheader: Due
+                        - columnheader: Status
+                        - columnheader: Invoice
+                        - columnheader
+                    - rowgroup:
+                      - row:
+                        - cell:
+                          - generic:
+                            - img
+                            - text: Recurring
+                            - generic: (2)
+                      - row:
+                        - cell:
+                          - generic: ❤️ Charity
+                        - cell: jabal sina
+                        - cell: "130817"
+                        - cell: AED 0.00
+                        - cell: 1th
+                        - cell:
+                          - button: Overdue
+                        - cell:
+                          - generic:
+                            - generic: No invoice
+                            - button:
+                              - img
+                        - cell:
+                          - generic:
+                            - button:
+                              - img
+                            - button:
+                              - img
+                      - row:
+                        - cell:
+                          - generic: 🚗 Car
+                        - cell: adnoc
+                        - cell: "45311"
+                        - cell: AED 0.00
+                        - cell: 25th
+                        - cell:
+                          - button: Due Soon
+                        - cell:
+                          - generic:
+                            - generic: No invoice
+                            - button:
+                              - img
+                        - cell:
+                          - generic:
+                            - button:
+                              - img
+                            - button:
+                              - img
+                - paragraph: 2 of 2 bills shown
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Total
+                  - generic: AED 0.00
+                - generic:
+                  - generic: Paid
+                  - generic: AED 0.00
+                - generic:
+                  - generic: Unpaid
+                  - generic: AED 0.00
+              - generic:
+                - generic:
+                  - heading [level=3]: By Category
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Charity
+                        - generic: AED 0.00
+                      - generic:
+                        - generic: ✓ AED 0.00
+                        - generic: AED 0.00
+                    - generic:
+                      - generic:
+                        - generic: Car
+                        - generic: AED 0.00
+                      - generic:
+                        - generic: ✓ AED 0.00
+                        - generic: AED 0.00
+  - dialog:
+    - generic:
+      - heading [level=2]: Add Bill
+      - paragraph: May 2026
+    - generic:
+      - generic:
+        - text: Category *
+        - combobox [expanded]:
+          - generic: Select category
+          - img
+        - combobox
+      - generic:
+        - text: Particulars *
+        - textbox:
+          - /placeholder: e.g. FEWA, DU Mobile
+      - generic:
+        - generic:
+          - text: Account No.
+          - textbox:
+            - /placeholder: Optional
+        - generic:
+          - generic: Due Date (repeats monthly)
+          - combobox:
+            - generic: No due date
+            - img
+          - combobox
+      - generic:
+        - text: Amount (AED)
+        - spinbutton
+      - generic:
+        - text: Notes
+        - textbox
+      - generic:
+        - checkbox [checked]
+        - generic: Recurring — due date repeats every month
+      - generic:
+        - button: Cancel
+        - button:
+          - img
+          - text: Attach Bill/Invoice
+        - button: Save
+    - button:
+      - img
+      - generic: Close
+  - listbox [ref=e187]:
+    - option "⚡ FEWA & Sewerage" [active] [ref=e188]:
+      - generic [ref=e190]: ⚡ FEWA & Sewerage
+    - option "🌐 Internet" [ref=e191]:
+      - generic [ref=e193]: 🌐 Internet
+    - option "📱 Mobile" [ref=e194]:
+      - generic [ref=e196]: 📱 Mobile
+    - option "🔧 Maintenance" [ref=e197]:
+      - generic [ref=e199]: 🔧 Maintenance
+    - option "❤️ Charity" [ref=e200]:
+      - generic [ref=e202]: ❤️ Charity
+    - option "🚗 Car" [ref=e203]:
+      - generic [ref=e205]: 🚗 Car
+    - option "🛍️ Alsada Boutique" [ref=e206]:
+      - generic [ref=e208]: 🛍️ Alsada Boutique
+    - option "👤 Jassem" [ref=e209]:
+      - generic [ref=e211]: 👤 Jassem
+    - option "👤 Majed" [ref=e212]:
+      - generic [ref=e214]: 👤 Majed
+    - option "👤 Maryam" [ref=e215]:
+      - generic [ref=e217]: 👤 Maryam
+    - option "🏠 Villa" [ref=e218]:
+      - generic [ref=e220]: 🏠 Villa
+    - option "📋 Staff / Visas" [ref=e221]:
+      - generic [ref=e223]: 📋 Staff / Visas

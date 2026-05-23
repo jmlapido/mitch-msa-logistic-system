@@ -1,0 +1,2 @@
+[   29783ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://mitch-app.jmlapido.workers.dev/assets/index-B4ZtqWlw.js:301
+[   43235ms] [WARNING] Select is changing from uncontrolled to controlled. Components should not switch from controlled to uncontrolled (or vice versa). Decide between using a controlled or uncontrolled value for the lifetime of the component. @ https://mitch-app.jmlapido.workers.dev/assets/index-B4ZtqWlw.js:257

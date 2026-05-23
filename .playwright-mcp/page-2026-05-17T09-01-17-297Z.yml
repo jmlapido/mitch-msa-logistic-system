@@ -1,0 +1,147 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - button [ref=e11] [cursor=pointer]:
+            - img
+          - button [active] [ref=e12] [cursor=pointer]:
+            - img
+      - generic [ref=e161]:
+        - link "Dashboard" [ref=e162] [cursor=pointer]:
+          - /url: /
+        - link "Bills" [ref=e163] [cursor=pointer]:
+          - /url: /bills
+        - link "Rentals" [ref=e164] [cursor=pointer]:
+          - /url: /rentals
+        - link "Reports" [ref=e165] [cursor=pointer]:
+          - /url: /reports
+        - generic [ref=e166]:
+          - generic [ref=e167]: Admin · admin
+          - generic [ref=e168]:
+            - link "Settings" [ref=e169] [cursor=pointer]:
+              - /url: /settings
+            - button "Sign out" [ref=e170] [cursor=pointer]
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - heading "Dashboard" [level=1] [ref=e16]
+          - generic [ref=e17]:
+            - button [ref=e18] [cursor=pointer]:
+              - img [ref=e19]
+            - generic [ref=e21]: May 2026
+            - button [ref=e22] [cursor=pointer]:
+              - img [ref=e23]
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]:
+              - img [ref=e29]
+              - generic [ref=e32]:
+                - paragraph [ref=e33]: Total Bills
+                - paragraph [ref=e34]: AED 2,869.71
+            - generic [ref=e35]:
+              - img [ref=e37]
+              - generic [ref=e40]:
+                - paragraph [ref=e41]: Bills Paid
+                - paragraph [ref=e42]: AED 2,869.71
+            - generic [ref=e43]:
+              - img [ref=e45]
+              - generic [ref=e49]:
+                - paragraph [ref=e50]: Bills Unpaid
+                - paragraph [ref=e51]: AED 0.00
+            - generic [ref=e52]:
+              - img [ref=e54]
+              - generic [ref=e57]:
+                - paragraph [ref=e58]: Rent Due
+                - paragraph [ref=e59]: AED 1,583.33
+            - generic [ref=e60]:
+              - img [ref=e62]
+              - generic [ref=e65]:
+                - paragraph [ref=e66]: Rent Collected
+                - paragraph [ref=e67]: AED 0.00
+            - generic [ref=e68]:
+              - img [ref=e70]
+              - generic [ref=e72]:
+                - paragraph [ref=e73]: Overdue Rent
+                - paragraph [ref=e74]: AED 1,583.33
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - heading "Priority Payments" [level=3] [ref=e77]
+              - generic [ref=e78]:
+                - generic [ref=e79]:
+                  - generic [ref=e80]:
+                    - generic [ref=e81]: ⚡
+                    - paragraph [ref=e83]: FEWA
+                  - generic [ref=e84]:
+                    - generic [ref=e85]: Overdue
+                    - generic [ref=e86]: AED 0.00
+                - generic [ref=e87]:
+                  - generic [ref=e88]:
+                    - generic [ref=e89]: ⚡
+                    - paragraph [ref=e91]: Sewerage
+                  - generic [ref=e92]:
+                    - generic [ref=e93]: Overdue
+                    - generic [ref=e94]: AED 0.00
+                - generic [ref=e95]:
+                  - generic [ref=e96]:
+                    - generic [ref=e97]: ⚡
+                    - paragraph [ref=e99]: FEWA
+                  - generic [ref=e100]:
+                    - generic [ref=e101]: Overdue
+                    - generic [ref=e102]: AED 0.00
+                - generic [ref=e103]:
+                  - generic [ref=e104]:
+                    - generic [ref=e105]: ⚡
+                    - paragraph [ref=e107]: Sewerage
+                  - generic [ref=e108]:
+                    - generic [ref=e109]: Overdue
+                    - generic [ref=e110]: AED 0.00
+                - generic [ref=e111]:
+                  - generic [ref=e112]:
+                    - generic [ref=e113]: ⚡
+                    - paragraph [ref=e115]: FEWA
+                  - generic [ref=e116]:
+                    - generic [ref=e117]: Overdue
+                    - generic [ref=e118]: AED 0.00
+                - generic [ref=e119]:
+                  - generic [ref=e120]:
+                    - generic [ref=e121]: ⚡
+                    - paragraph [ref=e123]: Sewerage
+                  - generic [ref=e124]:
+                    - generic [ref=e125]: Overdue
+                    - generic [ref=e126]: AED 0.00
+                - generic [ref=e127]:
+                  - generic [ref=e128]:
+                    - generic [ref=e129]: ⚡
+                    - paragraph [ref=e131]: FEWA
+                  - generic [ref=e132]:
+                    - generic [ref=e133]: Overdue
+                    - generic [ref=e134]: AED 0.00
+                - generic [ref=e135]:
+                  - generic [ref=e136]:
+                    - generic [ref=e137]: ⚡
+                    - paragraph [ref=e139]: Sewerage
+                  - generic [ref=e140]:
+                    - generic [ref=e141]: Overdue
+                    - generic [ref=e142]: AED 0.00
+            - generic [ref=e143]:
+              - heading "Upcoming This Month" [level=3] [ref=e144]
+              - paragraph [ref=e145]: No upcoming bills
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - heading "Rent Collection" [level=3] [ref=e148]
+              - generic [ref=e150]:
+                - generic [ref=e151]:
+                  - generic [ref=e152]: Saeed Plaza
+                  - generic [ref=e153]: 0%
+                - generic [ref=e155]:
+                  - generic [ref=e156]: AED 0.00 collected
+                  - generic [ref=e157]: AED 1,583.33 expected
+            - generic [ref=e158]:
+              - heading "Expiring Leases (60 days)" [level=3] [ref=e159]
+              - paragraph [ref=e160]: No leases expiring soon

@@ -1,0 +1,86 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - link "Dashboard" [active] [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Bills" [ref=e12] [cursor=pointer]:
+            - /url: /bills
+          - link "Rentals" [ref=e13] [cursor=pointer]:
+            - /url: /rentals
+          - link "Reports" [ref=e14] [cursor=pointer]:
+            - /url: /reports
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e17] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e18]:
+      - generic [ref=e357]:
+        - generic [ref=e358]:
+          - heading "Dashboard" [level=1] [ref=e359]
+          - generic [ref=e360]:
+            - button [ref=e361] [cursor=pointer]:
+              - img [ref=e362]
+            - generic [ref=e364]: May 2026
+            - button [ref=e365] [cursor=pointer]:
+              - img [ref=e366]
+        - generic [ref=e368]:
+          - generic [ref=e369]:
+            - generic [ref=e370]:
+              - img [ref=e372]
+              - generic [ref=e375]:
+                - paragraph [ref=e376]: Total Bills
+                - paragraph [ref=e377]: AED 0.00
+            - generic [ref=e378]:
+              - img [ref=e380]
+              - generic [ref=e383]:
+                - paragraph [ref=e384]: Bills Paid
+                - paragraph [ref=e385]: AED 0.00
+            - generic [ref=e386]:
+              - img [ref=e388]
+              - generic [ref=e392]:
+                - paragraph [ref=e393]: Bills Unpaid
+                - paragraph [ref=e394]: AED 0.00
+            - generic [ref=e395]:
+              - img [ref=e397]
+              - generic [ref=e400]:
+                - paragraph [ref=e401]: Rent Due
+                - paragraph [ref=e402]: AED 1,500.00
+            - generic [ref=e403]:
+              - img [ref=e405]
+              - generic [ref=e408]:
+                - paragraph [ref=e409]: Rent Collected
+                - paragraph [ref=e410]: AED 1,000.00
+            - generic [ref=e411]:
+              - img [ref=e413]
+              - generic [ref=e415]:
+                - paragraph [ref=e416]: Overdue Rent
+                - paragraph [ref=e417]: AED 0.00
+          - generic [ref=e418]:
+            - generic [ref=e419]:
+              - heading "Priority Payments" [level=3] [ref=e420]
+              - paragraph [ref=e421]: All paid — nothing urgent!
+            - generic [ref=e422]:
+              - heading "Upcoming This Month" [level=3] [ref=e423]
+              - paragraph [ref=e424]: No upcoming bills
+          - generic [ref=e425]:
+            - generic [ref=e426]:
+              - heading "Rent Collection" [level=3] [ref=e427]
+              - generic [ref=e429]:
+                - generic [ref=e430]:
+                  - generic [ref=e431]: Rashideya Shop
+                  - generic [ref=e432]: 67%
+                - generic [ref=e435]:
+                  - generic [ref=e436]: AED 1,000.00 collected
+                  - generic [ref=e437]: AED 1,500.00 expected
+            - generic [ref=e438]:
+              - heading "Expiring Leases (60 days)" [level=3] [ref=e439]
+              - paragraph [ref=e440]: No leases expiring soon

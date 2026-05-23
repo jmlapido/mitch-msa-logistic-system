@@ -1,0 +1,76 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Bills" [active] [ref=e12] [cursor=pointer]:
+            - /url: /bills
+          - link "Rentals" [ref=e13] [cursor=pointer]:
+            - /url: /rentals
+          - link "Reports" [ref=e14] [cursor=pointer]:
+            - /url: /reports
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e17] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e18]:
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - heading "Bills" [level=1] [ref=e106]
+            - generic [ref=e107]:
+              - button [ref=e108] [cursor=pointer]:
+                - img [ref=e109]
+              - generic [ref=e111]: May 2026
+              - button [ref=e112] [cursor=pointer]:
+                - img [ref=e113]
+          - button "Add Bill" [ref=e115] [cursor=pointer]:
+            - img
+            - text: Add Bill
+        - generic [ref=e116]:
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - button "All" [ref=e120] [cursor=pointer]
+              - button "Unpaid" [ref=e121] [cursor=pointer]
+              - button "Due Soon" [ref=e122] [cursor=pointer]
+              - button "Overdue" [ref=e123] [cursor=pointer]
+              - button "Paid" [ref=e124] [cursor=pointer]
+              - combobox [ref=e125]:
+                - option "All categories" [selected]
+              - textbox "Search…" [ref=e126]
+            - table [ref=e128]:
+              - rowgroup [ref=e129]:
+                - row "Category Particulars Acct No. Amount Due Status Invoice" [ref=e130]:
+                  - columnheader "Category" [ref=e131]
+                  - columnheader "Particulars" [ref=e132]
+                  - columnheader "Acct No." [ref=e133]
+                  - columnheader "Amount" [ref=e134]
+                  - columnheader "Due" [ref=e135]
+                  - columnheader "Status" [ref=e136]
+                  - columnheader "Invoice" [ref=e137]
+                  - columnheader [ref=e138]
+              - rowgroup [ref=e139]:
+                - row "No bills found" [ref=e140]:
+                  - cell "No bills found" [ref=e141]
+            - paragraph [ref=e142]: 0 of 0 bills shown
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - generic [ref=e145]:
+                - generic [ref=e146]: Total
+                - generic [ref=e147]: AED 0.00
+              - generic [ref=e148]:
+                - generic [ref=e149]: Paid
+                - generic [ref=e150]: AED 0.00
+              - generic [ref=e151]:
+                - generic [ref=e152]: Unpaid
+                - generic [ref=e153]: AED 0.00
+            - heading "By Category" [level=3] [ref=e156]

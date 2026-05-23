@@ -1,0 +1,3 @@
+[  291378ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://mitch-app.jmlapido.workers.dev/assets/index-ltdGt9ER.js:276
+[  312226ms] [WARNING] Select is changing from uncontrolled to controlled. Components should not switch from controlled to uncontrolled (or vice versa). Decide between using a controlled or uncontrolled value for the lifetime of the component. @ https://mitch-app.jmlapido.workers.dev/assets/index-ltdGt9ER.js:232
+[  360245ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://mitch-app.jmlapido.workers.dev/api/bills?month=2026-05:0

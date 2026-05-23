@@ -1,0 +1,186 @@
+- generic:
+  - generic:
+    - region "Notifications alt+T"
+    - generic:
+      - navigation:
+        - generic:
+          - link:
+            - /url: /
+            - img
+            - generic: MSA Logistic
+          - generic:
+            - link:
+              - /url: /
+              - text: Dashboard
+            - link:
+              - /url: /bills
+              - text: Bills
+            - link:
+              - /url: /rentals
+              - text: Rentals
+            - link:
+              - /url: /reports
+              - text: Reports
+          - generic:
+            - button:
+              - img
+            - button:
+              - img
+              - text: Admin
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=1]: Bills
+              - generic:
+                - button:
+                  - img
+                - generic: May 2026
+                - button:
+                  - img
+            - button:
+              - img
+              - text: Add Bill
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - button: All
+                  - button: Unpaid
+                  - button: Due Soon
+                  - button: Overdue
+                  - button: Paid
+                  - combobox
+                  - textbox:
+                    - /placeholder: Search…
+                - generic:
+                  - table:
+                    - rowgroup:
+                      - row:
+                        - columnheader: Category
+                        - columnheader: Particulars
+                        - columnheader: Acct No.
+                        - columnheader: Amount
+                        - columnheader: Due
+                        - columnheader: Status
+                        - columnheader: Invoice
+                        - columnheader
+                    - rowgroup:
+                      - row:
+                        - cell:
+                          - generic:
+                            - img
+                            - text: Recurring
+                            - generic: (2)
+                      - row:
+                        - cell:
+                          - generic: ❤️ Charity
+                        - cell: jabal sina
+                        - cell: "130817"
+                        - cell: AED 0.00
+                        - cell: 1th
+                        - cell:
+                          - button: Overdue
+                        - cell:
+                          - generic:
+                            - generic: No invoice
+                            - button:
+                              - img
+                        - cell:
+                          - generic:
+                            - button:
+                              - img
+                            - button:
+                              - img
+                      - row:
+                        - cell:
+                          - generic: 🚗 Car
+                        - cell: adnoc
+                        - cell: "45311"
+                        - cell: AED 0.00
+                        - cell: 25th
+                        - cell:
+                          - button: Due Soon
+                        - cell:
+                          - generic:
+                            - generic: No invoice
+                            - button:
+                              - img
+                        - cell:
+                          - generic:
+                            - button:
+                              - img
+                            - button:
+                              - img
+                - paragraph: 2 of 2 bills shown
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Total
+                  - generic: AED 0.00
+                - generic:
+                  - generic: Paid
+                  - generic: AED 0.00
+                - generic:
+                  - generic: Unpaid
+                  - generic: AED 0.00
+              - generic:
+                - generic:
+                  - heading [level=3]: By Category
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: Charity
+                        - generic: AED 0.00
+                      - generic:
+                        - generic: ✓ AED 0.00
+                        - generic: AED 0.00
+                    - generic:
+                      - generic:
+                        - generic: Car
+                        - generic: AED 0.00
+                      - generic:
+                        - generic: ✓ AED 0.00
+                        - generic: AED 0.00
+  - dialog "Add Bill" [ref=e150]:
+    - generic [ref=e151]:
+      - heading "Add Bill" [level=2] [ref=e152]
+      - paragraph [ref=e153]: May 2026
+    - generic [ref=e154]:
+      - generic [ref=e155]:
+        - text: Category *
+        - combobox [ref=e156] [cursor=pointer]:
+          - generic: ⚡ FEWA & Sewerage
+          - img [ref=e157]
+        - combobox [ref=e159]
+      - generic [ref=e160]:
+        - text: Particulars *
+        - textbox "e.g. FEWA, DU Mobile" [ref=e161]: FEWA Electricity
+      - generic [ref=e162]:
+        - generic [ref=e163]:
+          - text: Account No.
+          - textbox "Optional" [ref=e164]: EW-123456
+        - generic [ref=e165]:
+          - generic [ref=e166]: Due Date (repeats monthly)
+          - combobox [active] [ref=e167] [cursor=pointer]:
+            - generic: 15th of month
+            - img [ref=e168]
+          - combobox [ref=e170]
+      - generic [ref=e171]:
+        - text: Amount (AED)
+        - spinbutton [ref=e172]: "350"
+      - generic [ref=e173]:
+        - text: Notes
+        - textbox [ref=e174]
+      - generic [ref=e175]:
+        - checkbox "Recurring — due date repeats every month" [checked] [ref=e176] [cursor=pointer]
+        - generic [ref=e177] [cursor=pointer]: Recurring — due date repeats every month
+      - generic [ref=e178]:
+        - button "Cancel" [ref=e179] [cursor=pointer]
+        - button "Attach Bill/Invoice" [ref=e180] [cursor=pointer]:
+          - img
+          - text: Attach Bill/Invoice
+        - button "Save" [ref=e181] [cursor=pointer]
+    - button "Close" [ref=e182] [cursor=pointer]:
+      - img [ref=e183]
+      - generic [ref=e186]: Close

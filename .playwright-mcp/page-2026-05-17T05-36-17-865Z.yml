@@ -1,0 +1,56 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Bills" [ref=e12] [cursor=pointer]:
+            - /url: /bills
+          - link "Rentals" [ref=e13] [cursor=pointer]:
+            - /url: /rentals
+          - link "Reports" [ref=e14] [cursor=pointer]:
+            - /url: /reports
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e17] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Rentals" [level=1] [ref=e20]
+        - generic [ref=e21]:
+          - tablist [ref=e22]:
+            - tab "Payments" [ref=e23] [cursor=pointer]
+            - tab "Tenants" [active] [selected] [ref=e24] [cursor=pointer]
+            - tab "Units" [ref=e25] [cursor=pointer]
+            - tab "Buildings" [ref=e26] [cursor=pointer]
+          - tabpanel "Tenants" [ref=e79]:
+            - generic [ref=e80]:
+              - generic [ref=e81]:
+                - heading "Tenants" [level=2] [ref=e82]
+                - button "Add Tenant" [ref=e83] [cursor=pointer]:
+                  - img
+                  - text: Add Tenant
+              - generic [ref=e86] [cursor=pointer]:
+                - img [ref=e87]
+                - generic [ref=e89]: M
+                - generic [ref=e90]:
+                  - generic [ref=e91]: mich
+                  - generic [ref=e92]: Saeed Plaza · Unit 2123
+                - generic [ref=e93]:
+                  - generic [ref=e94]:
+                    - generic [ref=e95]: AED 166.67/mo
+                    - generic [ref=e96]: until 4 Aug 2026
+                  - generic [ref=e97]: Active
+                  - generic [ref=e98]:
+                    - button [ref=e99]:
+                      - img [ref=e100]
+                    - button [ref=e103]:
+                      - img [ref=e104]

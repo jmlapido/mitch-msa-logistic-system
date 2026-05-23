@@ -1,0 +1,58 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Bills" [ref=e12] [cursor=pointer]:
+            - /url: /bills
+          - link "Rentals" [ref=e13] [cursor=pointer]:
+            - /url: /rentals
+          - link "Reports" [ref=e14] [cursor=pointer]:
+            - /url: /reports
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e17] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Rentals" [level=1] [ref=e20]
+        - generic [ref=e21]:
+          - tablist [ref=e22]:
+            - tab "Payments" [active] [selected] [ref=e23] [cursor=pointer]
+            - tab "Tenants" [ref=e24] [cursor=pointer]
+            - tab "Units" [ref=e25] [cursor=pointer]
+            - tab "Buildings" [ref=e26] [cursor=pointer]
+          - tabpanel "Payments" [ref=e27]:
+            - generic [ref=e181]:
+              - generic [ref=e182]:
+                - generic [ref=e183]:
+                  - button [ref=e184] [cursor=pointer]:
+                    - img [ref=e185]
+                  - generic [ref=e187]: May 2026
+                  - button [ref=e188] [cursor=pointer]:
+                    - img [ref=e189]
+                - combobox [ref=e191]:
+                  - option "All buildings" [selected]
+                  - option "Saeed Plaza"
+              - generic [ref=e192]:
+                - generic [ref=e193]:
+                  - paragraph [ref=e194]: Expected
+                  - paragraph [ref=e195]: AED 0.00
+                - generic [ref=e196]:
+                  - paragraph [ref=e197]: Collected
+                  - paragraph [ref=e198]: AED 0.00
+                - generic [ref=e199]:
+                  - paragraph [ref=e200]: Pending
+                  - paragraph [ref=e201]: AED 0.00
+                - generic [ref=e202]:
+                  - paragraph [ref=e203]: Total Overdue
+                  - paragraph [ref=e204]: AED 0.00

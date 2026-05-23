@@ -1,0 +1,107 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - button [ref=e11] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e12] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - heading "Rentals" [level=1] [ref=e15]
+        - generic [ref=e16]:
+          - tablist [ref=e17]:
+            - tab "Payments" [ref=e18] [cursor=pointer]
+            - tab "Tenants" [ref=e19] [cursor=pointer]
+            - tab "Units" [active] [selected] [ref=e20] [cursor=pointer]
+            - tab "Buildings" [ref=e21] [cursor=pointer]
+          - tabpanel "Units" [ref=e74]:
+            - generic [ref=e76]:
+              - generic [ref=e77]:
+                - heading "Units" [level=2] [ref=e78]
+                - button "Add Unit" [ref=e79] [cursor=pointer]:
+                  - img
+                  - text: Add Unit
+              - generic [ref=e80]:
+                - generic [ref=e81]:
+                  - button "Saeed Plaza 1 occupied 1 vacant" [ref=e82] [cursor=pointer]:
+                    - generic [ref=e83]:
+                      - img [ref=e84]
+                      - text: Saeed Plaza
+                    - generic [ref=e86]:
+                      - generic [ref=e87]: 1 occupied
+                      - generic [ref=e88]: 1 vacant
+                  - table [ref=e89]:
+                    - rowgroup [ref=e90]:
+                      - row "Unit Type Tenant Rent/mo Lease End Status" [ref=e91]:
+                        - columnheader "Unit" [ref=e92]
+                        - columnheader "Type" [ref=e93]
+                        - columnheader "Tenant" [ref=e94]
+                        - columnheader "Rent/mo" [ref=e95]
+                        - columnheader "Lease End" [ref=e96]
+                        - columnheader "Status" [ref=e97]
+                        - columnheader [ref=e98]
+                    - rowgroup [ref=e99]:
+                      - row "2 apartment mich AED 1,583.33 4 May 2027 occupied" [ref=e100] [cursor=pointer]:
+                        - cell "2" [ref=e101]
+                        - cell "apartment" [ref=e102]
+                        - cell "mich" [ref=e103]
+                        - cell "AED 1,583.33" [ref=e104]
+                        - cell "4 May 2027" [ref=e105]
+                        - cell "occupied" [ref=e106]
+                        - cell [ref=e107]:
+                          - generic [ref=e108]:
+                            - button [ref=e109]:
+                              - img [ref=e110]
+                            - button [ref=e113]:
+                              - img [ref=e114]
+                      - row "3 apartment — — — vacant" [ref=e117] [cursor=pointer]:
+                        - cell "3" [ref=e118]
+                        - cell "apartment" [ref=e119]
+                        - cell "—" [ref=e120]
+                        - cell "—" [ref=e121]
+                        - cell "—" [ref=e122]
+                        - cell "vacant" [ref=e123]
+                        - cell [ref=e124]:
+                          - generic [ref=e125]:
+                            - button [ref=e126]:
+                              - img [ref=e127]
+                            - button [ref=e130]:
+                              - img [ref=e131]
+                - generic [ref=e134]:
+                  - button "RIzal Park 1 occupied" [ref=e135] [cursor=pointer]:
+                    - generic [ref=e136]:
+                      - img [ref=e137]
+                      - text: RIzal Park
+                    - generic [ref=e140]: 1 occupied
+                  - table [ref=e141]:
+                    - rowgroup [ref=e142]:
+                      - row "Unit Type Tenant Rent/mo Lease End Status" [ref=e143]:
+                        - columnheader "Unit" [ref=e144]
+                        - columnheader "Type" [ref=e145]
+                        - columnheader "Tenant" [ref=e146]
+                        - columnheader "Rent/mo" [ref=e147]
+                        - columnheader "Lease End" [ref=e148]
+                        - columnheader "Status" [ref=e149]
+                        - columnheader [ref=e150]
+                    - rowgroup [ref=e151]:
+                      - row "0 villa jm — — occupied" [ref=e152] [cursor=pointer]:
+                        - cell "0" [ref=e153]
+                        - cell "villa" [ref=e154]
+                        - cell "jm" [ref=e155]
+                        - cell "—" [ref=e156]
+                        - cell "—" [ref=e157]
+                        - cell "occupied" [ref=e158]
+                        - cell [ref=e159]:
+                          - generic [ref=e160]:
+                            - button [ref=e161]:
+                              - img [ref=e162]
+                            - button [ref=e165]:
+                              - img [ref=e166]

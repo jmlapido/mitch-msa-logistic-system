@@ -1,0 +1,96 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - button [ref=e11] [cursor=pointer]:
+            - img
+          - button [ref=e12] [cursor=pointer]:
+            - img
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - heading "Rentals" [level=1] [ref=e15]
+        - generic [ref=e16]:
+          - tablist [ref=e17]:
+            - tab "Payments" [ref=e18] [cursor=pointer]
+            - tab "Tenants" [ref=e19] [cursor=pointer]
+            - tab "Units" [active] [selected] [ref=e20] [cursor=pointer]
+            - tab "Buildings" [ref=e21] [cursor=pointer]
+          - tabpanel "Units" [ref=e74]:
+            - generic [ref=e76]:
+              - generic [ref=e77]:
+                - heading "Units" [level=2] [ref=e78]
+                - button "Add Unit" [ref=e79] [cursor=pointer]:
+                  - img
+                  - text: Add Unit
+              - generic [ref=e80]:
+                - generic [ref=e81]:
+                  - button "Saeed Plaza 1 occupied 1 vacant" [ref=e82] [cursor=pointer]:
+                    - generic [ref=e83]:
+                      - img [ref=e84]
+                      - text: Saeed Plaza
+                    - generic [ref=e86]:
+                      - generic [ref=e87]: 1 occupied
+                      - generic [ref=e88]: 1 vacant
+                  - table [ref=e90]:
+                    - rowgroup [ref=e91]:
+                      - row "Unit Tenant Rent/mo Status" [ref=e92]:
+                        - columnheader "Unit" [ref=e93]
+                        - columnheader "Tenant" [ref=e94]
+                        - columnheader "Rent/mo" [ref=e95]
+                        - columnheader "Status" [ref=e96]
+                        - columnheader [ref=e97]
+                    - rowgroup [ref=e98]:
+                      - row "2 mich AED 1,583.33 occupied" [ref=e99] [cursor=pointer]:
+                        - cell "2" [ref=e100]
+                        - cell "mich" [ref=e101]
+                        - cell "AED 1,583.33" [ref=e102]
+                        - cell "occupied" [ref=e103]
+                        - cell [ref=e104]:
+                          - generic [ref=e105]:
+                            - button [ref=e106]:
+                              - img [ref=e107]
+                            - button [ref=e110]:
+                              - img [ref=e111]
+                      - row "3 — — vacant" [ref=e114] [cursor=pointer]:
+                        - cell "3" [ref=e115]
+                        - cell "—" [ref=e116]
+                        - cell "—" [ref=e117]
+                        - cell "vacant" [ref=e118]
+                        - cell [ref=e119]:
+                          - generic [ref=e120]:
+                            - button [ref=e121]:
+                              - img [ref=e122]
+                            - button [ref=e125]:
+                              - img [ref=e126]
+                - generic [ref=e129]:
+                  - button "RIzal Park 1 occupied" [ref=e130] [cursor=pointer]:
+                    - generic [ref=e131]:
+                      - img [ref=e132]
+                      - text: RIzal Park
+                    - generic [ref=e135]: 1 occupied
+                  - table [ref=e137]:
+                    - rowgroup [ref=e138]:
+                      - row "Unit Tenant Rent/mo Status" [ref=e139]:
+                        - columnheader "Unit" [ref=e140]
+                        - columnheader "Tenant" [ref=e141]
+                        - columnheader "Rent/mo" [ref=e142]
+                        - columnheader "Status" [ref=e143]
+                        - columnheader [ref=e144]
+                    - rowgroup [ref=e145]:
+                      - row "0 jm — occupied" [ref=e146] [cursor=pointer]:
+                        - cell "0" [ref=e147]
+                        - cell "jm" [ref=e148]
+                        - cell "—" [ref=e149]
+                        - cell "occupied" [ref=e150]
+                        - cell [ref=e151]:
+                          - generic [ref=e152]:
+                            - button [ref=e153]:
+                              - img [ref=e154]
+                            - button [ref=e157]:
+                              - img [ref=e158]

@@ -67,7 +67,7 @@ After the Category dropdown, conditionally render a Building dropdown:
 New filter in the filter bar (between category dropdown and search input):
 - Dropdown: "All buildings" + one entry per building name
 - Client-side filter: hides bills with no building when a specific building is selected
-- Only visible when at least one bill in the current month has a building assigned (to avoid cluttering months with no building-linked bills)
+- Always visible in the filter bar
 
 ### Bills Report Page
 

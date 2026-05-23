@@ -1,0 +1,113 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e392]:
+        - img [ref=e394]
+        - generic [ref=e397]: Bill created
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /
+          - link "Bills" [ref=e12] [cursor=pointer]:
+            - /url: /bills
+          - link "Rentals" [ref=e13] [cursor=pointer]:
+            - /url: /rentals
+          - link "Reports" [ref=e14] [cursor=pointer]:
+            - /url: /reports
+        - generic [ref=e15]:
+          - button [ref=e16] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e17] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e18]:
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - heading "Bills" [level=1] [ref=e106]
+            - generic [ref=e107]:
+              - button [ref=e108] [cursor=pointer]:
+                - img [ref=e109]
+              - generic [ref=e111]: January 2026
+              - button [ref=e112] [cursor=pointer]:
+                - img [ref=e113]
+          - button "Add Bill" [ref=e115] [cursor=pointer]:
+            - img
+            - text: Add Bill
+        - generic [ref=e116]:
+          - generic [ref=e278]:
+            - generic [ref=e279]:
+              - button "All" [ref=e280] [cursor=pointer]
+              - button "Unpaid" [ref=e281] [cursor=pointer]
+              - button "Due Soon" [ref=e282] [cursor=pointer]
+              - button "Overdue" [ref=e283] [cursor=pointer]
+              - button "Paid" [ref=e284] [cursor=pointer]
+              - combobox [ref=e285]:
+                - option "All categories" [selected]
+                - option "⚡ FEWA & Sewerage"
+              - textbox "Search…" [ref=e286]
+            - table [ref=e288]:
+              - rowgroup [ref=e289]:
+                - row "Category Particulars Acct No. Amount Due Status Invoice" [ref=e290]:
+                  - columnheader "Category" [ref=e291]
+                  - columnheader "Particulars" [ref=e292]
+                  - columnheader "Acct No." [ref=e293]
+                  - columnheader "Amount" [ref=e294]
+                  - columnheader "Due" [ref=e295]
+                  - columnheader "Status" [ref=e296]
+                  - columnheader "Invoice" [ref=e297]
+                  - columnheader [ref=e298]
+              - rowgroup [ref=e398]:
+                - row "Recurring (1)" [ref=e399]:
+                  - cell "Recurring (1)" [ref=e400]:
+                    - generic [ref=e401]:
+                      - img [ref=e402]
+                      - text: Recurring
+                      - generic [ref=e407]: (1)
+                - row "⚡ FEWA & Sewerage Test January Bill — AED 0.00 — Unpaid No invoice" [ref=e408]:
+                  - cell "⚡ FEWA & Sewerage" [ref=e409]:
+                    - generic [ref=e410]: ⚡ FEWA & Sewerage
+                  - cell "Test January Bill" [ref=e411]
+                  - cell "—" [ref=e412]
+                  - cell "AED 0.00" [ref=e413]
+                  - cell "—" [ref=e414]
+                  - cell "Unpaid" [ref=e415]:
+                    - button "Unpaid" [ref=e416] [cursor=pointer]
+                  - cell "No invoice" [ref=e417]:
+                    - generic [ref=e418]:
+                      - generic [ref=e419]: No invoice
+                      - button "Upload invoice" [ref=e420] [cursor=pointer]:
+                        - img [ref=e421]
+                  - cell [ref=e423]:
+                    - generic [ref=e424]:
+                      - button [ref=e425] [cursor=pointer]:
+                        - img [ref=e426]
+                      - button [ref=e429] [cursor=pointer]:
+                        - img [ref=e430]
+            - paragraph [ref=e302]: 1 of 1 bills shown
+          - generic [ref=e303]:
+            - generic [ref=e304]:
+              - generic [ref=e305]:
+                - generic [ref=e306]: Total
+                - generic [ref=e307]: AED 0.00
+              - generic [ref=e308]:
+                - generic [ref=e309]: Paid
+                - generic [ref=e310]: AED 0.00
+              - generic [ref=e311]:
+                - generic [ref=e312]: Unpaid
+                - generic [ref=e313]: AED 0.00
+            - generic [ref=e433]:
+              - heading "By Category" [level=3] [ref=e434]
+              - generic [ref=e436]:
+                - generic [ref=e437]:
+                  - generic [ref=e438]: FEWA & Sewerage
+                  - generic [ref=e439]: AED 0.00
+                - generic [ref=e440]:
+                  - generic [ref=e441]: ✓ AED 0.00
+                  - generic [ref=e442]: AED 0.00

@@ -1,0 +1,154 @@
+- generic:
+  - generic:
+    - region "Notifications alt+T"
+    - generic:
+      - navigation:
+        - generic:
+          - link:
+            - /url: /
+            - img
+            - generic: MSA Logistic
+          - generic:
+            - link:
+              - /url: /
+              - text: Dashboard
+            - link:
+              - /url: /bills
+              - text: Bills
+            - link:
+              - /url: /rentals
+              - text: Rentals
+            - link:
+              - /url: /reports
+              - text: Reports
+          - generic:
+            - button:
+              - img
+            - button:
+              - img
+              - text: Admin
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=1]: Bills
+              - generic:
+                - button:
+                  - img
+                - generic: January 2026
+                - button:
+                  - img
+            - button:
+              - img
+              - text: Add Bill
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - button: All
+                  - button: Unpaid
+                  - button: Due Soon
+                  - button: Overdue
+                  - button: Paid
+                  - combobox
+                  - textbox:
+                    - /placeholder: Search…
+                - generic:
+                  - table:
+                    - rowgroup:
+                      - row:
+                        - columnheader: Category
+                        - columnheader: Particulars
+                        - columnheader: Acct No.
+                        - columnheader: Amount
+                        - columnheader: Due
+                        - columnheader: Status
+                        - columnheader: Invoice
+                        - columnheader
+                    - rowgroup:
+                      - row:
+                        - cell: No bills found
+                - paragraph: 0 of 0 bills shown
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Total
+                  - generic: AED 0.00
+                - generic:
+                  - generic: Paid
+                  - generic: AED 0.00
+                - generic:
+                  - generic: Unpaid
+                  - generic: AED 0.00
+              - generic:
+                - generic:
+                  - heading [level=3]: By Category
+  - dialog:
+    - generic:
+      - heading [level=2]: Add Bill
+      - paragraph: January 2026
+    - generic:
+      - generic:
+        - text: Category *
+        - combobox [expanded]:
+          - generic: Select category
+          - img
+        - combobox
+      - generic:
+        - text: Particulars *
+        - textbox:
+          - /placeholder: e.g. FEWA, DU Mobile
+      - generic:
+        - generic:
+          - text: Account No.
+          - textbox:
+            - /placeholder: Optional
+        - generic:
+          - generic: Due Date (repeats monthly)
+          - combobox:
+            - generic: No due date
+            - img
+          - combobox
+      - generic:
+        - text: Amount (AED)
+        - spinbutton
+      - generic:
+        - text: Notes
+        - textbox
+      - generic:
+        - checkbox [checked]
+        - generic: Recurring — due date repeats every month
+      - generic:
+        - button: Cancel
+        - button:
+          - img
+          - text: Attach Bill/Invoice
+        - button: Save
+    - button:
+      - img
+      - generic: Close
+  - listbox [ref=e355]:
+    - option "⚡ FEWA & Sewerage" [active] [ref=e356]:
+      - generic [ref=e358]: ⚡ FEWA & Sewerage
+    - option "🌐 Internet" [ref=e359]:
+      - generic [ref=e361]: 🌐 Internet
+    - option "📱 Mobile" [ref=e362]:
+      - generic [ref=e364]: 📱 Mobile
+    - option "🔧 Maintenance" [ref=e365]:
+      - generic [ref=e367]: 🔧 Maintenance
+    - option "❤️ Charity" [ref=e368]:
+      - generic [ref=e370]: ❤️ Charity
+    - option "🚗 Car" [ref=e371]:
+      - generic [ref=e373]: 🚗 Car
+    - option "🛍️ Alsada Boutique" [ref=e374]:
+      - generic [ref=e376]: 🛍️ Alsada Boutique
+    - option "👤 Jassem" [ref=e377]:
+      - generic [ref=e379]: 👤 Jassem
+    - option "👤 Majed" [ref=e380]:
+      - generic [ref=e382]: 👤 Majed
+    - option "👤 Maryam" [ref=e383]:
+      - generic [ref=e385]: 👤 Maryam
+    - option "🏠 Villa" [ref=e386]:
+      - generic [ref=e388]: 🏠 Villa
+    - option "📋 Staff / Visas" [ref=e389]:
+      - generic [ref=e391]: 📋 Staff / Visas

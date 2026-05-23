@@ -1,0 +1,76 @@
+- generic [ref=e2]:
+  - region "Notifications alt+T"
+  - generic [ref=e4]:
+    - navigation [ref=e5]:
+      - generic [ref=e6]:
+        - link "Logo MSA Logistic" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Logo" [ref=e8]
+          - generic [ref=e9]: MSA Logistic
+        - generic [ref=e10]:
+          - button [ref=e11] [cursor=pointer]:
+            - img
+          - button "Admin" [ref=e12] [cursor=pointer]:
+            - img
+            - text: Admin
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - heading "Rentals" [level=1] [ref=e15]
+        - generic [ref=e16]:
+          - tablist [ref=e17]:
+            - tab "Payments" [selected] [ref=e18] [cursor=pointer]
+            - tab "Tenants" [ref=e19] [cursor=pointer]
+            - tab "Units" [ref=e20] [cursor=pointer]
+            - tab "Buildings" [ref=e21] [cursor=pointer]
+          - tabpanel "Payments" [active] [ref=e22]:
+            - generic [ref=e23]:
+              - generic [ref=e24]:
+                - generic [ref=e25]:
+                  - button [ref=e26] [cursor=pointer]:
+                    - img [ref=e27]
+                  - generic [ref=e29]: May 2026
+                  - button [ref=e30] [cursor=pointer]:
+                    - img [ref=e31]
+                - combobox [ref=e33]:
+                  - option "All buildings" [selected]
+                  - option "RIzal Park"
+                  - option "Saeed Plaza"
+              - generic [ref=e34]:
+                - generic [ref=e35]:
+                  - paragraph [ref=e36]: Expected
+                  - paragraph [ref=e37]: AED 1,583.33
+                - generic [ref=e38]:
+                  - paragraph [ref=e39]: Collected
+                  - paragraph [ref=e40]: AED 0.00
+                - generic [ref=e41]:
+                  - paragraph [ref=e42]: Pending
+                  - paragraph [ref=e43]: AED 1,583.33
+                - generic [ref=e44]:
+                  - paragraph [ref=e45]: Total Overdue
+                  - paragraph [ref=e46]: AED 0.00
+              - generic [ref=e48]:
+                - generic [ref=e49]:
+                  - generic [ref=e50]: Saeed Plaza
+                  - generic [ref=e51]: AED 0.00 / AED 1,583.33
+                - table [ref=e52]:
+                  - rowgroup [ref=e53]:
+                    - row "Unit Tenant Rent Collected Overdue Balance Date Status" [ref=e54]:
+                      - columnheader "Unit" [ref=e55]
+                      - columnheader "Tenant" [ref=e56]
+                      - columnheader "Rent" [ref=e57]
+                      - columnheader "Collected" [ref=e58]
+                      - columnheader "Overdue" [ref=e59]
+                      - columnheader "Balance" [ref=e60]
+                      - columnheader "Date" [ref=e61]
+                      - columnheader "Status" [ref=e62]
+                  - rowgroup [ref=e63]:
+                    - row "2 mich AED 1,583.33 — — AED 166.67 — pending" [ref=e64]:
+                      - cell "2" [ref=e65]
+                      - cell "mich" [ref=e66]
+                      - cell "AED 1,583.33" [ref=e67]
+                      - cell "—" [ref=e68]
+                      - cell "—" [ref=e69]
+                      - cell "AED 166.67" [ref=e70]
+                      - cell "—" [ref=e71]
+                      - cell "pending" [ref=e72]:
+                        - button "pending" [ref=e73] [cursor=pointer]
