@@ -32,7 +32,10 @@ const SLOT_COUNTS: Record<string, number> = {
 
 function addMonths(dateStr: string, months: number): string {
   const d = new Date(dateStr);
+  const day = d.getDate();
+  d.setDate(1);
   d.setMonth(d.getMonth() + months);
+  d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
   return d.toISOString().slice(0, 10);
 }
 
@@ -105,7 +108,7 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
   })();
 
   // For custom: use actual rows from DB
-  const customSlots = isCustom ? rows.sort((a, b) => a.pdc_number - b.pdc_number) : [];
+  const customSlots = isCustom ? [...rows].sort((a, b) => a.pdc_number - b.pdc_number) : [];
 
   const displaySlots = isCustom ? customSlots : standardSlots;
 
@@ -131,12 +134,13 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
     setAdding(true);
     try {
       const nextNum = customSlots.length > 0 ? Math.max(...customSlots.map(s => s.pdc_number)) + 1 : 1;
-      await fetch('/api/pdc-cheques/date', {
+      const res = await fetch('/api/pdc-cheques/date', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ contract_id: contractId, pdc_number: nextNum, cheque_date: null }),
       });
+      if (!res.ok) throw new Error();
       qc.invalidateQueries({ queryKey: ['pdc-cheques', contractId] });
     } catch { toast.error('Failed to add slot'); }
     finally { setAdding(false); }
@@ -205,7 +209,7 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
       {open && (
         <div className="mt-2 space-y-1.5">
           {displaySlots.map((s, idx) => (
-            <div key={isCustom ? s.id : s.pdc_number} className="flex items-center gap-2 rounded border px-2 py-1.5 bg-muted/30">
+            <div key={isCustom ? s.id : `${s.pdc_number}-${s.cheque_date ?? ''}`} className="flex items-center gap-2 rounded border px-2 py-1.5 bg-muted/30">
               <span className="w-5 text-[10px] font-semibold text-muted-foreground shrink-0">#{idx + 1}</span>
 
               <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -254,8 +258,9 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
 
               {isCustom && isAdmin && (
                 <button
-                  onClick={() => s.id && removeCustomSlot(s.id)}
-                  className="p-1 text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={() => removeCustomSlot(s.id)}
+                  disabled={s.id === 0}
+                  className="p-1 text-muted-foreground hover:text-destructive shrink-0 disabled:opacity-50"
                   title="Remove slot"
                 >
                   <Trash2 size={11} />
