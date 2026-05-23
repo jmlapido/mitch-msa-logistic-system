@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -14,7 +14,23 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
 import { formatDate } from '@/lib/utils';
 import { AedAmount } from '@/components/ui/AedAmount';
-import { PdcPanel } from './PdcPanel';
+import { PaymentSchedulePanel } from './PaymentSchedulePanel';
+
+const FREQ_LABELS: Record<string, string> = {
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  'semi-annual': 'Semi-annual',
+  annual: 'Annual',
+  custom: 'Custom',
+};
+
+const FREQ_COUNTS: Record<string, number> = {
+  monthly: 12,
+  quarterly: 4,
+  'semi-annual': 2,
+  annual: 1,
+  custom: 0,
+};
 
 const schema = z.object({
   contract_no: z.string().min(1, 'Required'),
@@ -22,9 +38,7 @@ const schema = z.object({
   end_date: z.string().min(1, 'Required'),
   annual_rent: z.string().min(1, 'Required'),
   payment_type: z.enum(['cash', 'pdc']),
-  payment_frequency: z.enum(['monthly', 'annual']),
-  no_of_pdc: z.string().optional(),
-  due_day: z.string().optional(),
+  payment_frequency: z.enum(['monthly', 'quarterly', 'semi-annual', 'annual', 'custom']),
   notes: z.string().optional(),
 });
 type F = z.infer<typeof schema>;
@@ -72,8 +86,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   function openAdd() {
     reset({
       contract_no: '', start_date: '', end_date: '', annual_rent: '',
-      payment_type: 'pdc', payment_frequency: 'monthly',
-      no_of_pdc: '1', due_day: '1', notes: '',
+      payment_type: 'pdc', payment_frequency: 'monthly', notes: '',
     });
     setDurationAmt('');
     setEditing(null);
@@ -88,8 +101,6 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       annual_rent: String(c.annual_rent),
       payment_type: c.payment_type ?? 'pdc',
       payment_frequency: c.payment_frequency ?? 'monthly',
-      no_of_pdc: String(c.no_of_pdc),
-      due_day: String(c.due_day ?? 1),
       notes: c.notes ?? '',
     });
     setDurationAmt('');
@@ -98,7 +109,6 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   }
 
   async function onSubmit(v: F) {
-    const isPdc = v.payment_type === 'pdc';
     const payload = {
       tenant_id: tenantId,
       contract_no: v.contract_no,
@@ -107,8 +117,6 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       annual_rent: Number(v.annual_rent),
       payment_type: v.payment_type,
       payment_frequency: v.payment_frequency,
-      no_of_pdc: isPdc ? Number(v.no_of_pdc ?? 1) : 0,
-      due_day: !isPdc ? Number(v.due_day ?? 1) : undefined,
       notes: v.notes || undefined,
     };
     try {
@@ -148,50 +156,60 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
         <p className="text-xs text-muted-foreground">No contracts yet</p>
       ) : (
         <div className="space-y-1.5">
-          {contracts.map(c => (
-            <div key={c.id} className="border rounded p-2 bg-background text-xs">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold truncate">#{c.contract_no}</span>
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                      c.status === 'valid'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}>
-                      {c.status === 'valid' ? 'Valid' : 'Expired'}
-                    </span>
-                  </div>
-                  <div className="text-muted-foreground space-y-0.5">
-                    <p>{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
-                    <p>Annual Rent: <span className="font-medium text-foreground"><AedAmount amount={c.annual_rent} /></span></p>
-                    <p>
-                      Frequency:{' '}
-                      <span className="font-medium text-foreground">
-                        {(c.payment_frequency ?? 'monthly') === 'annual' ? 'Annual (lump sum)' : 'Monthly'}
+          {contracts.map(c => {
+            const freq = c.payment_frequency ?? 'monthly';
+            const freqLabel = FREQ_LABELS[freq] ?? freq;
+            const slotCount = freq === 'custom' ? null : FREQ_COUNTS[freq];
+            return (
+              <div key={c.id} className="border rounded p-2 bg-background text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold truncate">#{c.contract_no}</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                        c.status === 'valid'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                      }`}>
+                        {c.status === 'valid' ? 'Valid' : 'Expired'}
                       </span>
-                    </p>
-                    {(c.payment_type ?? 'pdc') === 'pdc' ? (
-                      <p>PDC: <span className="font-medium text-foreground">{c.no_of_pdc} cheque{c.no_of_pdc !== 1 ? 's' : ''}</span></p>
-                    ) : (
-                      <p>Cash · Due day: <span className="font-medium text-foreground">{c.due_day ?? 1}</span></p>
-                    )}
-                    {c.notes && <p className="italic">{c.notes}</p>}
-                    <LastEditedBy entityType="contract" entityId={c.id} />
+                    </div>
+                    <div className="text-muted-foreground space-y-0.5">
+                      <p>{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
+                      <p>Annual Rent: <span className="font-medium text-foreground"><AedAmount amount={c.annual_rent} /></span></p>
+                      <p>
+                        Frequency:{' '}
+                        <span className="font-medium text-foreground">
+                          {freqLabel}{slotCount !== null ? ` (${slotCount} payment${slotCount !== 1 ? 's' : ''})` : ''}
+                        </span>
+                      </p>
+                      <p>
+                        Type:{' '}
+                        <span className="font-medium text-foreground">
+                          {(c.payment_type ?? 'pdc') === 'pdc' ? 'PDC' : 'Cash'}
+                        </span>
+                      </p>
+                      {c.notes && <p className="italic">{c.notes}</p>}
+                      <LastEditedBy entityType="contract" entityId={c.id} />
+                    </div>
                   </div>
+                  {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => openEdit(c)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={11} /></button>
+                      <button onClick={() => handleDelete(c)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={11} /></button>
+                    </div>
+                  )}
                 </div>
-                {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={() => openEdit(c)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={11} /></button>
-                    <button onClick={() => handleDelete(c)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={11} /></button>
-                  </div>
-                )}
+                <PaymentSchedulePanel
+                  contractId={c.id}
+                  paymentFrequency={freq}
+                  paymentType={c.payment_type ?? 'pdc'}
+                  startDate={c.start_date}
+                  slotCount={c.no_of_pdc}
+                />
               </div>
-              {(c.payment_type ?? 'pdc') === 'pdc' && c.no_of_pdc > 0 && (
-                <PdcPanel contractId={c.id} pdcCount={c.no_of_pdc} />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -240,12 +258,15 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
               <Label>Payment Frequency *</Label>
               <Select
                 value={watch('payment_frequency')}
-                onValueChange={v => setValue('payment_frequency', v as 'monthly' | 'annual')}
+                onValueChange={v => setValue('payment_frequency', v as F['payment_frequency'])}
               >
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select frequency" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="annual">Annual (one-time lump sum)</SelectItem>
+                  <SelectItem value="monthly">Monthly (12 payments/year)</SelectItem>
+                  <SelectItem value="quarterly">Quarterly (4 payments/year)</SelectItem>
+                  <SelectItem value="semi-annual">Semi-annual (2 payments/year)</SelectItem>
+                  <SelectItem value="annual">Annual (1 lump sum/year)</SelectItem>
+                  <SelectItem value="custom">Custom (set dates manually)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -259,17 +280,10 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                 </SelectContent>
               </Select>
             </div>
-            {watch('payment_type') === 'pdc' ? (
-              <div>
-                <Label>No. of PDC *</Label>
-                <Input {...register('no_of_pdc')} type="number" min={1} max={24} className="mt-1" placeholder="e.g. 4" />
-              </div>
-            ) : (
-              <div>
-                <Label>Due Day (day of month) *</Label>
-                <Input {...register('due_day')} type="number" min={1} max={28} className="mt-1" placeholder="e.g. 5" />
-                <p className="text-xs text-muted-foreground mt-0.5">Rent is due on this day every month (1–28)</p>
-              </div>
+            {watch('payment_frequency') === 'custom' && (
+              <p className="text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
+                Payment dates are set manually in the schedule panel after saving the contract.
+              </p>
             )}
             <div>
               <Label>Notes</Label>
