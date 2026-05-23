@@ -16,7 +16,10 @@ export function formatAED(amount: number): string {
 
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-AE', {
+  const parts = dateStr.slice(0, 10).split('-');
+  if (parts.length !== 3) return '—';
+  const year = Number(parts[0]), month = Number(parts[1]), day = Number(parts[2]);
+  return new Date(year, month - 1, day).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric',
   });
 }

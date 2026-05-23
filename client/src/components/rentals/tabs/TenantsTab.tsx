@@ -59,7 +59,7 @@ function LastEditedBy({ entityType, entityId }: { entityType: string; entityId: 
   if (user?.role !== 'superadmin' || !log) return null;
   return (
     <p className="text-[10px] text-muted-foreground">
-      Last edited by <span className="font-medium">{log.user_name}</span> · {new Date(log.created_at).toLocaleString()}
+      Last edited by <span className="font-medium">{log.user_name}</span> · {new Date(log.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
     </p>
   );
 }
