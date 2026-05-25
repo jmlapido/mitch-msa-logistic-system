@@ -1,12 +1,13 @@
 ﻿import { useState, useEffect } from 'react';
 import { Plus, Trash2, Phone, Mail, FileText, Download, Pencil, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -392,7 +393,7 @@ function ContractFormDialog({ open, onClose, partnerId, editing, onSave }: {
   editing?: PartnerContract | null;
   onSave: (d: { partnerId: number; contract_no?: string; start_date: string; end_date: string; expected_amount: number; payment_frequency: 'monthly' | 'quarterly' | 'annual' | 'one-time'; notes?: string }) => Promise<unknown>;
 }) {
-  const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting } } = useForm<ContractF>({
+  const { register, handleSubmit, reset, watch, setValue, control, formState: { isSubmitting } } = useForm<ContractF>({
     resolver: zodResolver(contractSchema),
     defaultValues: { payment_frequency: 'annual' },
   });
@@ -426,8 +427,8 @@ function ContractFormDialog({ open, onClose, partnerId, editing, onSave }: {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div><Label>Contract No.</Label><Input {...register('contract_no')} placeholder="e.g. 2025-001" className="mt-1" /></div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Start Date *</Label><Input {...register('start_date')} type="date" className="mt-1" /></div>
-            <div><Label>End Date *</Label><Input {...register('end_date')} type="date" className="mt-1" /></div>
+            <div><Label>Start Date *</Label><Controller control={control} name="start_date" render={({ field }) => <DateInput {...field} className="mt-1" />} /></div>
+            <div><Label>End Date *</Label><Controller control={control} name="end_date" render={({ field }) => <DateInput {...field} className="mt-1" />} /></div>
           </div>
           <div><Label>Expected Amount (AED) *</Label><Input {...register('expected_amount')} type="number" min={0} className="mt-1" /></div>
           <div>
@@ -457,7 +458,7 @@ function PaymentFormDialog({ open, onClose, partnerId, contracts, onSave }: {
   open: boolean; onClose: () => void; partnerId: number; contracts: PartnerContract[];
   onSave: (d: { partnerId: number; partner_id: number; contract_id: number; amount: number; paid_date: string; payment_method: 'cash' | 'cheque'; receipt_no?: string; notes?: string }) => Promise<unknown>;
 }) {
-  const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting } } = useForm<PaymentF>({
+  const { register, handleSubmit, reset, watch, setValue, control: payControl, formState: { isSubmitting } } = useForm<PaymentF>({
     resolver: zodResolver(paymentSchema),
     defaultValues: { payment_method: 'cheque', paid_date: new Date().toISOString().slice(0, 10) },
   });
@@ -495,7 +496,7 @@ function PaymentFormDialog({ open, onClose, partnerId, contracts, onSave }: {
             </Select>
           </div>
           <div><Label>Amount (AED) *</Label><Input {...register('amount')} type="number" min={0} step="0.01" className="mt-1" /></div>
-          <div><Label>Date *</Label><Input {...register('paid_date')} type="date" className="mt-1" /></div>
+          <div><Label>Date *</Label><Controller control={payControl} name="paid_date" render={({ field }) => <DateInput {...field} className="mt-1" />} /></div>
           <div>
             <Label>Method *</Label>
             <div className="flex gap-1 mt-1">

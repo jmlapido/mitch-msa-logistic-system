@@ -33,19 +33,17 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
     }, [value]);
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-      const raw = e.target.value;
-      setDisplay(raw);
-      const iso = displayToIso(raw);
-      if (iso || raw === '') onChange?.(iso);
+      setDisplay(e.target.value);
     }
 
     function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
-      const iso = displayToIso(e.target.value);
+      const raw = e.target.value;
+      const iso = displayToIso(raw);
       if (iso) {
         setDisplay(isoToDisplay(iso));
         onChange?.(iso);
-      } else if (e.target.value === '') {
-        onChange?.('');
+      } else {
+        onChange?.(raw === '' ? '' : value ?? '');
       }
       onBlur?.();
     }

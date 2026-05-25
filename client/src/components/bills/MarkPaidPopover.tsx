@@ -4,6 +4,7 @@ import { Paperclip, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBillMutations } from '@/lib/hooks/useBills';
@@ -88,7 +89,7 @@ export function MarkPaidPopover({ entry, month }: Props) {
         </div>
         <div>
           <Label className="text-xs">Date Paid</Label>
-          <Input value={paidDate} onChange={e => setPaidDate(e.target.value)} type="date" className="mt-1" />
+          <DateInput value={paidDate} onChange={setPaidDate} className="mt-1" />
         </div>
         <div>
           <Label className="text-xs">Invoice / Receipt No.</Label>

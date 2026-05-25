@@ -14,7 +14,7 @@ const billSchema = z.object({
   category_id: z.number().int().positive(),
   particulars: z.string().min(1).max(100),
   account_no: z.string().max(60).nullish(),
-  due_day: z.number().int().min(1).max(28).nullish(),
+  due_day: z.number().int().min(1).max(31).nullish(),
   is_recurring: z.coerce.boolean().default(true),
   notes: z.string().nullish(),
   building_id: z.number().int().positive().nullish(),

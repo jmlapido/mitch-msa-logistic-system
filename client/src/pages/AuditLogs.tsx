@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuditLogs, useAuditLogUsers, useAuditLogActions } from '@/lib/hooks/useAuditLogs';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/DateInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 
@@ -54,8 +55,8 @@ export default function AuditLogs() {
           </SelectContent>
         </Select>
 
-        <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} className="w-40" placeholder="From" />
-        <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} className="w-40" placeholder="To" />
+        <DateInput value={dateFrom} onChange={v => { setDateFrom(v); setPage(1); }} className="w-40" />
+        <DateInput value={dateTo} onChange={v => { setDateTo(v); setPage(1); }} className="w-40" />
 
         <Button variant="outline" size="sm" onClick={reset}>Clear</Button>
       </div>

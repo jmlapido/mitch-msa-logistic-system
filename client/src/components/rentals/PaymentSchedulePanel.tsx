@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { DateInput } from '@/components/ui/DateInput';
 import { ChevronDown, ChevronRight, Upload, Eye, Trash2, CalendarDays, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -214,12 +215,11 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
 
               <div className="flex items-center gap-1 flex-1 min-w-0">
                 <CalendarDays size={11} className="text-muted-foreground shrink-0" />
-                <input
-                  type="date"
-                  defaultValue={s.cheque_date ?? ''}
+                <DateInput
+                  value={s.cheque_date ?? ''}
+                  onChange={v => isAdmin && saveDate(s.pdc_number, v)}
                   disabled={!isAdmin}
-                  onBlur={e => isAdmin && saveDate(s.pdc_number, e.target.value)}
-                  className={`text-[11px] bg-transparent border-0 outline-none w-32 ${dateColor(s.cheque_date)} ${!isAdmin ? 'cursor-default' : ''}`}
+                  className={`text-[11px] bg-transparent border-0 outline-none w-32 h-auto py-0 px-0 rounded-none ${dateColor(s.cheque_date)} ${!isAdmin ? 'cursor-default' : ''}`}
                 />
               </div>
 

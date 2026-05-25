@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { useRentPayments, useBuildings, useRentalMutations, usePaymentEntries, type RentPayment, type PaymentEntry } from '@/lib/hooks/useRentals';
 import { ContractsPanel } from '../ContractsPanel';
@@ -380,7 +381,7 @@ function PaymentPopover({
               <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Add Payment</p>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} onFocus={e => e.target.select()} type="number" className="mt-1 h-8 text-xs" /></div>
-                <div><Label className="text-xs">Date</Label><Input value={date} onChange={e => setDate(e.target.value)} type="date" className="mt-1 h-8 text-xs" /></div>
+                <div><Label className="text-xs">Date</Label><DateInput value={date} onChange={setDate} className="mt-1 h-8 text-xs" /></div>
               </div>
               <div>
                 <Label className="text-xs">Method</Label>

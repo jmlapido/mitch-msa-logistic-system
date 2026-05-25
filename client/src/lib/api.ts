@@ -13,7 +13,8 @@ async function request<T>(path: string, options: ApiOptions = {}): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error((err as { error: string }).error ?? res.statusText);
+    const msg = (err as { error?: unknown }).error;
+    throw new Error(typeof msg === 'string' ? msg : res.statusText);
   }
   return res.json() as Promise<T>;
 }
