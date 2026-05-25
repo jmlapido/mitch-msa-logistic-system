@@ -1,6 +1,6 @@
 // src/routes/partner-payments.ts
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth, type AuthVariables } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -158,7 +158,7 @@ partnerPayments.get('/by-partner/:id', async (c) => {
 });
 
 // POST /api/partner-payments — record payment
-partnerPayments.post('/', requireAdmin, zValidator('json', paymentSchema), async (c) => {
+partnerPayments.post('/', requireAdmin, zv('json', paymentSchema), async (c) => {
   const user = c.get('user');
   const d = c.req.valid('json');
 

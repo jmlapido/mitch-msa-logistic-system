@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import type { AuthVariables } from '../middleware/requireAuth';
@@ -85,7 +85,7 @@ const updateEntrySchema = z.object({
 });
 
 // PUT /api/bill-entries/:id
-billEntries.put('/:id', zValidator('json', updateEntrySchema), async (c) => {
+billEntries.put('/:id', zv('json', updateEntrySchema), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const data = c.req.valid('json');
@@ -97,7 +97,7 @@ billEntries.put('/:id', zValidator('json', updateEntrySchema), async (c) => {
 });
 
 // POST /api/bill-entries — one-off entry
-billEntries.post('/', zValidator('json', z.object({
+billEntries.post('/', zv('json', z.object({
   bill_id: z.number().int().positive(),
   month: z.string().regex(/^\d{4}-\d{2}$/),
   amount: z.number().min(0).default(0),

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -42,7 +42,7 @@ contracts.get('/', async (c) => {
   return c.json(results);
 });
 
-contracts.post('/', requireAdmin, zValidator('json', contractSchema), async (c) => {
+contracts.post('/', requireAdmin, zv('json', contractSchema), async (c) => {
   const user = c.get('user');
   const d = c.req.valid('json');
   const no_of_pdc = FREQ_PDC_COUNT[d.payment_frequency] ?? 0;
@@ -54,7 +54,7 @@ contracts.post('/', requireAdmin, zValidator('json', contractSchema), async (c) 
   return c.json(result, 201);
 });
 
-contracts.put('/:id', requireAdmin, zValidator('json', contractSchema.partial()), async (c) => {
+contracts.put('/:id', requireAdmin, zv('json', contractSchema.partial()), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');

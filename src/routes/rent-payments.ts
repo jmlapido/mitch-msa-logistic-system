@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { auditLog } from '../lib/auditLog';
@@ -156,7 +156,7 @@ const updatePaymentSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-rentPayments.put('/:id', zValidator('json', updatePaymentSchema), async (c) => {
+rentPayments.put('/:id', zv('json', updatePaymentSchema), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');
@@ -220,7 +220,7 @@ rentPayments.get('/:id/entries', async (c) => {
   return c.json(results);
 });
 
-rentPayments.post('/:id/entries', zValidator('json', addEntrySchema), async (c) => {
+rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
   const d = c.req.valid('json');

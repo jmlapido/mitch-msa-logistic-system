@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -35,7 +35,7 @@ buildings.get('/:id', async (c) => {
   return c.json(b);
 });
 
-buildings.post('/', requireAdmin, zValidator('json', buildingSchema), async (c) => {
+buildings.post('/', requireAdmin, zv('json', buildingSchema), async (c) => {
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
     'INSERT INTO buildings (name, type, address, notes) VALUES (?,?,?,?) RETURNING *'
@@ -43,7 +43,7 @@ buildings.post('/', requireAdmin, zValidator('json', buildingSchema), async (c) 
   return c.json(result, 201);
 });
 
-buildings.put('/:id', requireAdmin, zValidator('json', buildingSchema.partial()), async (c) => {
+buildings.put('/:id', requireAdmin, zv('json', buildingSchema.partial()), async (c) => {
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -21,7 +21,7 @@ properties.get('/', async (c) => {
   return c.json(results);
 });
 
-properties.post('/', requireAdmin, zValidator('json', propertySchema), async (c) => {
+properties.post('/', requireAdmin, zv('json', propertySchema), async (c) => {
   const data = c.req.valid('json');
   const result = await c.env.DB.prepare(
     'INSERT INTO properties (name, type, address) VALUES (?,?,?) RETURNING *'
@@ -29,7 +29,7 @@ properties.post('/', requireAdmin, zValidator('json', propertySchema), async (c)
   return c.json(result, 201);
 });
 
-properties.put('/:id', requireAdmin, zValidator('json', propertySchema.partial()), async (c) => {
+properties.put('/:id', requireAdmin, zv('json', propertySchema.partial()), async (c) => {
   const id = Number(c.req.param('id'));
   const data = c.req.valid('json');
   const fields = Object.entries(data).map(([k]) => `${k} = ?`).join(', ');

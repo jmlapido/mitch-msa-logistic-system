@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -118,7 +118,7 @@ tenants.get('/:id', async (c) => {
   return c.json({ ...tenant, leases, contracts, documents: docs });
 });
 
-tenants.post('/', zValidator('json', tenantSchema), async (c) => {
+tenants.post('/', zv('json', tenantSchema), async (c) => {
   const user = c.get('user');
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
@@ -128,7 +128,7 @@ tenants.post('/', zValidator('json', tenantSchema), async (c) => {
   return c.json(result, 201);
 });
 
-tenants.put('/:id', requireAdmin, zValidator('json', tenantSchema.partial()), async (c) => {
+tenants.put('/:id', requireAdmin, zv('json', tenantSchema.partial()), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');

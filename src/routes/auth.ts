@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { verifyPassword, signJWT, verifyJWT } from '../lib/auth';
 import type { Env } from '../types';
@@ -12,7 +12,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-auth.post('/login', zValidator('json', loginSchema), async (c) => {
+auth.post('/login', zv('json', loginSchema), async (c) => {
   const { email, password } = c.req.valid('json');
   const user = await c.env.DB.prepare(
     'SELECT id, name, email, password_hash, role FROM users WHERE email = ? AND active = 1'

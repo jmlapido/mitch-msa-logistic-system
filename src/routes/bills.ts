@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -41,7 +41,7 @@ bills.get('/', async (c) => {
 
 const createBillSchema = billSchema.extend({ amount: z.number().min(0).default(0) });
 
-bills.post('/', requireAdmin, zValidator('json', createBillSchema), async (c) => {
+bills.post('/', requireAdmin, zv('json', createBillSchema), async (c) => {
   const user = c.get('user');
   const { amount, ...data } = c.req.valid('json');
   const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
@@ -74,7 +74,7 @@ bills.post('/', requireAdmin, zValidator('json', createBillSchema), async (c) =>
   return c.json({ ...result, entry_id }, 201);
 });
 
-bills.put('/:id', requireAdmin, zValidator('json', billSchema.partial()), async (c) => {
+bills.put('/:id', requireAdmin, zv('json', billSchema.partial()), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const data = c.req.valid('json');

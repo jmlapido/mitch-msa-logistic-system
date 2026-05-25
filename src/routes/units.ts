@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -49,7 +49,7 @@ units.get('/', async (c) => {
   return c.json(results);
 });
 
-units.post('/', requireAdmin, zValidator('json', unitSchema), async (c) => {
+units.post('/', requireAdmin, zv('json', unitSchema), async (c) => {
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
     'INSERT INTO units (building_id, unit_no, type, floor, notes) VALUES (?,?,?,?,?) RETURNING *'
@@ -64,7 +64,7 @@ const unitUpdateSchema = z.object({
   notes: z.string().optional(),
 });
 
-units.put('/:id', requireAdmin, zValidator('json', unitUpdateSchema), async (c) => {
+units.put('/:id', requireAdmin, zv('json', unitUpdateSchema), async (c) => {
   const id = Number(c.req.param('id'));
   const { unit_no, type, floor, notes } = c.req.valid('json');
   await c.env.DB.prepare(

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -48,7 +48,7 @@ leases.get('/expiring', async (c) => {
   return c.json(results);
 });
 
-leases.post('/', requireAdmin, zValidator('json', leaseSchema), async (c) => {
+leases.post('/', requireAdmin, zv('json', leaseSchema), async (c) => {
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
     `INSERT INTO leases (unit_id, tenant_id, start_date, end_date, monthly_rent, deposit, status, notes)
@@ -57,7 +57,7 @@ leases.post('/', requireAdmin, zValidator('json', leaseSchema), async (c) => {
   return c.json(result, 201);
 });
 
-leases.put('/:id', requireAdmin, zValidator('json', leaseSchema.partial()), async (c) => {
+leases.put('/:id', requireAdmin, zv('json', leaseSchema.partial()), async (c) => {
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);

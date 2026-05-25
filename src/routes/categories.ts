@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -24,7 +24,7 @@ categories.get('/', async (c) => {
   return c.json(results);
 });
 
-categories.post('/', requireAdmin, zValidator('json', categorySchema), async (c) => {
+categories.post('/', requireAdmin, zv('json', categorySchema), async (c) => {
   const data = c.req.valid('json');
   const result = await c.env.DB.prepare(
     'INSERT INTO categories (name, color, icon, sort_order, links_to_building) VALUES (?,?,?,?,?) RETURNING *'
@@ -32,7 +32,7 @@ categories.post('/', requireAdmin, zValidator('json', categorySchema), async (c)
   return c.json(result, 201);
 });
 
-categories.put('/:id', requireAdmin, zValidator('json', categorySchema.partial()), async (c) => {
+categories.put('/:id', requireAdmin, zv('json', categorySchema.partial()), async (c) => {
   const id = Number(c.req.param('id'));
   const data = c.req.valid('json');
   const dbData = {

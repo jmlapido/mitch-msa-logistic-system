@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireRole } from '../middleware/requireRole';
@@ -25,7 +25,7 @@ const createSchema = z.object({
   role: z.enum(['superadmin', 'admin', 'staff']),
 });
 
-users.post('/', zValidator('json', createSchema), async (c) => {
+users.post('/', zv('json', createSchema), async (c) => {
   const actor = c.get('user');
   const d = c.req.valid('json');
   const existing = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(d.email).first();
@@ -45,7 +45,7 @@ const updateSchema = z.object({
   password: z.string().min(8).optional(),
 });
 
-users.put('/:id', zValidator('json', updateSchema), async (c) => {
+users.put('/:id', zv('json', updateSchema), async (c) => {
   const actor = c.get('user');
   const id = Number(c.req.param('id'));
   const { password, active, ...rest } = c.req.valid('json');

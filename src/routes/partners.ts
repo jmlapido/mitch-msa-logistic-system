@@ -1,6 +1,6 @@
 // src/routes/partners.ts
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth, type AuthVariables } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -105,7 +105,7 @@ partners.post('/:id/unarchive', requireAdmin, async (c) => {
 });
 
 // POST /api/partners
-partners.post('/', requireAdmin, zValidator('json', partnerSchema), async (c) => {
+partners.post('/', requireAdmin, zv('json', partnerSchema), async (c) => {
   const user = c.get('user');
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
@@ -125,7 +125,7 @@ partners.post('/', requireAdmin, zValidator('json', partnerSchema), async (c) =>
 });
 
 // PUT /api/partners/:id
-partners.put('/:id', requireAdmin, zValidator('json', partnerSchema.partial()), async (c) => {
+partners.put('/:id', requireAdmin, zv('json', partnerSchema.partial()), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');
@@ -265,7 +265,7 @@ partners.get('/:id/contacts', async (c) => {
   return c.json(results);
 });
 
-partners.post('/:id/contacts', requireAdmin, zValidator('json', contactSchema), async (c) => {
+partners.post('/:id/contacts', requireAdmin, zv('json', contactSchema), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const partner = await c.env.DB.prepare('SELECT id FROM partners WHERE id = ?').bind(id).first();
@@ -278,7 +278,7 @@ partners.post('/:id/contacts', requireAdmin, zValidator('json', contactSchema), 
   return c.json(result, 201);
 });
 
-partners.put('/:id/contacts/:cid', requireAdmin, zValidator('json', contactSchema.partial()), async (c) => {
+partners.put('/:id/contacts/:cid', requireAdmin, zv('json', contactSchema.partial()), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));
@@ -332,7 +332,7 @@ partners.get('/:id/contracts', async (c) => {
   return c.json(results);
 });
 
-partners.post('/:id/contracts', requireAdmin, zValidator('json', contractSchema), async (c) => {
+partners.post('/:id/contracts', requireAdmin, zv('json', contractSchema), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const partner = await c.env.DB.prepare('SELECT id FROM partners WHERE id = ?').bind(id).first();
@@ -346,7 +346,7 @@ partners.post('/:id/contracts', requireAdmin, zValidator('json', contractSchema)
   return c.json(result, 201);
 });
 
-partners.put('/:id/contracts/:cid', requireAdmin, zValidator('json', contractSchema.partial()), async (c) => {
+partners.put('/:id/contracts/:cid', requireAdmin, zv('json', contractSchema.partial()), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const cid = Number(c.req.param('cid'));

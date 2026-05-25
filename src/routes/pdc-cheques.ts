@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
@@ -26,7 +26,7 @@ router.get('/', async (c) => {
   return c.json(results);
 });
 
-router.post('/date', requireAdmin, zValidator('json', z.object({
+router.post('/date', requireAdmin, zv('json', z.object({
   contract_id: z.number().int().positive(),
   pdc_number: z.number().int().min(1),
   cheque_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
