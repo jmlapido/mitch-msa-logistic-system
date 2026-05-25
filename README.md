@@ -25,7 +25,7 @@ A full-stack financial, property, and sponsorship management system built on **C
 
 ### Bills Management
 - Add, edit, and delete recurring or one-time bills
-- Recurring checkbox positioned before due date — due date range adjusts (1–28 for recurring, 1–31 for one-time)
+- Recurring checkbox — due date range adjusts (1–28 for recurring, 1–31 for one-time)
 - Assign bills to categories with custom icons and colors
 - Track payment status: Unpaid, Due Soon, Overdue, Paid
 - Mark bills as paid with date, invoice number, and notes
@@ -42,8 +42,12 @@ A full-stack financial, property, and sponsorship management system built on **C
 - **Buildings** — track building name, type, address, unit count, and occupancy
 - **Units** — manage unit numbers, floor, type, and occupancy status; click any row to open a centered detail modal with documents panel
 - **Tenants** — store tenant contact info, ID, and notes; names displayed in Title Case
-- **Leases** — create and track lease contracts with start/end dates, monthly rent, and deposit
-- **Rent Payments** — log monthly rent payments; click the status pill (collected / partial / pending / overdue) to open a centered payment dialog
+- **Contracts** — create and track rental contracts with start/end dates, annual rent, payment type (PDC / Cash), and payment frequency
+  - Payment frequencies: **Monthly** (12 payments/yr), **Quarterly** (4), **Semi-annual** (2), **Annual** (1), **Custom** (manual dates)
+  - Standard frequencies auto-generate a payment schedule from the contract start date at the correct interval
+  - Custom frequency: user sets each payment date individually via the Payment Schedule Panel
+  - **Payment Schedule Panel** — per-contract collapsible panel showing each payment slot with date picker, file upload (PDC cheques), and removal; works for both PDC and Cash contract types
+- **Rent Payments** — log monthly rent payments; click the status pill (collected / partial / pending / overdue) to open a payment dialog with per-entry history
 - Lease status indicators: Active, Expiring Soon, Expired
 - Occupancy summary per building
 
@@ -73,19 +77,22 @@ A full-stack financial, property, and sponsorship management system built on **C
 ### Authentication & Roles
 - JWT-based session authentication
 - Roles: `user`, `admin`, `superadmin`
-- Admin-only actions: create/edit/delete bills and categories
-- Superadmin: inline "last edited by" attribution on bill entries
+- Admin-only actions: create/edit/delete bills, categories, and contracts
+- Superadmin: inline "last edited by" attribution on entries
 
 ### Audit Log
 - Tracks all create, update, and delete actions
+- Filterable by user, action type, entity type, and date range
 - Viewable by superadmin
 
 ### UI / UX
+- All dates displayed and entered in **DD/MM/YYYY** format throughout (custom `DateInput` component — browser-locale independent)
 - UAE Dirham symbol rendered as an inline SVG throughout
 - Sticky top navigation bar with a two-tone teal gradient (`#28bdb6` shades), light and dark mode variants
 - Dark mode toggle — persisted to localStorage
 - Responsive layout (mobile + desktop)
 - Month navigator controls enlarged for easier use across Dashboard, Bills, and Rentals
+- Validation errors surface the actual field message rather than a generic failure string
 - Footer: Designed and Developed for MSA Logistic by [JMLapido](https://fb.com/jmlapido)
 
 ---
@@ -113,7 +120,7 @@ A full-stack financial, property, and sponsorship management system built on **C
 ├── src/                  # Cloudflare Worker (Hono backend)
 │   ├── routes/           # API route handlers
 │   ├── middleware/        # Auth, role guards
-│   └── lib/              # Utilities (audit log, auth helpers)
+│   └── lib/              # Utilities (audit log, zv validator wrapper, auth helpers)
 ├── client/               # React frontend (Vite)
 │   ├── src/
 │   │   ├── pages/        # Top-level pages (Dashboard, Bills, Rentals, Partners, Reports, Settings)
