@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -198,6 +198,12 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                           </>
                         )}
                       </p>
+                      {(c.payment_type ?? 'pdc') === 'pdc' && c.pdc_total != null && c.pdc_total < c.annual_rent && (
+                        <p className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <AlertTriangle size={11} />
+                          <AedAmount amount={c.annual_rent - c.pdc_total} /> uncovered
+                        </p>
+                      )}
                       <p>
                         Type:{' '}
                         <span className="font-medium text-foreground">
@@ -221,6 +227,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                   paymentType={c.payment_type ?? 'pdc'}
                   startDate={c.start_date}
                   slotCount={c.no_of_pdc}
+                  annualRent={c.annual_rent}
                 />
               </div>
             );

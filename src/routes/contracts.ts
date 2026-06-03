@@ -35,7 +35,8 @@ contracts.get('/', async (c) => {
   if (!tenantId) return c.json({ error: 'tenant_id required' }, 400);
   const { results } = await c.env.DB.prepare(`
     SELECT *,
-      CASE WHEN date(end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status
+      CASE WHEN date(end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status,
+      (SELECT SUM(amount) FROM pdc_cheques WHERE contract_id = contracts.id AND amount IS NOT NULL) as pdc_total
     FROM contracts
     WHERE tenant_id = ?
     ORDER BY start_date DESC

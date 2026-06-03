@@ -43,6 +43,12 @@ router.post('/date', requireAdmin, zv('json', z.object({
   const row = await c.env.DB.prepare(
     'SELECT id, contract_id, pdc_number, cheque_date, amount, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'
   ).bind(contract_id, pdc_number).first();
+  // Keep rent_payments.amount in sync with the actual cheque amount.
+  if (cheque_date && amount != null) {
+    await c.env.DB.prepare(
+      `UPDATE rent_payments SET amount = ? WHERE contract_id = ? AND month = strftime('%Y-%m', ?)`
+    ).bind(amount, contract_id, cheque_date).run();
+  }
   await auditLog(c.env.DB, user, 'pdc.date_set', 'pdc', (row as { id?: number } | null)?.id ?? null, `Contract ${contract_id} PDC #${pdc_number} → ${cheque_date}`);
   return c.json(row);
 });

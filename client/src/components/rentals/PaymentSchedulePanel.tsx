@@ -62,9 +62,10 @@ type Props = {
   paymentType: string;
   startDate: string;
   slotCount: number;
+  annualRent: number;
 };
 
-export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType, startDate, slotCount }: Props) {
+export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType, startDate, slotCount, annualRent }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -215,11 +216,19 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
     } catch { toast.error('Failed'); }
   }
 
+  const totalAmount = isPdc
+    ? displaySlots.reduce((sum, s) => sum + (s.amount ?? 0), 0)
+    : 0;
+
   const summaryParts: string[] = [];
   summaryParts.push(`${datedCount}/${totalCount} dated`);
   if (isPdc) {
     summaryParts.push(`${amountSetCount}/${totalCount} amounts`);
     summaryParts.push(`${uploadedCount}/${totalCount} uploaded`);
+    if (amountSetCount > 0 && totalAmount < annualRent) {
+      const shortfall = annualRent - totalAmount;
+      summaryParts.push(`⚠ ${shortfall.toLocaleString('en-US', { maximumFractionDigits: 2 })} uncovered`);
+    }
   }
 
   return (

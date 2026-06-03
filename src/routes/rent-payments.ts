@@ -13,6 +13,28 @@ rentPayments.get('/', async (c) => {
   const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
   const buildingId = c.req.query('building_id');
 
+  // Sync rent_payments.amount with the actual per-cheque amount from pdc_cheques.
+  // This fixes stale amounts stored at insert time vs the manually-set cheque amounts.
+  await c.env.DB.prepare(`
+    UPDATE rent_payments
+    SET amount = (
+      SELECT pc.amount FROM pdc_cheques pc
+      WHERE pc.contract_id = rent_payments.contract_id
+        AND strftime('%Y-%m', pc.cheque_date) = rent_payments.month
+        AND pc.amount IS NOT NULL
+      LIMIT 1
+    )
+    WHERE EXISTS (
+      SELECT 1 FROM contracts c WHERE c.id = rent_payments.contract_id AND c.payment_type = 'pdc'
+    )
+    AND EXISTS (
+      SELECT 1 FROM pdc_cheques pc
+      WHERE pc.contract_id = rent_payments.contract_id
+        AND strftime('%Y-%m', pc.cheque_date) = rent_payments.month
+        AND pc.amount IS NOT NULL
+    )
+  `).run();
+
   // Remove PDC rent_payment rows with no matching cheque and no payment data.
   // Safe: only removes pending/overdue rows with zero amount_paid and no entries.
   await c.env.DB.prepare(`
@@ -150,7 +172,9 @@ rentPayments.get('/', async (c) => {
         WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
         WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
         ELSE ROUND(c.annual_rent / 12.0, 2)
-      END) - rp.amount_paid) as balance
+      END) - rp.amount_paid) as balance,
+      COALESCE((SELECT SUM(pe.amount) FROM payment_entries pe WHERE pe.rent_payment_id = rp.id AND pe.payment_method = 'cash'), 0) as cash_collected,
+      COALESCE((SELECT SUM(pe.amount) FROM payment_entries pe WHERE pe.rent_payment_id = rp.id AND pe.payment_method = 'cheque'), 0) as cheque_collected
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
     JOIN tenants t ON c.tenant_id = t.id
@@ -234,7 +258,7 @@ async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Pr
   if (!row) return;
   const currentMonth = new Date().toISOString().slice(0, 7);
   let status: string;
-  if (row.new_sum >= row.expected_rent) status = 'collected';
+  if (row.new_sum >= row.expected_rent - 1) status = 'collected';
   else if (row.new_sum > 0) status = 'partial';
   else if (row.month < currentMonth) status = 'overdue';
   else status = 'pending';

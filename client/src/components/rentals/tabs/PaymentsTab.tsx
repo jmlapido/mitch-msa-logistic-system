@@ -44,6 +44,8 @@ export function PaymentsTab() {
   const totalCollected = payments.reduce((s, p) => s + p.amount_paid, 0);
   const totalPending = totalExpected - totalCollected;
   const totalOverdue = payments.reduce((s, p) => s + (p.tenant_overdue ?? 0), 0);
+  const totalCash = payments.reduce((s, p) => s + (p.cash_collected ?? 0), 0);
+  const totalCheque = payments.reduce((s, p) => s + (p.cheque_collected ?? 0), 0);
 
   const sidebar = useMemo(() => {
     const statusOrder = ['overdue', 'partial', 'pending', 'collected'] as const;
@@ -84,11 +86,13 @@ export function PaymentsTab() {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
         <StatCard label="Expected" value={<AedAmount amount={totalExpected} />} />
         <StatCard label="Collected" value={<AedAmount amount={totalCollected} />} valueClass="text-green-600" />
         <StatCard label="Pending" value={<AedAmount amount={totalPending} />} valueClass={totalPending > 0 ? 'text-yellow-600' : undefined} />
         <StatCard label="Total Overdue" value={<AedAmount amount={totalOverdue} />} valueClass={totalOverdue > 0 ? 'text-red-600' : undefined} />
+        <StatCard label="Cash Collected" value={<AedAmount amount={totalCash} />} valueClass={totalCash > 0 ? 'text-green-600' : undefined} />
+        <StatCard label="Cheque Collected" value={<AedAmount amount={totalCheque} />} valueClass={totalCheque > 0 ? 'text-green-600' : undefined} />
       </div>
 
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (

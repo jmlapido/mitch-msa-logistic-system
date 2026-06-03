@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Pencil, Trash2, RefreshCw, Hash } from 'lucide-react';
+import { Pencil, Trash2, RefreshCw, Hash, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { MarkPaidPopover } from './MarkPaidPopover';
@@ -26,6 +26,10 @@ const CHIPS = [
 
 const COL_COUNT = 8;
 
+type SortKey = 'due' | 'amount' | 'status';
+type SortDir = 'asc' | 'desc';
+const STATUS_RANK: Record<string, number> = { overdue: 0, due_soon: 1, unpaid: 2, paid: 3 };
+
 function GroupHeader({ icon, label, count }: { icon: React.ReactNode; label: string; count: number }) {
   return (
     <tr className="bg-muted/60 border-y border-border">
@@ -45,7 +49,12 @@ export function BillsTable({ entries, month, onEdit, initialStatusFilter, highli
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter ?? 'all');
   const [catFilter, setCatFilter] = useState<string>('all');
   const [buildingFilter, setBuildingFilter] = useState<string>('all');
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'due', dir: 'asc' });
   useEffect(() => { setBuildingFilter('all'); }, [month]);
+
+  function toggleSort(key: SortKey) {
+    setSort(prev => prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' });
+  }
 
   useEffect(() => {
     if (!highlightEntryId || !entries || entries.length === 0) return;
@@ -82,8 +91,20 @@ export function BillsTable({ entries, month, onEdit, initialStatusFilter, highli
     return true;
   }), [entries, search, statusFilter, catFilter, buildingFilter]);
 
-  const recurring = useMemo(() => filtered.filter(e => e.is_recurring === 1), [filtered]);
-  const oneTime   = useMemo(() => filtered.filter(e => e.is_recurring !== 1), [filtered]);
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sort.key === 'amount') {
+      cmp = a.amount - b.amount;
+    } else if (sort.key === 'due') {
+      cmp = (a.due_day ?? 999) - (b.due_day ?? 999);
+    } else {
+      cmp = (STATUS_RANK[a.computed_status] ?? 9) - (STATUS_RANK[b.computed_status] ?? 9);
+    }
+    return sort.dir === 'asc' ? cmp : -cmp;
+  }), [filtered, sort]);
+
+  const recurring = useMemo(() => sorted.filter(e => e.is_recurring === 1), [sorted]);
+  const oneTime   = useMemo(() => sorted.filter(e => e.is_recurring !== 1), [sorted]);
 
   async function handleDelete(billId: number) {
     if (!confirm('Delete this bill and all its history?')) return;
@@ -202,9 +223,15 @@ export function BillsTable({ entries, month, onEdit, initialStatusFilter, highli
               <th className="text-left px-3 py-2 text-xs font-medium uppercase tracking-wide">Category</th>
               <th className="text-left px-3 py-2 text-xs font-medium uppercase tracking-wide">Particulars</th>
               <th className="hidden sm:table-cell text-left px-3 py-2 text-xs font-medium uppercase tracking-wide">Acct No.</th>
-              <th className="text-right px-3 py-2 text-xs font-medium uppercase tracking-wide">Amount</th>
-              <th className="hidden sm:table-cell text-center px-3 py-2 text-xs font-medium uppercase tracking-wide">Due</th>
-              <th className="text-center px-3 py-2 text-xs font-medium uppercase tracking-wide">Status</th>
+              <th className="text-right px-3 py-2 text-xs font-medium uppercase tracking-wide cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('amount')}>
+                <span className="inline-flex items-center justify-end gap-1">Amount {sort.key === 'amount' ? (sort.dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} className="opacity-40" />}</span>
+              </th>
+              <th className="hidden sm:table-cell text-center px-3 py-2 text-xs font-medium uppercase tracking-wide cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('due')}>
+                <span className="inline-flex items-center justify-center gap-1">Due {sort.key === 'due' ? (sort.dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} className="opacity-40" />}</span>
+              </th>
+              <th className="text-center px-3 py-2 text-xs font-medium uppercase tracking-wide cursor-pointer select-none hover:text-foreground" onClick={() => toggleSort('status')}>
+                <span className="inline-flex items-center justify-center gap-1">Status {sort.key === 'status' ? (sort.dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} className="opacity-40" />}</span>
+              </th>
               <th className="text-center px-3 py-2 text-xs font-medium uppercase tracking-wide">Invoice</th>
               <th className="px-3 py-2"></th>
             </tr>
