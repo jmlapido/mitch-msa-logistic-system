@@ -21,7 +21,7 @@ router.get('/', async (c) => {
   const contractId = c.req.query('contract_id');
   if (!contractId) return c.json({ error: 'contract_id required' }, 400);
   const { results } = await c.env.DB.prepare(
-    'SELECT id, contract_id, pdc_number, cheque_date, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? ORDER BY pdc_number'
+    'SELECT id, contract_id, pdc_number, cheque_date, amount, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? ORDER BY pdc_number'
   ).bind(Number(contractId)).all<PdcRow>();
   return c.json(results);
 });
@@ -30,17 +30,18 @@ router.post('/date', requireAdmin, zv('json', z.object({
   contract_id: z.number().int().positive(),
   pdc_number: z.number().int().min(1),
   cheque_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  amount: z.number().positive().nullable().optional(),
 })), async (c) => {
   const user = c.get('user');
-  const { contract_id, pdc_number, cheque_date } = c.req.valid('json');
+  const { contract_id, pdc_number, cheque_date, amount } = c.req.valid('json');
   await c.env.DB.prepare(`
-    INSERT INTO pdc_cheques (contract_id, pdc_number, cheque_date, updated_at)
-    VALUES (?,?,?,datetime('now'))
+    INSERT INTO pdc_cheques (contract_id, pdc_number, cheque_date, amount, updated_at)
+    VALUES (?,?,?,?,datetime('now'))
     ON CONFLICT (contract_id, pdc_number)
-    DO UPDATE SET cheque_date = excluded.cheque_date, updated_at = datetime('now')
-  `).bind(contract_id, pdc_number, cheque_date).run();
+    DO UPDATE SET cheque_date = excluded.cheque_date, amount = excluded.amount, updated_at = datetime('now')
+  `).bind(contract_id, pdc_number, cheque_date, amount ?? null).run();
   const row = await c.env.DB.prepare(
-    'SELECT id, contract_id, pdc_number, cheque_date, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'
+    'SELECT id, contract_id, pdc_number, cheque_date, amount, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'
   ).bind(contract_id, pdc_number).first();
   await auditLog(c.env.DB, user, 'pdc.date_set', 'pdc', (row as { id?: number } | null)?.id ?? null, `Contract ${contract_id} PDC #${pdc_number} → ${cheque_date}`);
   return c.json(row);
