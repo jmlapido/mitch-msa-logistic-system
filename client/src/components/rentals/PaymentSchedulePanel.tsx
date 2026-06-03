@@ -11,6 +11,7 @@ type PdcRow = {
   contract_id: number;
   pdc_number: number;
   cheque_date: string | null;
+  amount: number | null;
   file_name: string | null;
   file_size: number | null;
   file_type: string | null;
@@ -86,8 +87,27 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
   const isPdc = paymentType === 'pdc';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
-  // For standard frequencies: generate virtual slots from startDate
-  const standardSlots = isCustom ? [] : (() => {
+  // PDC: virtual slots from no_of_pdc count, blank dates, merges with saved rows
+  const pdcSlots = isPdc
+    ? Array.from({ length: slotCount }, (_, i) => {
+        const n = i + 1;
+        const saved = rows.find(r => r.pdc_number === n);
+        return {
+          pdc_number: n,
+          id: saved?.id ?? 0,
+          contract_id: contractId,
+          cheque_date: saved?.cheque_date ?? null,
+          amount: (saved as PdcRow | undefined)?.amount ?? null,
+          file_name: saved?.file_name ?? null,
+          file_size: saved?.file_size ?? null,
+          file_type: saved?.file_type ?? null,
+          updated_at: saved?.updated_at ?? '',
+        };
+      })
+    : [];
+
+  // Cash standard: auto-dated virtual slots (unchanged behavior)
+  const standardSlots = (!isPdc && !isCustom) ? (() => {
     const count = SLOT_COUNTS[paymentFrequency] ?? slotCount;
     const interval = INTERVAL_MONTHS[paymentFrequency] ?? 1;
     return Array.from({ length: count }, (_, i) => {
@@ -99,6 +119,7 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
         id: saved?.id ?? 0,
         contract_id: contractId,
         cheque_date: saved?.cheque_date ?? autoDate,
+        amount: null as number | null,
         file_name: saved?.file_name ?? null,
         file_size: saved?.file_size ?? null,
         file_type: saved?.file_type ?? null,
@@ -106,29 +127,32 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
         autoDate,
       };
     });
-  })();
+  })() : [];
 
-  // For custom: use actual rows from DB
-  const customSlots = isCustom ? [...rows].sort((a, b) => a.pdc_number - b.pdc_number) : [];
+  // Cash custom: actual DB rows
+  const customSlots = (!isPdc && isCustom)
+    ? [...rows].sort((a, b) => a.pdc_number - b.pdc_number).map(r => ({ ...r, amount: null as number | null }))
+    : [];
 
-  const displaySlots = isCustom ? customSlots : standardSlots;
+  const displaySlots = isPdc ? pdcSlots : isCustom ? customSlots : standardSlots;
 
   const datedCount = displaySlots.filter(s => s.cheque_date).length;
+  const amountSetCount = isPdc ? displaySlots.filter(s => s.amount != null).length : 0;
   const uploadedCount = isPdc ? displaySlots.filter(s => s.file_name).length : 0;
   const totalCount = displaySlots.length;
 
   const panelLabel = isPdc ? 'Cheque Schedule' : 'Payment Schedule';
 
-  async function saveDate(pdcNumber: number, value: string) {
+  async function saveSlot(pdcNumber: number, cheque_date: string, amount: number | null) {
     try {
       await fetch('/api/pdc-cheques/date', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ contract_id: contractId, pdc_number: pdcNumber, cheque_date: value || null }),
+        body: JSON.stringify({ contract_id: contractId, pdc_number: pdcNumber, cheque_date: cheque_date || null, amount: amount ?? null }),
       });
       qc.invalidateQueries({ queryKey: ['pdc-cheques', contractId] });
-    } catch { toast.error('Failed to save date'); }
+    } catch { toast.error('Failed to save'); }
   }
 
   async function addCustomSlot() {
@@ -192,7 +216,10 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
 
   const summaryParts: string[] = [];
   summaryParts.push(`${datedCount}/${totalCount} dated`);
-  if (isPdc) summaryParts.push(`${uploadedCount}/${totalCount} uploaded`);
+  if (isPdc) {
+    summaryParts.push(`${amountSetCount}/${totalCount} amounts`);
+    summaryParts.push(`${uploadedCount}/${totalCount} uploaded`);
+  }
 
   return (
     <div className="mt-2 border-t pt-2">
@@ -217,10 +244,23 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
                 <CalendarDays size={11} className="text-muted-foreground shrink-0" />
                 <DateInput
                   value={s.cheque_date ?? ''}
-                  onChange={v => isAdmin && saveDate(s.pdc_number, v)}
+                  onChange={v => isAdmin && saveSlot(s.pdc_number, v, s.amount ?? null)}
                   disabled={!isAdmin}
                   className={`text-[11px] bg-transparent border-0 outline-none w-32 h-auto py-0 px-0 rounded-none ${dateColor(s.cheque_date)} ${!isAdmin ? 'cursor-default' : ''}`}
                 />
+                {isPdc && (
+                  <input
+                    key={`amt-${s.pdc_number}-${s.amount}`}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="Amount"
+                    defaultValue={s.amount ?? ''}
+                    disabled={!isAdmin}
+                    onBlur={e => isAdmin && saveSlot(s.pdc_number, s.cheque_date ?? '', e.target.value ? Number(e.target.value) : null)}
+                    className="text-[11px] bg-transparent border-0 border-b border-muted outline-none w-24 h-auto py-0 px-1 rounded-none placeholder:text-muted-foreground/50"
+                  />
+                )}
               </div>
 
               {isPdc && (
@@ -256,7 +296,7 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
                 </div>
               )}
 
-              {isCustom && isAdmin && (
+              {!isPdc && isCustom && isAdmin && (
                 <button
                   onClick={() => removeCustomSlot(s.id)}
                   disabled={s.id === 0}
@@ -269,7 +309,7 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
             </div>
           ))}
 
-          {isCustom && isAdmin && (
+          {!isPdc && isCustom && isAdmin && (
             <button
               onClick={addCustomSlot}
               disabled={adding}
