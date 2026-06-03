@@ -33,6 +33,7 @@ A full-stack financial, property, and sponsorship management system built on **C
 - Month navigation — view bills for any past or future month
 - Yearly unpaid tracker in the sidebar (month-by-month breakdown)
 - Particulars displayed in Title Case
+- **Sortable columns** — click Amount, Due, or Status headers to sort; default is Due ascending; clicking the active column toggles direction
 
 ### Bill Categories
 - Create and manage bill categories with name, color, and emoji icon
@@ -46,8 +47,13 @@ A full-stack financial, property, and sponsorship management system built on **C
   - Payment frequencies: **Monthly** (12 payments/yr), **Quarterly** (4), **Semi-annual** (2), **Annual** (1), **Custom** (manual dates)
   - Standard frequencies auto-generate a payment schedule from the contract start date at the correct interval
   - Custom frequency: user sets each payment date individually via the Payment Schedule Panel
-  - **Payment Schedule Panel** — per-contract collapsible panel showing each payment slot with date picker, file upload (PDC cheques), and removal; works for both PDC and Cash contract types
+  - **Payment Schedule Panel** — per-contract collapsible panel showing each payment slot with date picker, amount field, file upload (PDC cheques), and removal; works for both PDC and Cash contract types
+  - **PDC coverage warning** — amber alert on the contract card and schedule panel when the total of entered cheque amounts is less than the annual rent, showing the shortfall amount
 - **Rent Payments** — log monthly rent payments; click the status pill (collected / partial / pending / overdue) to open a payment dialog with per-entry history
+  - Payments tab stat cards: Expected, Collected, Pending, Total Overdue, **Cash Collected**, **Cheque Collected**
+  - Sidebar "By Status" panel showing count and amount per status, plus "By Building" breakdown
+  - Payments within **1 AED** of the expected rent are treated as collected (handles rounding on fractional monthly amounts)
+  - Payment entries record cash or cheque method; both count equally toward collected/partial status
 - Lease status indicators: Active, Expiring Soon, Expired
 - Occupancy summary per building
 
