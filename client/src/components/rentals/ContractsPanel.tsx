@@ -40,6 +40,7 @@ const schema = z.object({
   annual_rent: z.string().min(1, 'Required'),
   payment_type: z.enum(['cash', 'pdc']),
   payment_frequency: z.enum(['monthly', 'quarterly', 'semi-annual', 'annual', 'custom']),
+  no_of_pdc: z.string().optional(),
   notes: z.string().optional(),
 });
 type F = z.infer<typeof schema>;
@@ -87,7 +88,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   function openAdd() {
     reset({
       contract_no: '', start_date: '', end_date: '', annual_rent: '',
-      payment_type: 'pdc', payment_frequency: 'monthly', notes: '',
+      payment_type: 'pdc', payment_frequency: 'monthly', no_of_pdc: '1', notes: '',
     });
     setDurationAmt('');
     setEditing(null);
@@ -102,6 +103,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       annual_rent: String(c.annual_rent),
       payment_type: c.payment_type ?? 'pdc',
       payment_frequency: c.payment_frequency ?? 'monthly',
+      no_of_pdc: String(c.no_of_pdc ?? 1),
       notes: c.notes ?? '',
     });
     setDurationAmt('');
@@ -110,6 +112,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   }
 
   async function onSubmit(v: F) {
+    const isPdc = v.payment_type === 'pdc';
     const payload = {
       tenant_id: tenantId,
       contract_no: v.contract_no,
@@ -117,7 +120,8 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       end_date: v.end_date,
       annual_rent: Number(v.annual_rent),
       payment_type: v.payment_type,
-      payment_frequency: v.payment_frequency,
+      payment_frequency: isPdc ? 'custom' : v.payment_frequency,
+      no_of_pdc: isPdc ? Number(v.no_of_pdc ?? 1) : undefined,
       notes: v.notes || undefined,
     };
     try {
@@ -179,10 +183,16 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                       <p>{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
                       <p>Annual Rent: <span className="font-medium text-foreground"><AedAmount amount={c.annual_rent} /></span></p>
                       <p>
-                        Frequency:{' '}
-                        <span className="font-medium text-foreground">
-                          {freqLabel}{slotCount !== null ? ` (${slotCount} payment${slotCount !== 1 ? 's' : ''})` : ''}
-                        </span>
+                        {(c.payment_type ?? 'pdc') === 'pdc' ? (
+                          <>Cheques: <span className="font-medium text-foreground">{c.no_of_pdc}</span></>
+                        ) : (
+                          <>
+                            Frequency:{' '}
+                            <span className="font-medium text-foreground">
+                              {freqLabel}{slotCount !== null ? ` (${slotCount} payment${slotCount !== 1 ? 's' : ''})` : ''}
+                            </span>
+                          </>
+                        )}
                       </p>
                       <p>
                         Type:{' '}
@@ -262,22 +272,6 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
               <Input {...register('annual_rent')} type="number" min={0} className="mt-1" placeholder="0" />
             </div>
             <div>
-              <Label>Payment Frequency *</Label>
-              <Select
-                value={watch('payment_frequency')}
-                onValueChange={v => setValue('payment_frequency', v as F['payment_frequency'])}
-              >
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select frequency" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Monthly (12 payments/year)</SelectItem>
-                  <SelectItem value="quarterly">Quarterly (4 payments/year)</SelectItem>
-                  <SelectItem value="semi-annual">Semi-annual (2 payments/year)</SelectItem>
-                  <SelectItem value="annual">Annual (1 lump sum/year)</SelectItem>
-                  <SelectItem value="custom">Custom (set dates manually)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
               <Label>Payment Type *</Label>
               <Select value={watch('payment_type')} onValueChange={v => setValue('payment_type', v as 'cash' | 'pdc')}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select type" /></SelectTrigger>
@@ -287,10 +281,38 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                 </SelectContent>
               </Select>
             </div>
-            {watch('payment_frequency') === 'custom' && (
-              <p className="text-[11px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
-                Payment dates are set manually in the schedule panel after saving the contract.
-              </p>
+            {watch('payment_type') === 'pdc' ? (
+              <div>
+                <Label>Number of Cheques *</Label>
+                <Input
+                  {...register('no_of_pdc')}
+                  type="number"
+                  min={1}
+                  max={60}
+                  className="mt-1"
+                  placeholder="e.g. 6"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Cheque dates and amounts are set in the schedule panel after saving.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <Label>Payment Frequency *</Label>
+                <Select
+                  value={watch('payment_frequency')}
+                  onValueChange={v => setValue('payment_frequency', v as F['payment_frequency'])}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select frequency" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly (12 payments/year)</SelectItem>
+                    <SelectItem value="quarterly">Quarterly (4 payments/year)</SelectItem>
+                    <SelectItem value="semi-annual">Semi-annual (2 payments/year)</SelectItem>
+                    <SelectItem value="annual">Annual (1 lump sum/year)</SelectItem>
+                    <SelectItem value="custom">Custom (set dates manually)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             )}
             <div>
               <Label>Notes</Label>
