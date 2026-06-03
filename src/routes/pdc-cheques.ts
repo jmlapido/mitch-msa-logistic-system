@@ -9,7 +9,7 @@ import type { Env } from '../types';
 
 type PdcRow = {
   id: number; contract_id: number; pdc_number: number;
-  cheque_date: string | null; file_name: string | null;
+  cheque_date: string | null; amount: number | null; file_name: string | null;
   file_key: string | null; file_size: number | null;
   file_type: string | null; updated_at: string;
 };
@@ -78,7 +78,7 @@ router.post('/upload', requireAdmin, async (c) => {
   `).bind(contractId, pdcNumber, file.name, key, file.size, file.type, user.sub).run();
 
   const row = await c.env.DB.prepare(
-    'SELECT id, contract_id, pdc_number, cheque_date, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'
+    'SELECT id, contract_id, pdc_number, cheque_date, amount, file_name, file_size, file_type, updated_at FROM pdc_cheques WHERE contract_id = ? AND pdc_number = ?'
   ).bind(contractId, pdcNumber).first();
   await auditLog(c.env.DB, user, 'pdc.file_uploaded', 'pdc', (row as { id?: number } | null)?.id ?? null, `Contract ${contractId} PDC #${pdcNumber}: ${file.name}`);
   return c.json(row, 201);

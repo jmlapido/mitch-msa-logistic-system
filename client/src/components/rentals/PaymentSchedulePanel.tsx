@@ -73,6 +73,7 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
   const [adding, setAdding] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadingSlot = useRef<number>(0);
+  const currentDateRef = useRef<Record<number, string>>({});
 
   const { data: rows = [] } = useQuery<PdcRow[]>({
     queryKey: ['pdc-cheques', contractId],
@@ -237,14 +238,19 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
       {open && (
         <div className="mt-2 space-y-1.5">
           {displaySlots.map((s, idx) => (
-            <div key={isCustom ? s.id : `${s.pdc_number}-${s.cheque_date ?? ''}`} className="flex items-center gap-2 rounded border px-2 py-1.5 bg-muted/30">
+            <div key={isPdc ? s.pdc_number : isCustom ? s.id : `${s.pdc_number}-${s.cheque_date ?? ''}`} className="flex items-center gap-2 rounded border px-2 py-1.5 bg-muted/30">
               <span className="w-5 text-[10px] font-semibold text-muted-foreground shrink-0">#{idx + 1}</span>
 
               <div className="flex items-center gap-1 flex-1 min-w-0">
                 <CalendarDays size={11} className="text-muted-foreground shrink-0" />
                 <DateInput
                   value={s.cheque_date ?? ''}
-                  onChange={v => isAdmin && saveSlot(s.pdc_number, v, s.amount ?? null)}
+                  onChange={v => {
+                    if (isAdmin) {
+                      currentDateRef.current[s.pdc_number] = v;
+                      saveSlot(s.pdc_number, v, s.amount ?? null);
+                    }
+                  }}
                   disabled={!isAdmin}
                   className={`text-[11px] bg-transparent border-0 outline-none w-32 h-auto py-0 px-0 rounded-none ${dateColor(s.cheque_date)} ${!isAdmin ? 'cursor-default' : ''}`}
                 />
@@ -257,7 +263,11 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
                     placeholder="Amount"
                     defaultValue={s.amount ?? ''}
                     disabled={!isAdmin}
-                    onBlur={e => isAdmin && saveSlot(s.pdc_number, s.cheque_date ?? '', e.target.value ? Number(e.target.value) : null)}
+                    onBlur={e => isAdmin && saveSlot(
+                      s.pdc_number,
+                      currentDateRef.current[s.pdc_number] ?? s.cheque_date ?? '',
+                      e.target.value ? Number(e.target.value) : null
+                    )}
                     className="text-[11px] bg-transparent border-0 border-b border-muted outline-none w-24 h-auto py-0 px-1 rounded-none placeholder:text-muted-foreground/50"
                   />
                 )}

@@ -26,7 +26,7 @@ const contractSchema = z.object({
   annual_rent: z.number().min(0),
   payment_type: z.enum(['cash', 'pdc']).default('pdc'),
   payment_frequency: z.enum(['monthly', 'quarterly', 'semi-annual', 'annual', 'custom']).default('monthly'),
-  no_of_pdc: z.number().int().min(0).optional(),
+  no_of_pdc: z.number().int().min(1).optional(),
   notes: z.string().optional(),
 });
 

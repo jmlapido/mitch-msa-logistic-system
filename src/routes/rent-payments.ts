@@ -156,9 +156,13 @@ rentPayments.get('/', async (c) => {
     JOIN tenants t ON c.tenant_id = t.id
     LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN buildings b ON u.building_id = b.id
-    LEFT JOIN pdc_cheques pc ON pc.contract_id = c.id
-      AND c.payment_type = 'pdc'
-      AND strftime('%Y-%m', pc.cheque_date) = rp.month
+    LEFT JOIN pdc_cheques pc ON pc.id = (
+      SELECT id FROM pdc_cheques
+      WHERE contract_id = c.id
+        AND c.payment_type = 'pdc'
+        AND strftime('%Y-%m', cheque_date) = rp.month
+      LIMIT 1
+    )
     WHERE rp.month = ?
   `;
   const binds: unknown[] = [month, month];
@@ -218,9 +222,13 @@ async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Pr
       COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as new_sum
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
-    LEFT JOIN pdc_cheques pc ON pc.contract_id = c.id
-      AND c.payment_type = 'pdc'
-      AND strftime('%Y-%m', pc.cheque_date) = rp.month
+    LEFT JOIN pdc_cheques pc ON pc.id = (
+      SELECT id FROM pdc_cheques
+      WHERE contract_id = c.id
+        AND c.payment_type = 'pdc'
+        AND strftime('%Y-%m', cheque_date) = rp.month
+      LIMIT 1
+    )
     WHERE rp.id = ?
   `).bind(rentPaymentId).first<{ month: string; expected_rent: number; new_sum: number }>();
   if (!row) return;

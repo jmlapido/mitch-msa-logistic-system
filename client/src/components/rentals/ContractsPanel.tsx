@@ -113,6 +113,10 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
 
   async function onSubmit(v: F) {
     const isPdc = v.payment_type === 'pdc';
+    if (isPdc && (!v.no_of_pdc || Number(v.no_of_pdc) < 1)) {
+      toast.error('Number of cheques must be at least 1');
+      return;
+    }
     const payload = {
       tenant_id: tenantId,
       contract_no: v.contract_no,
