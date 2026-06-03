@@ -13,6 +13,27 @@ rentPayments.get('/', async (c) => {
   const month = c.req.query('month') ?? new Date().toISOString().slice(0, 7);
   const buildingId = c.req.query('building_id');
 
+  // Remove PDC rent_payment rows with no matching cheque and no payment data.
+  // Safe: only removes pending/overdue rows with zero amount_paid and no entries.
+  await c.env.DB.prepare(`
+    DELETE FROM rent_payments
+    WHERE id IN (
+      SELECT rp.id FROM rent_payments rp
+      JOIN contracts c ON rp.contract_id = c.id
+      WHERE c.payment_type = 'pdc'
+        AND rp.amount_paid = 0
+        AND rp.status IN ('pending', 'overdue')
+        AND NOT EXISTS (
+          SELECT 1 FROM pdc_cheques pc
+          WHERE pc.contract_id = rp.contract_id
+            AND strftime('%Y-%m', pc.cheque_date) = rp.month
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM payment_entries pe WHERE pe.rent_payment_id = rp.id
+        )
+    )
+  `).run();
+
   await c.env.DB.prepare(`
     WITH RECURSIVE month_gen(m) AS (
       SELECT strftime('%Y-%m', MIN(start_date)) FROM contracts
@@ -36,6 +57,7 @@ rentPayments.get('/', async (c) => {
       AND date(c.end_date) >= mg.m || '-01'
       AND mg.m <= ?
       AND c.payment_frequency != 'custom'
+      AND c.payment_type != 'pdc'
       AND (
         c.payment_frequency = 'monthly'
         OR c.payment_frequency IS NULL
@@ -73,7 +95,7 @@ rentPayments.get('/', async (c) => {
       'pending'
     FROM contracts c
     JOIN pdc_cheques pc ON pc.contract_id = c.id
-    WHERE c.payment_frequency = 'custom'
+    WHERE (c.payment_frequency = 'custom' OR c.payment_type = 'pdc')
       AND pc.cheque_date IS NOT NULL
       AND strftime('%Y-%m', pc.cheque_date) <= ?
   `).bind(month).run();
@@ -85,11 +107,11 @@ rentPayments.get('/', async (c) => {
   let query = `
     SELECT rp.*,
       CASE
+        WHEN c.payment_type = 'pdc' THEN
+          COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2))
         WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
         WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
         WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-        WHEN c.payment_frequency = 'custom'      THEN
-          ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
         ELSE ROUND(c.annual_rent / 12.0, 2)
       END as expected_rent,
       t.id as tenant_id, t.name as tenant_name, t.phone as tenant_phone, t.email as tenant_email,
@@ -122,25 +144,21 @@ rentPayments.get('/', async (c) => {
          AND rp2.status NOT IN ('collected')
          AND rp2.month < ?) as tenant_overdue,
       MAX(0, (CASE
+        WHEN c.payment_type = 'pdc' THEN
+          COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2))
         WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
         WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
         WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-        WHEN c.payment_frequency = 'custom'      THEN
-          ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
         ELSE ROUND(c.annual_rent / 12.0, 2)
-      END)
-           - rp.amount_paid) as balance
+      END) - rp.amount_paid) as balance
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
     JOIN tenants t ON c.tenant_id = t.id
     LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN buildings b ON u.building_id = b.id
     LEFT JOIN pdc_cheques pc ON pc.contract_id = c.id
-      AND pc.pdc_number = MIN(
-        c.no_of_pdc,
-        MAX(1, (CAST(strftime('%Y', rp.month) AS INTEGER) * 12 + CAST(strftime('%m', rp.month) AS INTEGER))
-             - (CAST(strftime('%Y', c.start_date) AS INTEGER) * 12 + CAST(strftime('%m', c.start_date) AS INTEGER)) + 1)
-      )
+      AND c.payment_type = 'pdc'
+      AND strftime('%Y-%m', pc.cheque_date) = rp.month
     WHERE rp.month = ?
   `;
   const binds: unknown[] = [month, month];
@@ -186,17 +204,23 @@ const addEntrySchema = z.object({
 async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Promise<void> {
   const row = await db.prepare(`
     SELECT rp.month,
-      CASE
-        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
-        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
-        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-        WHEN c.payment_frequency = 'custom'      THEN
-          ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
-        ELSE ROUND(c.annual_rent / 12.0, 2)
-      END as expected_rent,
+      COALESCE(
+        CASE WHEN c.payment_type = 'pdc' THEN pc.amount ELSE NULL END,
+        CASE
+          WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
+          WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
+          WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
+          WHEN c.payment_frequency = 'custom'      THEN
+            ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+          ELSE ROUND(c.annual_rent / 12.0, 2)
+        END
+      ) as expected_rent,
       COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as new_sum
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
+    LEFT JOIN pdc_cheques pc ON pc.contract_id = c.id
+      AND c.payment_type = 'pdc'
+      AND strftime('%Y-%m', pc.cheque_date) = rp.month
     WHERE rp.id = ?
   `).bind(rentPaymentId).first<{ month: string; expected_rent: number; new_sum: number }>();
   if (!row) return;
