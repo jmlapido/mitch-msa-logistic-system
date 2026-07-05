@@ -53,4 +53,10 @@ describe('planOverpaymentSweep', () => {
     expect(plan.targetAmount).toBe(450); // 400 own + 50 leftover (100-50=50 excess, 50 goes to row 4, 50 leftover)
     expect(plan.swept).toEqual([{ rentPaymentId: 4, amount: 50 }]);
   });
+
+  it('no-excess payment with more than 2 decimal places passes through unrounded', () => {
+    const plan = planOverpaymentSweep(100.126, 400, 0, []);
+    expect(plan.targetAmount).toBe(100.126);
+    expect(plan.swept).toEqual([]);
+  });
 });

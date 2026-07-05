@@ -38,7 +38,9 @@ export function planOverpaymentSweep(
     excess = round2(excess - applyAmount);
   }
 
-  targetAmount = round2(targetAmount + excess);
+  if (excess > 0) {
+    targetAmount = round2(targetAmount + excess);
+  }
 
   return { targetAmount, swept };
 }
