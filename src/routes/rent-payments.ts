@@ -326,9 +326,26 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
   const entryId = Number(c.req.param('entryId'));
-  const result = await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
+
+  const target = await c.env.DB.prepare(
+    'SELECT id FROM payment_entries WHERE id = ? AND rent_payment_id = ?'
+  ).bind(entryId, rentPaymentId).first();
+  if (!target) return c.json({ error: 'Entry not found' }, 404);
+
+  const { results: children } = await c.env.DB.prepare(
+    'SELECT id, rent_payment_id, amount FROM payment_entries WHERE source_entry_id = ?'
+  ).bind(entryId).all<{ id: number; rent_payment_id: number; amount: number }>();
+
+  for (const child of children) {
+    await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ?').bind(child.id).run();
+    await recomputePaymentStatus(c.env.DB, child.rent_payment_id);
+    await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', child.rent_payment_id,
+      `Reversed ${child.amount} auto-applied from entry ${entryId}`);
+  }
+
+  await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
     .bind(entryId, rentPaymentId).run();
-  if (result.meta.changes === 0) return c.json({ error: 'Entry not found' }, 404);
+
   await recomputePaymentStatus(c.env.DB, rentPaymentId);
   await auditLog(c.env.DB, user, 'payment.entry_deleted', 'payment', rentPaymentId,
     `Deleted entry ${entryId}`);
