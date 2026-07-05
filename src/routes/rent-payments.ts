@@ -272,27 +272,31 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
     )
     WHERE rp.id = ?
   `).bind(rentPaymentId).first<{ month: string; tenant_id: number; expected_rent: number; amount_paid: number }>();
+  if (!target) return c.json({ error: 'Payment not found' }, 404);
 
-  const { results: candidateRows } = await c.env.DB.prepare(`
-    SELECT rp.id, ${expectedRentSql} as expected_rent,
-      COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as amount_paid
-    FROM rent_payments rp
-    JOIN contracts c ON rp.contract_id = c.id
-    LEFT JOIN pdc_cheques pc ON pc.id = (
-      SELECT id FROM pdc_cheques
-      WHERE contract_id = c.id AND c.payment_type = 'pdc'
-        AND strftime('%Y-%m', cheque_date) = rp.month
-      LIMIT 1
-    )
-    WHERE c.tenant_id = ? AND rp.id != ? AND rp.status IN ('pending', 'overdue', 'partial')
-    ORDER BY rp.month ASC, rp.id ASC
-  `).bind(target!.tenant_id, rentPaymentId).all<{ id: number; expected_rent: number; amount_paid: number }>();
+  let otherOutstanding: OutstandingRow[] = [];
+  if (d.amount > target.expected_rent - target.amount_paid) {
+    const { results: candidateRows } = await c.env.DB.prepare(`
+      SELECT rp.id, ${expectedRentSql} as expected_rent,
+        COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as amount_paid
+      FROM rent_payments rp
+      JOIN contracts c ON rp.contract_id = c.id
+      LEFT JOIN pdc_cheques pc ON pc.id = (
+        SELECT id FROM pdc_cheques
+        WHERE contract_id = c.id AND c.payment_type = 'pdc'
+          AND strftime('%Y-%m', cheque_date) = rp.month
+        LIMIT 1
+      )
+      WHERE c.tenant_id = ? AND rp.id != ? AND rp.status IN ('pending', 'overdue', 'partial')
+      ORDER BY rp.month ASC, rp.id ASC
+    `).bind(target.tenant_id, rentPaymentId).all<{ id: number; expected_rent: number; amount_paid: number }>();
 
-  const otherOutstanding: OutstandingRow[] = candidateRows.map(r => ({
-    id: r.id, expectedRent: r.expected_rent, amountPaid: r.amount_paid,
-  }));
+    otherOutstanding = candidateRows.map(r => ({
+      id: r.id, expectedRent: r.expected_rent, amountPaid: r.amount_paid,
+    }));
+  }
 
-  const plan = planOverpaymentSweep(d.amount, target!.expected_rent, target!.amount_paid, otherOutstanding);
+  const plan = planOverpaymentSweep(d.amount, target.expected_rent, target.amount_paid, otherOutstanding);
 
   const now = new Date().toISOString();
   const entry = await c.env.DB.prepare(
@@ -343,12 +347,14 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
       `Reversed ${child.amount} auto-applied from entry ${entryId}`);
   }
 
-  await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
+  const result = await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
     .bind(entryId, rentPaymentId).run();
 
-  await recomputePaymentStatus(c.env.DB, rentPaymentId);
-  await auditLog(c.env.DB, user, 'payment.entry_deleted', 'payment', rentPaymentId,
-    `Deleted entry ${entryId}`);
+  if (result.meta.changes > 0) {
+    await recomputePaymentStatus(c.env.DB, rentPaymentId);
+    await auditLog(c.env.DB, user, 'payment.entry_deleted', 'payment', rentPaymentId,
+      `Deleted entry ${entryId}`);
+  }
   return c.json({ ok: true });
 });
 
