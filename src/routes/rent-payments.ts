@@ -3,6 +3,7 @@ import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { auditLog } from '../lib/auditLog';
+import { planOverpaymentSweep, type OutstandingRow } from '../lib/paymentSweep';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -242,21 +243,82 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   const rentPaymentId = Number(c.req.param('id'));
   const d = c.req.valid('json');
 
-  // Verify parent exists
   const parent = await c.env.DB.prepare('SELECT id FROM rent_payments WHERE id = ?').bind(rentPaymentId).first();
   if (!parent) return c.json({ error: 'Payment not found' }, 404);
 
+  const expectedRentSql = `
+    COALESCE(
+      CASE WHEN c.payment_type = 'pdc' THEN pc.amount ELSE NULL END,
+      CASE
+        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
+        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
+        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
+        WHEN c.payment_frequency = 'custom'      THEN
+          ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+        ELSE ROUND(c.annual_rent / 12.0, 2)
+      END
+    )`;
+
+  const target = await c.env.DB.prepare(`
+    SELECT rp.month, c.tenant_id, ${expectedRentSql} as expected_rent,
+      COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as amount_paid
+    FROM rent_payments rp
+    JOIN contracts c ON rp.contract_id = c.id
+    LEFT JOIN pdc_cheques pc ON pc.id = (
+      SELECT id FROM pdc_cheques
+      WHERE contract_id = c.id AND c.payment_type = 'pdc'
+        AND strftime('%Y-%m', cheque_date) = rp.month
+      LIMIT 1
+    )
+    WHERE rp.id = ?
+  `).bind(rentPaymentId).first<{ month: string; tenant_id: number; expected_rent: number; amount_paid: number }>();
+
+  const { results: candidateRows } = await c.env.DB.prepare(`
+    SELECT rp.id, ${expectedRentSql} as expected_rent,
+      COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as amount_paid
+    FROM rent_payments rp
+    JOIN contracts c ON rp.contract_id = c.id
+    LEFT JOIN pdc_cheques pc ON pc.id = (
+      SELECT id FROM pdc_cheques
+      WHERE contract_id = c.id AND c.payment_type = 'pdc'
+        AND strftime('%Y-%m', cheque_date) = rp.month
+      LIMIT 1
+    )
+    WHERE c.tenant_id = ? AND rp.id != ? AND rp.status IN ('pending', 'overdue', 'partial')
+    ORDER BY rp.month ASC, rp.id ASC
+  `).bind(target!.tenant_id, rentPaymentId).all<{ id: number; expected_rent: number; amount_paid: number }>();
+
+  const otherOutstanding: OutstandingRow[] = candidateRows.map(r => ({
+    id: r.id, expectedRent: r.expected_rent, amountPaid: r.amount_paid,
+  }));
+
+  const plan = planOverpaymentSweep(d.amount, target!.expected_rent, target!.amount_paid, otherOutstanding);
+
   const now = new Date().toISOString();
   const entry = await c.env.DB.prepare(
-    `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at)
-     VALUES (?,?,?,?,?,?,?,?) RETURNING *`
+    `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
+     VALUES (?,?,?,?,?,?,?,?,NULL) RETURNING *`
   ).bind(
-    rentPaymentId, d.amount, d.paid_date, d.payment_method,
+    rentPaymentId, plan.targetAmount, d.paid_date, d.payment_method,
     d.receipt_no ?? null, d.notes ?? null, String(user.sub), now
-  ).first();
+  ).first<{ id: number }>();
   await recomputePaymentStatus(c.env.DB, rentPaymentId);
   await auditLog(c.env.DB, user, 'payment.entry_added', 'payment', rentPaymentId,
-    `Added ${d.amount} on ${d.paid_date}`);
+    `Added ${plan.targetAmount} on ${d.paid_date}`);
+
+  for (const swept of plan.swept) {
+    await c.env.DB.prepare(
+      `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
+       VALUES (?,?,?,?,NULL,?,?,?,?)`
+    ).bind(
+      swept.rentPaymentId, swept.amount, d.paid_date, d.payment_method,
+      `Auto-applied from overpayment recorded on ${d.paid_date}`, String(user.sub), now, entry!.id
+    ).run();
+    await recomputePaymentStatus(c.env.DB, swept.rentPaymentId);
+    await auditLog(c.env.DB, user, 'payment.auto_applied', 'payment', swept.rentPaymentId,
+      `Applied ${swept.amount} from overpayment on rent_payment #${rentPaymentId}`);
+  }
+
   return c.json(entry, 201);
 });
 
