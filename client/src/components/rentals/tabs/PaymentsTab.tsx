@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useMemo, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Check, Phone, Mail, Building2 } from 'lucide-react';
+import { Check, Phone, Mail, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { useRentPayments, useBuildings, useRentalMutations, usePaymentEntries, type RentPayment, type PaymentEntry } from '@/lib/hooks/useRentals';
 import { ContractsPanel } from '../ContractsPanel';
+import { MonthYearSelector } from '@/components/ui/MonthYearSelector';
 import { currentMonth, monthLabel, formatDate } from '@/lib/utils';
 import { AedAmount } from '@/components/ui/AedAmount';
 
@@ -26,12 +27,6 @@ export function PaymentsTab() {
   const { data: payments = [], isLoading } = useRentPayments(month, buildingFilter);
   const { data: buildings = [] } = useBuildings();
   const { addPaymentEntry, deletePaymentEntry } = useRentalMutations();
-
-  function changeMonth(delta: number) {
-    const [y, m] = month.split('-').map(Number) as [number, number];
-    const d = new Date(y, m - 1 + delta);
-    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
 
   const grouped = payments.reduce<Record<string, { name: string; items: RentPayment[] }>>((acc, p) => {
     const key = String(p.building_id);
@@ -74,11 +69,7 @@ export function PaymentsTab() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-1">
-          <button onClick={() => changeMonth(-1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronLeft size={20} /></button>
-          <span className="text-base font-semibold w-36 text-center">{monthLabel(month)}</span>
-          <button onClick={() => changeMonth(1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronRight size={20} /></button>
-        </div>
+        <MonthYearSelector month={month} onChange={setMonth} />
         <select value={buildingFilter ?? ''} onChange={e => setBuildingFilter(e.target.value ? Number(e.target.value) : undefined)}
           className="text-xs px-2 py-1 rounded border bg-background border-border">
           <option value="">All buildings</option>
