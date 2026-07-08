@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,25 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useContracts, useRentalMutations, type Contract } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
-import { formatDate } from '@/lib/utils';
+import { formatDate, monthsBetweenRounded } from '@/lib/utils';
 import { AedAmount } from '@/components/ui/AedAmount';
 import { PaymentSchedulePanel } from './PaymentSchedulePanel';
-
-const FREQ_LABELS: Record<string, string> = {
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  'semi-annual': 'Semi-annual',
-  annual: 'Annual',
-  custom: 'Custom',
-};
-
-const FREQ_COUNTS: Record<string, number> = {
-  monthly: 12,
-  quarterly: 4,
-  'semi-annual': 2,
-  annual: 1,
-  custom: 0,
-};
 
 const schema = z.object({
   contract_no: z.string().min(1, 'Required'),
@@ -39,7 +23,6 @@ const schema = z.object({
   end_date: z.string().min(1, 'Required'),
   annual_rent: z.string().min(1, 'Required'),
   payment_type: z.enum(['cash', 'pdc']),
-  payment_frequency: z.enum(['monthly', 'quarterly', 'semi-annual', 'annual', 'custom']),
   no_of_pdc: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -75,7 +58,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   const [durationAmt, setDurationAmt] = useState('');
   const [durationUnit, setDurationUnit] = useState<'days' | 'months'>('months');
 
-  const { register, handleSubmit, reset, watch, setValue, control, formState: { isSubmitting, errors } } = useForm<F>({
+  const { register, handleSubmit, reset, watch, setValue, control, formState: { isSubmitting, errors, dirtyFields } } = useForm<F>({
     resolver: zodResolver(schema),
   });
 
@@ -85,10 +68,20 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
     if (end) setValue('end_date', end);
   }
 
+  const watchedPaymentType = watch('payment_type');
+  const watchedStartDate = watch('start_date');
+  const watchedEndDate = watch('end_date');
+
+  useEffect(() => {
+    if (!editing && watchedPaymentType === 'cash' && watchedStartDate && watchedEndDate && !dirtyFields.no_of_pdc) {
+      setValue('no_of_pdc', String(monthsBetweenRounded(watchedStartDate, watchedEndDate)));
+    }
+  }, [watchedPaymentType, watchedStartDate, watchedEndDate, editing]);
+
   function openAdd() {
     reset({
       contract_no: '', start_date: '', end_date: '', annual_rent: '',
-      payment_type: 'pdc', payment_frequency: 'monthly', no_of_pdc: '1', notes: '',
+      payment_type: 'pdc', no_of_pdc: '1', notes: '',
     });
     setDurationAmt('');
     setEditing(null);
@@ -102,7 +95,6 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       end_date: c.end_date,
       annual_rent: String(c.annual_rent),
       payment_type: c.payment_type ?? 'pdc',
-      payment_frequency: c.payment_frequency ?? 'monthly',
       no_of_pdc: String(c.no_of_pdc ?? 1),
       notes: c.notes ?? '',
     });
@@ -113,8 +105,8 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
 
   async function onSubmit(v: F) {
     const isPdc = v.payment_type === 'pdc';
-    if (isPdc && (!v.no_of_pdc || Number(v.no_of_pdc) < 1)) {
-      toast.error('Number of cheques must be at least 1');
+    if (!v.no_of_pdc || Number(v.no_of_pdc) < 1) {
+      toast.error(isPdc ? 'Number of cheques must be at least 1' : 'Number of payments must be at least 1');
       return;
     }
     const payload = {
@@ -124,8 +116,8 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       end_date: v.end_date,
       annual_rent: Number(v.annual_rent),
       payment_type: v.payment_type,
-      payment_frequency: isPdc ? 'custom' : v.payment_frequency,
-      no_of_pdc: isPdc ? Number(v.no_of_pdc ?? 1) : undefined,
+      payment_frequency: (isPdc ? 'custom' : 'monthly') as 'custom' | 'monthly',
+      no_of_pdc: Number(v.no_of_pdc),
       notes: v.notes || undefined,
     };
     try {
@@ -166,9 +158,6 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       ) : (
         <div className="space-y-1.5">
           {contracts.map(c => {
-            const freq = c.payment_frequency ?? 'monthly';
-            const freqLabel = FREQ_LABELS[freq] ?? freq;
-            const slotCount = freq === 'custom' ? null : FREQ_COUNTS[freq];
             return (
               <div key={c.id} className="border rounded p-2 bg-background text-xs">
                 <div className="flex items-start justify-between gap-2">
@@ -190,12 +179,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                         {(c.payment_type ?? 'pdc') === 'pdc' ? (
                           <>Cheques: <span className="font-medium text-foreground">{c.no_of_pdc}</span></>
                         ) : (
-                          <>
-                            Frequency:{' '}
-                            <span className="font-medium text-foreground">
-                              {freqLabel}{slotCount !== null ? ` (${slotCount} payment${slotCount !== 1 ? 's' : ''})` : ''}
-                            </span>
-                          </>
+                          <>Payments: <span className="font-medium text-foreground">{c.no_of_pdc}</span></>
                         )}
                       </p>
                       {(c.payment_type ?? 'pdc') === 'pdc' && c.pdc_total != null && c.pdc_total < c.annual_rent && (
@@ -223,7 +207,6 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                 </div>
                 <PaymentSchedulePanel
                   contractId={c.id}
-                  paymentFrequency={freq}
                   paymentType={c.payment_type ?? 'pdc'}
                   startDate={c.start_date}
                   slotCount={c.no_of_pdc}
@@ -292,39 +275,22 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                 </SelectContent>
               </Select>
             </div>
-            {watch('payment_type') === 'pdc' ? (
-              <div>
-                <Label>Number of Cheques *</Label>
-                <Input
-                  {...register('no_of_pdc')}
-                  type="number"
-                  min={1}
-                  max={60}
-                  className="mt-1"
-                  placeholder="e.g. 6"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Cheque dates and amounts are set in the schedule panel after saving.
-                </p>
-              </div>
-            ) : (
-              <div>
-                <Label>Payment Frequency *</Label>
-                <Select
-                  value={watch('payment_frequency')}
-                  onValueChange={v => setValue('payment_frequency', v as F['payment_frequency'])}
-                >
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select frequency" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Monthly (12 payments/year)</SelectItem>
-                    <SelectItem value="quarterly">Quarterly (4 payments/year)</SelectItem>
-                    <SelectItem value="semi-annual">Semi-annual (2 payments/year)</SelectItem>
-                    <SelectItem value="annual">Annual (1 lump sum/year)</SelectItem>
-                    <SelectItem value="custom">Custom (set dates manually)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <Label>{watch('payment_type') === 'pdc' ? 'Number of Cheques *' : 'Number of Payments *'}</Label>
+              <Input
+                {...register('no_of_pdc')}
+                type="number"
+                min={1}
+                max={60}
+                className="mt-1"
+                placeholder="e.g. 6"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {watch('payment_type') === 'pdc'
+                  ? 'Cheque dates and amounts are set in the schedule panel after saving.'
+                  : 'Defaults from the lease duration — dates and amounts are set in the schedule panel after saving.'}
+              </p>
+            </div>
             <div>
               <Label>Notes</Label>
               <Input {...register('notes')} className="mt-1" />
