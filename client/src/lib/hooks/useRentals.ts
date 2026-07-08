@@ -17,6 +17,7 @@ export type PaymentEntry = {
   notes: string | null;
   recorded_by: string | null;
   recorded_at: string;
+  source_entry_id: number | null;
 };
 export type Contract = {
   id: number;

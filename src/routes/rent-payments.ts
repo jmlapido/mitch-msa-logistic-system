@@ -3,6 +3,7 @@ import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { auditLog } from '../lib/auditLog';
+import { planOverpaymentSweep, type OutstandingRow } from '../lib/paymentSweep';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -237,26 +238,95 @@ rentPayments.get('/:id/entries', async (c) => {
   return c.json(results);
 });
 
+// NOTE: the overpayment sweep below (candidate read -> target insert -> swept
+// inserts) is not wrapped in a transaction. Two concurrent overpayment
+// submissions for the same tenant could theoretically read the same
+// outstanding balance and both apply against it. Accepted for now: this is a
+// single-admin internal app where truly simultaneous duplicate submissions
+// are very unlikely. Revisit with a D1 batch() transaction if this ever
+// becomes a real multi-admin/concurrent-write app.
 rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
   const d = c.req.valid('json');
 
-  // Verify parent exists
   const parent = await c.env.DB.prepare('SELECT id FROM rent_payments WHERE id = ?').bind(rentPaymentId).first();
   if (!parent) return c.json({ error: 'Payment not found' }, 404);
 
+  const expectedRentSql = `
+    COALESCE(
+      CASE WHEN c.payment_type IN ('pdc', 'cash') THEN pc.amount ELSE NULL END,
+      CASE
+        WHEN c.payment_frequency = 'custom' THEN
+          ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+        ELSE ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2)
+      END
+    )`;
+
+  const target = await c.env.DB.prepare(`
+    SELECT rp.month, c.tenant_id, ${expectedRentSql} as expected_rent,
+      COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as amount_paid
+    FROM rent_payments rp
+    JOIN contracts c ON rp.contract_id = c.id
+    LEFT JOIN pdc_cheques pc ON pc.id = (
+      SELECT id FROM pdc_cheques
+      WHERE contract_id = c.id
+        AND strftime('%Y-%m', cheque_date) = rp.month
+      LIMIT 1
+    )
+    WHERE rp.id = ?
+  `).bind(rentPaymentId).first<{ month: string; tenant_id: number; expected_rent: number; amount_paid: number }>();
+  if (!target) return c.json({ error: 'Payment not found' }, 404);
+
+  let otherOutstanding: OutstandingRow[] = [];
+  if (d.amount > target.expected_rent - target.amount_paid) {
+    const { results: candidateRows } = await c.env.DB.prepare(`
+      SELECT rp.id, ${expectedRentSql} as expected_rent,
+        COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as amount_paid
+      FROM rent_payments rp
+      JOIN contracts c ON rp.contract_id = c.id
+      LEFT JOIN pdc_cheques pc ON pc.id = (
+        SELECT id FROM pdc_cheques
+        WHERE contract_id = c.id
+          AND strftime('%Y-%m', cheque_date) = rp.month
+        LIMIT 1
+      )
+      WHERE c.tenant_id = ? AND rp.id != ? AND rp.status IN ('pending', 'overdue', 'partial')
+      ORDER BY rp.month ASC, rp.id ASC
+    `).bind(target.tenant_id, rentPaymentId).all<{ id: number; expected_rent: number; amount_paid: number }>();
+
+    otherOutstanding = candidateRows.map(r => ({
+      id: r.id, expectedRent: r.expected_rent, amountPaid: r.amount_paid,
+    }));
+  }
+
+  const plan = planOverpaymentSweep(d.amount, target.expected_rent, target.amount_paid, otherOutstanding);
+
   const now = new Date().toISOString();
   const entry = await c.env.DB.prepare(
-    `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at)
-     VALUES (?,?,?,?,?,?,?,?) RETURNING *`
+    `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
+     VALUES (?,?,?,?,?,?,?,?,NULL) RETURNING *`
   ).bind(
-    rentPaymentId, d.amount, d.paid_date, d.payment_method,
+    rentPaymentId, plan.targetAmount, d.paid_date, d.payment_method,
     d.receipt_no ?? null, d.notes ?? null, String(user.sub), now
-  ).first();
+  ).first<{ id: number }>();
   await recomputePaymentStatus(c.env.DB, rentPaymentId);
   await auditLog(c.env.DB, user, 'payment.entry_added', 'payment', rentPaymentId,
-    `Added ${d.amount} on ${d.paid_date}`);
+    `Added ${plan.targetAmount} on ${d.paid_date}`);
+
+  for (const swept of plan.swept) {
+    await c.env.DB.prepare(
+      `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
+       VALUES (?,?,?,?,NULL,?,?,?,?)`
+    ).bind(
+      swept.rentPaymentId, swept.amount, d.paid_date, d.payment_method,
+      `Auto-applied from overpayment recorded on ${d.paid_date}`, String(user.sub), now, entry!.id
+    ).run();
+    await recomputePaymentStatus(c.env.DB, swept.rentPaymentId);
+    await auditLog(c.env.DB, user, 'payment.auto_applied', 'payment', swept.rentPaymentId,
+      `Applied ${swept.amount} from overpayment on rent_payment #${rentPaymentId}`);
+  }
+
   return c.json(entry, 201);
 });
 
@@ -264,12 +334,31 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
   const entryId = Number(c.req.param('entryId'));
+
+  const target = await c.env.DB.prepare(
+    'SELECT id FROM payment_entries WHERE id = ? AND rent_payment_id = ?'
+  ).bind(entryId, rentPaymentId).first();
+  if (!target) return c.json({ error: 'Entry not found' }, 404);
+
+  const { results: children } = await c.env.DB.prepare(
+    'SELECT id, rent_payment_id, amount FROM payment_entries WHERE source_entry_id = ?'
+  ).bind(entryId).all<{ id: number; rent_payment_id: number; amount: number }>();
+
+  for (const child of children) {
+    await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ?').bind(child.id).run();
+    await recomputePaymentStatus(c.env.DB, child.rent_payment_id);
+    await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', child.rent_payment_id,
+      `Reversed ${child.amount} auto-applied from entry ${entryId}`);
+  }
+
   const result = await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
     .bind(entryId, rentPaymentId).run();
-  if (result.meta.changes === 0) return c.json({ error: 'Entry not found' }, 404);
-  await recomputePaymentStatus(c.env.DB, rentPaymentId);
-  await auditLog(c.env.DB, user, 'payment.entry_deleted', 'payment', rentPaymentId,
-    `Deleted entry ${entryId}`);
+
+  if (result.meta.changes > 0) {
+    await recomputePaymentStatus(c.env.DB, rentPaymentId);
+    await auditLog(c.env.DB, user, 'payment.entry_deleted', 'payment', rentPaymentId,
+      `Deleted entry ${entryId}`);
+  }
   return c.json({ ok: true });
 });
 
