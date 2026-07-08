@@ -5,12 +5,23 @@ export type OutstandingRow = {
 };
 
 export type SweepPlan = {
-  targetAmount: number;
+  ownAmount: number;
   swept: Array<{ rentPaymentId: number; amount: number }>;
+  leftover: number;
 };
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+export function applyExcessToCandidate(
+  excess: number,
+  expectedRent: number,
+  amountPaid: number,
+): { applied: number; remainingExcess: number } {
+  const remainingDue = Math.max(0, round2(expectedRent - amountPaid));
+  const applied = Math.min(excess, remainingDue);
+  return { applied, remainingExcess: round2(excess - applied) };
 }
 
 /**
@@ -24,23 +35,24 @@ export function planOverpaymentSweep(
   otherOutstanding: OutstandingRow[],
 ): SweepPlan {
   const remainingDueTarget = Math.max(0, round2(targetExpectedRent - targetAmountPaid));
-  let targetAmount = Math.min(enteredAmount, remainingDueTarget);
-  let excess = round2(enteredAmount - targetAmount);
+  const ownAmount = Math.min(enteredAmount, remainingDueTarget);
+  let excess = round2(enteredAmount - ownAmount);
 
   const swept: Array<{ rentPaymentId: number; amount: number }> = [];
 
   for (const row of otherOutstanding) {
     if (excess <= 0) break;
-    const remainingDue = Math.max(0, round2(row.expectedRent - row.amountPaid));
-    if (remainingDue <= 0) continue;
-    const applyAmount = Math.min(excess, remainingDue);
-    swept.push({ rentPaymentId: row.id, amount: applyAmount });
-    excess = round2(excess - applyAmount);
+    const { applied, remainingExcess } = applyExcessToCandidate(excess, row.expectedRent, row.amountPaid);
+    if (applied > 0) swept.push({ rentPaymentId: row.id, amount: applied });
+    excess = remainingExcess;
   }
 
-  if (excess > 0) {
-    targetAmount = round2(targetAmount + excess);
-  }
+  return { ownAmount, swept, leftover: excess };
+}
 
-  return { targetAmount, swept };
+/** '2026-07' -> '2026-08'; correctly rolls over the year ('2025-12' -> '2026-01'). */
+export function addMonthToYyyyMm(month: string): string {
+  const [year, m] = month.split('-').map(Number) as [number, number];
+  const d = new Date(year, m); // m is already 1-indexed (e.g. 7 = July); passing it as the month index (0-indexed) yields the next month
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
