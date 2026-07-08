@@ -3,7 +3,7 @@ import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { auditLog } from '../lib/auditLog';
-import { planOverpaymentSweep, type OutstandingRow } from '../lib/paymentSweep';
+import { planOverpaymentSweep, applyExcessToCandidate, addMonthToYyyyMm, type OutstandingRow } from '../lib/paymentSweep';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -301,8 +301,68 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   }
 
   const plan = planOverpaymentSweep(d.amount, target.expected_rent, target.amount_paid, otherOutstanding);
-  const finalTargetAmount = plan.leftover > 0 ? Math.round((plan.ownAmount + plan.leftover) * 100) / 100 : plan.ownAmount;
-  const allSwept = [...plan.swept];
+  let finalTargetAmount = plan.ownAmount;
+  const allSwept: Array<{ rentPaymentId: number; amount: number }> = [...plan.swept];
+
+  if (plan.leftover > 0) {
+    let leftover = plan.leftover;
+    const { results: cashContracts } = await c.env.DB.prepare(`
+      SELECT id, annual_rent, no_of_pdc, end_date
+      FROM contracts
+      WHERE tenant_id = ? AND payment_type = 'cash' AND date(end_date) >= date('now')
+    `).bind(target.tenant_id).all<{ id: number; annual_rent: number; no_of_pdc: number; end_date: string }>();
+
+    const nextMonthByContract = new Map<number, string>();
+    for (const contract of cashContracts) {
+      nextMonthByContract.set(contract.id, addMonthToYyyyMm(target.month));
+    }
+
+    while (leftover > 0) {
+      // Find the contract whose next candidate month is chronologically soonest (tie-break by contract id).
+      let chosenContract: typeof cashContracts[number] | null = null;
+      let chosenMonth = '';
+      for (const contract of cashContracts) {
+        const candidateMonth = nextMonthByContract.get(contract.id)!;
+        if (candidateMonth > contract.end_date.slice(0, 7)) continue; // past this contract's lease term
+        if (chosenContract === null || candidateMonth < chosenMonth ||
+            (candidateMonth === chosenMonth && contract.id < chosenContract.id)) {
+          chosenContract = contract;
+          chosenMonth = candidateMonth;
+        }
+      }
+      if (!chosenContract) break; // every contract has reached its own end_date; leftover stays on target
+
+      // Critical: check whether a row already exists for this (contract, month) before
+      // generating one. The unchanged otherOutstanding query above has no month-direction
+      // filter — it already picked up ANY pending/overdue/partial row for this tenant,
+      // past or future. If a row already exists here, it was already correctly considered
+      // by planOverpaymentSweep's backward loop; re-touching it here would double-apply
+      // the leftover on top of whatever the backward loop already decided.
+      const existing = await c.env.DB.prepare(
+        'SELECT id FROM rent_payments WHERE contract_id = ? AND month = ?'
+      ).bind(chosenContract.id, chosenMonth).first<{ id: number }>();
+
+      if (existing) {
+        nextMonthByContract.set(chosenContract.id, addMonthToYyyyMm(chosenMonth));
+        continue;
+      }
+
+      const expectedRent = Math.round((chosenContract.annual_rent / Math.max(1, chosenContract.no_of_pdc)) * 100) / 100;
+      const inserted = await c.env.DB.prepare(`
+        INSERT INTO rent_payments (contract_id, month, amount, status)
+        VALUES (?, ?, ?, 'pending') RETURNING id
+      `).bind(chosenContract.id, chosenMonth, expectedRent).first<{ id: number }>();
+
+      // A brand-new row has no entries yet, so its remaining due is simply its full
+      // expected amount — no need for a second query to re-derive amount_paid.
+      const { applied, remainingExcess } = applyExcessToCandidate(leftover, expectedRent, 0);
+      if (applied > 0) allSwept.push({ rentPaymentId: inserted!.id, amount: applied });
+      leftover = remainingExcess;
+      nextMonthByContract.set(chosenContract.id, addMonthToYyyyMm(chosenMonth));
+    }
+
+    finalTargetAmount = Math.round((plan.ownAmount + leftover) * 100) / 100;
+  }
 
   const now = new Date().toISOString();
   const entry = await c.env.DB.prepare(
