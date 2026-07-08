@@ -19,7 +19,7 @@ SET no_of_pdc = CASE payment_frequency
   WHEN 'semi-annual' THEN 2
   ELSE 12
 END
-WHERE payment_type = 'cash' AND payment_frequency != 'custom';
+WHERE payment_type = 'cash' AND payment_frequency IN ('annual', 'quarterly', 'semi-annual');
 
 -- Every cash contract now stores 'monthly' internally, regardless of its
 -- original frequency choice.
