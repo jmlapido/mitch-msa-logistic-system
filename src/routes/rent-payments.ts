@@ -238,6 +238,13 @@ rentPayments.get('/:id/entries', async (c) => {
   return c.json(results);
 });
 
+// NOTE: the overpayment sweep below (candidate read -> target insert -> swept
+// inserts) is not wrapped in a transaction. Two concurrent overpayment
+// submissions for the same tenant could theoretically read the same
+// outstanding balance and both apply against it. Accepted for now: this is a
+// single-admin internal app where truly simultaneous duplicate submissions
+// are very unlikely. Revisit with a D1 batch() transaction if this ever
+// becomes a real multi-admin/concurrent-write app.
 rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
