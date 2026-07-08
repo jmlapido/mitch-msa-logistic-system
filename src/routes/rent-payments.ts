@@ -248,14 +248,11 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
 
   const expectedRentSql = `
     COALESCE(
-      CASE WHEN c.payment_type = 'pdc' THEN pc.amount ELSE NULL END,
+      CASE WHEN c.payment_type IN ('pdc', 'cash') THEN pc.amount ELSE NULL END,
       CASE
-        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
-        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
-        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-        WHEN c.payment_frequency = 'custom'      THEN
+        WHEN c.payment_frequency = 'custom' THEN
           ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
-        ELSE ROUND(c.annual_rent / 12.0, 2)
+        ELSE ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2)
       END
     )`;
 
@@ -266,7 +263,7 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
     JOIN contracts c ON rp.contract_id = c.id
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
-      WHERE contract_id = c.id AND c.payment_type = 'pdc'
+      WHERE contract_id = c.id
         AND strftime('%Y-%m', cheque_date) = rp.month
       LIMIT 1
     )
@@ -283,7 +280,7 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
       JOIN contracts c ON rp.contract_id = c.id
       LEFT JOIN pdc_cheques pc ON pc.id = (
         SELECT id FROM pdc_cheques
-        WHERE contract_id = c.id AND c.payment_type = 'pdc'
+        WHERE contract_id = c.id
           AND strftime('%Y-%m', cheque_date) = rp.month
         LIMIT 1
       )
