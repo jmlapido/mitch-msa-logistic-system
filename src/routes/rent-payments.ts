@@ -301,7 +301,7 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   }
 
   const plan = planOverpaymentSweep(d.amount, target.expected_rent, target.amount_paid, otherOutstanding);
-  const finalTargetAmount = Math.round((plan.ownAmount + plan.leftover) * 100) / 100;
+  const finalTargetAmount = plan.leftover > 0 ? Math.round((plan.ownAmount + plan.leftover) * 100) / 100 : plan.ownAmount;
   const allSwept = [...plan.swept];
 
   const now = new Date().toISOString();
