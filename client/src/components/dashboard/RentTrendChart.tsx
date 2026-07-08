@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { formatAED } from '@/lib/utils';
@@ -16,14 +16,13 @@ export function RentTrendChart({ history }: Props) {
   const uid = useId().replace(/:/g, '');
   const gradDueId = `gradDue-${uid}`;
   const gradCollId = `gradColl-${uid}`;
-  const [freq, setFreq] = useState<'monthly' | 'annual'>('monthly');
 
   if (!history?.length) return null;
 
   const data = history.map(h => ({
     month: shortMonth(h.month),
-    Due:       freq === 'monthly' ? h.due_monthly       : h.due_annual,
-    Collected: freq === 'monthly' ? h.collected_monthly : h.collected_annual,
+    Due:       h.due_monthly,
+    Collected: h.collected_monthly,
   }));
 
   return (
@@ -33,28 +32,13 @@ export function RentTrendChart({ history }: Props) {
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">6-Month Rent Trend</h3>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-3">
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <span className="inline-block w-4 h-0.5 rounded" style={{ backgroundImage: 'repeating-linear-gradient(90deg,#8b5cf6 0 4px,transparent 4px 7px)' }} />Due
-            </span>
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <span className="inline-block w-4 h-0.5 bg-emerald-500 rounded" />Collected
-            </span>
-          </div>
-          <div
-            className="flex rounded-md border overflow-hidden text-[10px]"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              className={`px-2 py-0.5 transition-colors ${freq === 'monthly' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-              onClick={() => setFreq('monthly')}
-            >Monthly</button>
-            <button
-              className={`px-2 py-0.5 transition-colors ${freq === 'annual' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-              onClick={() => setFreq('annual')}
-            >Annual</button>
-          </div>
+        <div className="flex gap-3">
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className="inline-block w-4 h-0.5 rounded" style={{ backgroundImage: 'repeating-linear-gradient(90deg,#8b5cf6 0 4px,transparent 4px 7px)' }} />Due
+          </span>
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span className="inline-block w-4 h-0.5 bg-emerald-500 rounded" />Collected
+          </span>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={100}>

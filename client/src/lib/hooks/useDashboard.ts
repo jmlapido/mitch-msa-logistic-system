@@ -10,7 +10,7 @@ export type DashboardData = {
     rent: { collected: number };
   };
   billsHistory: Array<{ month: string; total: number; unpaid: number }>;
-  rentHistory: Array<{ month: string; due_monthly: number; collected_monthly: number; due_annual: number; collected_annual: number }>;
+  rentHistory: Array<{ month: string; due_monthly: number; collected_monthly: number }>;
   sponsorships: {
     totalContractValue: number;
     collected: number;

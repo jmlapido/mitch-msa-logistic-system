@@ -1,3 +1,8 @@
+-- PRODUCTION: this migration must be applied to the remote D1 database exactly
+-- once, after this branch has merged and deployed, via:
+--   npx wrangler d1 execute mitch-app-db --remote --file=migrations/0012-cash-payment-count-migration.sql
+-- Only run this with explicit human confirmation -- never automatically.
+
 -- migrations/0012-cash-payment-count-migration.sql
 -- Normalizes existing cash contracts onto the new "Number of Payments" model:
 -- no_of_pdc becomes the real payment count (previously only meaningful for PDC),
