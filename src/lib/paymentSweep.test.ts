@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planOverpaymentSweep, applyExcessToCandidate } from './paymentSweep';
+import { planOverpaymentSweep, applyExcessToCandidate, addMonthToYyyyMm } from './paymentSweep';
 
 describe('applyExcessToCandidate', () => {
   it('applies the full excess when it is less than the remaining due', () => {
@@ -87,5 +87,20 @@ describe('planOverpaymentSweep', () => {
     expect(plan.ownAmount).toBe(100.126);
     expect(plan.swept).toEqual([]);
     expect(plan.leftover).toBe(0);
+  });
+});
+
+describe('addMonthToYyyyMm', () => {
+  it('steps forward within a year', () => {
+    expect(addMonthToYyyyMm('2026-07')).toBe('2026-08');
+  });
+
+  it('rolls over into the next year at December', () => {
+    expect(addMonthToYyyyMm('2025-12')).toBe('2026-01');
+  });
+
+  it('zero-pads single-digit months', () => {
+    expect(addMonthToYyyyMm('2026-01')).toBe('2026-02');
+    expect(addMonthToYyyyMm('2026-09')).toBe('2026-10');
   });
 });
