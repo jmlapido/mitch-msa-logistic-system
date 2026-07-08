@@ -46,17 +46,27 @@ PDC contracts already solve a related problem well: instead of picking a frequen
 
 ## 3. Backend generation & sync (`src/routes/rent-payments.ts`)
 
-- **One-time data migration** (new `migrations/0012-cash-payment-count-migration.sql`): for every contract with `payment_type = 'cash'`, recompute `no_of_pdc` from its current `payment_frequency` (`annual`→1, `quarterly`→4, `semi-annual`→2, `monthly`→12, unless already set to a different explicit value — see migration SQL below for the exact guard), then set `payment_frequency = 'monthly'` unconditionally for all cash contracts. After this migration, no cash contract has any `payment_frequency` value other than `'monthly'`.
+- **One-time data migration** (new `migrations/0012-cash-payment-count-migration.sql`): the client form today already has an existing "custom" frequency option for cash (freeform, manually-added slots via `addCustomSlot`, `ContractsPanel.tsx:323`) distinct from monthly/quarterly/semi-annual/annual — this migration must handle it separately from the fixed-cadence values. For every contract with `payment_type = 'cash'` and `payment_frequency = 'custom'`, `no_of_pdc` is set to the actual count of that contract's existing `pdc_cheques` rows (since those slots already exist with no predetermined count). For every other cash contract, `no_of_pdc` is recomputed from its current `payment_frequency` (`annual`→1, `quarterly`→4, `semi-annual`→2, `monthly`→12). Then `payment_frequency` is set to `'monthly'` unconditionally for every cash contract. After this migration, no cash contract has any `payment_frequency` value other than `'monthly'`, and the "custom" option is removed from the form entirely (Section 1).
 - **Month-walk INSERT** (`:59-108`): the `annual`/`quarterly`/`semi-annual` cadence-gating `OR` clauses (`:86-107`) are deleted. Every cash contract is `'monthly'` post-migration, so every contract gets a row every month between `start_date` and `end_date`, same as today's plain monthly case.
 - **Default amount formula** (insert CASE `:68-72` and display CASE `:134-137`): the hardcoded `ROUND(c.annual_rent / 12.0, 2)` becomes `ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2)` for cash — using the contract's own stored count directly (unlike PDC, which counts *dated* cheques dynamically; cash rows exist unconditionally regardless of scheduling, so the divisor is the fixed stored count). The `annual`/`quarterly`/`semi-annual` branches of these CASEs are deleted along with the migration.
 - **Amount sync** (`:16-36`): the `WHERE ... c.payment_type = 'pdc'` gate widens to also match `c.payment_type = 'cash'` — once an admin edits a slot's amount in the schedule panel, that override flows into `rent_payments.amount` for cash exactly like it already does for PDC.
 - **Due-date sync (new behavior)**: the `due_date` CASE (`:143-149`) changes for cash from always `c.due_day`-based to: use `pdc_cheques.cheque_date` for that month if that slot has been dated, otherwise fall back to the `start_date`-day-of-month default — mirroring how PDC already resolves `due_date` straight from `pc.cheque_date`. This requires joining `pdc_cheques` into the cash due-date computation, which today's query doesn't do at all for cash.
 - `contracts.due_day`: no longer read for cash going forward; column stays in the schema, unused (see Non-Goals).
 
+## 4. Other files with the same hardcoded frequency CASE
+
+`src/routes/reports.ts` and `src/routes/tenants.ts` each contain the same `annual`/`quarterly`/`semi-annual`/`ELSE annual_rent/12.0` CASE pattern as `rent-payments.ts`, computing expected/monthly rent for contracts. Since the migration (Section 3) forces every cash contract's `payment_frequency` to `'monthly'`, leaving these two files unfixed would make them silently compute the wrong expected-rent for any migrated cash contract whose `no_of_pdc` isn't 12 (they'd all fall into the `ELSE annual_rent/12.0` branch regardless of actual count). Both files get the identical fix described in Section 3: delete the `annual`/`quarterly`/`semi-annual` branches, add a `payment_type = 'cash'` branch using `annual_rent / MAX(1, no_of_pdc)`.
+
+Two frontend display components read `payment_frequency === 'annual'` to decide between showing `annual_rent/yr` or `monthly_rent/mo`: `client/src/components/rentals/tabs/TenantsTab.tsx:205` and `client/src/components/reports/ExpiringLeasesReportView.tsx:62`. Since no cash contract can be `'annual'` after migration (PDC was already always `'custom'`, never `'annual'`), this condition becomes permanently false — any previously-annual cash contract switches from showing `annual_rent/yr` to `monthly_rent/mo`. This is accepted as the correct new behavior (no per-contract lump-sum concept survives in the new model); the dead `isAnnual`/`payment_frequency === 'annual'` branches are removed from both components as part of this plan's cleanup.
+
 ### Migration SQL sketch
 
 ```sql
 -- migrations/0012-cash-payment-count-migration.sql
+UPDATE contracts
+SET no_of_pdc = (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = contracts.id)
+WHERE payment_type = 'cash' AND payment_frequency = 'custom';
+
 UPDATE contracts
 SET no_of_pdc = CASE payment_frequency
   WHEN 'annual'      THEN 1
@@ -64,7 +74,7 @@ SET no_of_pdc = CASE payment_frequency
   WHEN 'semi-annual' THEN 2
   ELSE 12
 END
-WHERE payment_type = 'cash';
+WHERE payment_type = 'cash' AND payment_frequency != 'custom';
 
 UPDATE contracts
 SET payment_frequency = 'monthly'
@@ -75,9 +85,9 @@ WHERE payment_type = 'cash';
 
 ## Testing
 
-- Backend: new test cases (following the existing pattern in `src/routes/`) covering: month-walk still generates one row per month for a cash contract; default amount divides `annual_rent` by `no_of_pdc` (not a fixed 12); amount-sync now applies to cash; due-date sync uses `pdc_cheques.cheque_date` when set, falls back to `start_date`-day otherwise.
-- Migration: a test or manual check confirming pre-migration contracts with `quarterly`/`semi-annual`/`annual` end up with the correct `no_of_pdc` and `payment_frequency = 'monthly'` after running the migration SQL.
-- Frontend: no new automated tests planned for the schedule panel UI itself (matches this codebase's existing convention of testing pure logic, not rendered components — see the `MonthYearSelector` precedent). Manual verification: create a cash contract, confirm default count/dates/amounts, edit the count and confirm even-split recompute, edit an individual slot's date and amount and confirm both show up correctly on the Payments page.
+- Backend: no existing route in this codebase has automated tests that exercise D1 (the two existing backend test files, `requireRole.test.ts` and `auth.test.ts`, test pure middleware/auth logic only, with no database). `rent-payments.ts` itself has zero test coverage today despite its complexity. Standing up D1 test fixtures is out of scope for this feature — verification for all SQL changes (month-walk generation, default-amount formulas, due-date/amount sync, the migration) is manual (see below), consistent with how this part of the codebase is verified today.
+- Frontend: the one new pure-logic helper (duration → default payment count) gets a unit test, matching this codebase's convention of testing pure logic, not rendered components (see the `MonthYearSelector` precedent). No new automated tests for the schedule panel UI itself.
+- Manual verification: create a cash contract, confirm default count/dates/amounts; edit the count and confirm even-split recompute; edit an individual slot's date and amount and confirm both show up correctly on the Payments page; run the migration against a local D1 copy and spot-check a few pre-existing cash contracts (including one on the old "custom" option, if any exist) end up with sensible `no_of_pdc` values and `payment_frequency = 'monthly'`.
 
 ## Out of Scope
 
