@@ -301,20 +301,22 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   }
 
   const plan = planOverpaymentSweep(d.amount, target.expected_rent, target.amount_paid, otherOutstanding);
+  const finalTargetAmount = Math.round((plan.ownAmount + plan.leftover) * 100) / 100;
+  const allSwept = [...plan.swept];
 
   const now = new Date().toISOString();
   const entry = await c.env.DB.prepare(
     `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
      VALUES (?,?,?,?,?,?,?,?,NULL) RETURNING *`
   ).bind(
-    rentPaymentId, plan.targetAmount, d.paid_date, d.payment_method,
+    rentPaymentId, finalTargetAmount, d.paid_date, d.payment_method,
     d.receipt_no ?? null, d.notes ?? null, String(user.sub), now
   ).first<{ id: number }>();
   await recomputePaymentStatus(c.env.DB, rentPaymentId);
   await auditLog(c.env.DB, user, 'payment.entry_added', 'payment', rentPaymentId,
-    `Added ${plan.targetAmount} on ${d.paid_date}`);
+    `Added ${finalTargetAmount} on ${d.paid_date}`);
 
-  for (const swept of plan.swept) {
+  for (const swept of allSwept) {
     await c.env.DB.prepare(
       `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
        VALUES (?,?,?,?,NULL,?,?,?,?)`
