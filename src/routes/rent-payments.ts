@@ -3,9 +3,15 @@ import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { auditLog } from '../lib/auditLog';
-import { planOverpaymentSweep, type OutstandingRow } from '../lib/paymentSweep';
+import { planOverpaymentSweep, applyExcessToCandidate, addMonthToYyyyMm, type OutstandingRow } from '../lib/paymentSweep';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
+
+function formatMonthLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number) as [number, number];
+  const date = new Date(year, m - 1);
+  return date.toLocaleDateString('en-AE', { month: 'short', year: 'numeric' });
+}
 
 const rentPayments = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 rentPayments.use('*', requireAuth);
@@ -264,10 +270,12 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
     )`;
 
   const target = await c.env.DB.prepare(`
-    SELECT rp.month, c.tenant_id, ${expectedRentSql} as expected_rent,
+    SELECT rp.month, c.tenant_id, t.name as tenant_name, u.unit_no, ${expectedRentSql} as expected_rent,
       COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as amount_paid
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
+    JOIN tenants t ON c.tenant_id = t.id
+    LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
@@ -275,7 +283,7 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
       LIMIT 1
     )
     WHERE rp.id = ?
-  `).bind(rentPaymentId).first<{ month: string; tenant_id: number; expected_rent: number; amount_paid: number }>();
+  `).bind(rentPaymentId).first<{ month: string; tenant_id: number; tenant_name: string; unit_no: string | null; expected_rent: number; amount_paid: number }>();
   if (!target) return c.json({ error: 'Payment not found' }, 404);
 
   let otherOutstanding: OutstandingRow[] = [];
@@ -301,26 +309,90 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   }
 
   const plan = planOverpaymentSweep(d.amount, target.expected_rent, target.amount_paid, otherOutstanding);
+  let finalTargetAmount = plan.ownAmount;
+  const allSwept: Array<{ rentPaymentId: number; amount: number }> = [...plan.swept];
+
+  if (plan.leftover > 0) {
+    let leftover = plan.leftover;
+    const { results: cashContracts } = await c.env.DB.prepare(`
+      SELECT id, annual_rent, no_of_pdc, end_date
+      FROM contracts
+      WHERE tenant_id = ? AND payment_type = 'cash' AND date(end_date) >= date('now')
+    `).bind(target.tenant_id).all<{ id: number; annual_rent: number; no_of_pdc: number; end_date: string }>();
+
+    const nextMonthByContract = new Map<number, string>();
+    for (const contract of cashContracts) {
+      nextMonthByContract.set(contract.id, addMonthToYyyyMm(target.month));
+    }
+
+    while (leftover > 0) {
+      // Find the contract whose next candidate month is chronologically soonest (tie-break by contract id).
+      let chosenContract: typeof cashContracts[number] | null = null;
+      let chosenMonth = '';
+      for (const contract of cashContracts) {
+        const candidateMonth = nextMonthByContract.get(contract.id)!;
+        if (candidateMonth > contract.end_date.slice(0, 7)) continue; // past this contract's lease term
+        if (chosenContract === null || candidateMonth < chosenMonth ||
+            (candidateMonth === chosenMonth && contract.id < chosenContract.id)) {
+          chosenContract = contract;
+          chosenMonth = candidateMonth;
+        }
+      }
+      if (!chosenContract) break; // every contract has reached its own end_date; leftover stays on target
+
+      // Critical: check whether a row already exists for this (contract, month) before
+      // generating one. The unchanged otherOutstanding query above has no month-direction
+      // filter — it already picked up ANY pending/overdue/partial row for this tenant,
+      // past or future. If a row already exists here, it was already correctly considered
+      // by planOverpaymentSweep's backward loop; re-touching it here would double-apply
+      // the leftover on top of whatever the backward loop already decided.
+      const existing = await c.env.DB.prepare(
+        'SELECT id FROM rent_payments WHERE contract_id = ? AND month = ?'
+      ).bind(chosenContract.id, chosenMonth).first<{ id: number }>();
+
+      if (existing) {
+        nextMonthByContract.set(chosenContract.id, addMonthToYyyyMm(chosenMonth));
+        continue;
+      }
+
+      const expectedRent = Math.round((chosenContract.annual_rent / Math.max(1, chosenContract.no_of_pdc)) * 100) / 100;
+      const inserted = await c.env.DB.prepare(`
+        INSERT INTO rent_payments (contract_id, month, amount, status)
+        VALUES (?, ?, ?, 'pending') RETURNING id
+      `).bind(chosenContract.id, chosenMonth, expectedRent).first<{ id: number }>();
+
+      // A brand-new row has no entries yet, so its remaining due is simply its full
+      // expected amount — no need for a second query to re-derive amount_paid.
+      const { applied, remainingExcess } = applyExcessToCandidate(leftover, expectedRent, 0);
+      if (applied > 0) allSwept.push({ rentPaymentId: inserted!.id, amount: applied });
+      leftover = remainingExcess;
+      nextMonthByContract.set(chosenContract.id, addMonthToYyyyMm(chosenMonth));
+    }
+
+    finalTargetAmount = Math.round((plan.ownAmount + leftover) * 100) / 100;
+  }
 
   const now = new Date().toISOString();
   const entry = await c.env.DB.prepare(
     `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
      VALUES (?,?,?,?,?,?,?,?,NULL) RETURNING *`
   ).bind(
-    rentPaymentId, plan.targetAmount, d.paid_date, d.payment_method,
+    rentPaymentId, finalTargetAmount, d.paid_date, d.payment_method,
     d.receipt_no ?? null, d.notes ?? null, String(user.sub), now
   ).first<{ id: number }>();
   await recomputePaymentStatus(c.env.DB, rentPaymentId);
   await auditLog(c.env.DB, user, 'payment.entry_added', 'payment', rentPaymentId,
-    `Added ${plan.targetAmount} on ${d.paid_date}`);
+    `Added ${finalTargetAmount} on ${d.paid_date}`);
 
-  for (const swept of plan.swept) {
+  const originLabel = `${formatMonthLabel(target.month)} (${target.unit_no ? `Unit ${target.unit_no}` : target.tenant_name})`;
+
+  for (const swept of allSwept) {
     await c.env.DB.prepare(
       `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
        VALUES (?,?,?,?,NULL,?,?,?,?)`
     ).bind(
       swept.rentPaymentId, swept.amount, d.paid_date, d.payment_method,
-      `Auto-applied from overpayment recorded on ${d.paid_date}`, String(user.sub), now, entry!.id
+      `Auto-applied from overpayment on ${originLabel}`, String(user.sub), now, entry!.id
     ).run();
     await recomputePaymentStatus(c.env.DB, swept.rentPaymentId);
     await auditLog(c.env.DB, user, 'payment.auto_applied', 'payment', swept.rentPaymentId,
