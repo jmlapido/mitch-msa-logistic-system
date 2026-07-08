@@ -42,6 +42,19 @@ function formatBytes(n: number | null): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
+export function computeShortfall(
+  slots: { pdc_number: number; amount: number | null }[],
+  savedPdcNumber: number,
+  savedAmount: number | null,
+  annualRent: number
+): number {
+  const total = slots.reduce(
+    (sum, s) => sum + (s.pdc_number === savedPdcNumber ? (savedAmount ?? 0) : (s.amount ?? 0)),
+    0
+  );
+  return Math.max(0, annualRent - total);
+}
+
 type Props = {
   contractId: number;
   paymentType: string;
@@ -56,6 +69,7 @@ export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotC
   const [open, setOpen] = useState(false);
   const [previewRow, setPreviewRow] = useState<PdcRow | null>(null);
   const [uploading, setUploading] = useState<number | null>(null);
+  const [shortfallAlert, setShortfallAlert] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadingSlot = useRef<number>(0);
   const currentDateRef = useRef<Record<number, string>>({});
@@ -108,6 +122,8 @@ export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotC
         body: JSON.stringify({ contract_id: contractId, pdc_number: pdcNumber, cheque_date: cheque_date || null, amount: amount ?? null }),
       });
       qc.invalidateQueries({ queryKey: ['pdc-cheques', contractId] });
+      const shortfall = computeShortfall(displaySlots, pdcNumber, amount, annualRent);
+      if (shortfall > 0) setShortfallAlert(shortfall);
     } catch { toast.error('Failed to save'); }
   }
 
@@ -272,6 +288,27 @@ export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotC
               />
             )
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={shortfallAlert !== null} onOpenChange={v => !v && setShortfallAlert(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Schedule under-covered</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This schedule is short by{' '}
+            <span className="font-semibold text-foreground">
+              {shortfallAlert?.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+            </span>{' '}
+            of the annual rent.
+          </p>
+          <button
+            onClick={() => setShortfallAlert(null)}
+            className="mt-2 w-full rounded-md bg-primary text-primary-foreground text-sm py-1.5 hover:opacity-90"
+          >
+            OK
+          </button>
         </DialogContent>
       </Dialog>
     </div>
