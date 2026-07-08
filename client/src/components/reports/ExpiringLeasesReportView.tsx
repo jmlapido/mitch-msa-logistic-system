@@ -4,7 +4,7 @@ import { AedAmount } from '@/components/ui/AedAmount';
 
 type Row = {
   tenant_name: string; unit_no: string; building_name: string;
-  end_date: string; annual_rent: number; payment_frequency: string | null;
+  end_date: string;
   monthly_rent: number; days_left: number;
 };
 
@@ -59,7 +59,6 @@ export function ExpiringLeasesReportView({ rows, from, to }: Props) {
             <tbody className="divide-y divide-border">
               {rows.map((r, i) => {
                 const u = urgency(r.days_left);
-                const isAnnual = r.payment_frequency === 'annual';
                 return (
                   <tr key={i} className="hover:bg-muted/20">
                     <td className="px-3 py-1.5 font-medium">{r.tenant_name}</td>
@@ -68,9 +67,7 @@ export function ExpiringLeasesReportView({ rows, from, to }: Props) {
                     <td className="px-3 py-1.5 text-center">{formatDate(r.end_date)}</td>
                     <td className="px-3 py-1.5 text-center"><span className={u.cls}>{u.label}</span></td>
                     <td className="px-3 py-1.5 text-right text-xs">
-                      {isAnnual
-                        ? <>{<AedAmount amount={r.annual_rent} />}<span className="text-muted-foreground">/yr</span></>
-                        : <>{<AedAmount amount={r.monthly_rent} />}<span className="text-muted-foreground">/mo</span></>}
+                      <AedAmount amount={r.monthly_rent} /><span className="text-muted-foreground">/mo</span>
                     </td>
                   </tr>
                 );

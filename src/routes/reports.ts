@@ -7,12 +7,9 @@ const reports = new Hono<{ Bindings: Env }>();
 reports.use('*', requireAuth, requireAdmin);
 
 const EXPECTED_RENT = `CASE
-  WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
-  WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
-  WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-  WHEN c.payment_frequency = 'custom'      THEN
+  WHEN c.payment_frequency = 'custom' THEN
     ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
-  ELSE ROUND(c.annual_rent / 12.0, 2)
+  ELSE ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2)
 END`;
 
 // GET /api/reports?type=bills|rental|combined|outstanding|expiring&from=YYYY-MM&to=YYYY-MM&building_id=N
@@ -172,7 +169,7 @@ reports.get('/', async (c) => {
       SELECT
         t.name as tenant_name, u.unit_no, b.name as building_name,
         c.end_date, c.annual_rent, c.payment_frequency,
-        ROUND(c.annual_rent/12, 2) as monthly_rent,
+        ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2) as monthly_rent,
         CAST(julianday(c.end_date) - julianday('now') AS INTEGER) as days_left
       FROM contracts c
       JOIN tenants t ON c.tenant_id = t.id

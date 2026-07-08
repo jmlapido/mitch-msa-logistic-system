@@ -26,7 +26,7 @@ units.get('/', async (c) => {
              ELSE 'active' END
       ELSE NULL END as lease_status,
       c.end_date as lease_end,
-      ROUND(c.annual_rent / 12, 2) as monthly_rent,
+      ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2) as monthly_rent,
       tn.name as tenant_name,
       CASE
         WHEN c.id IS NOT NULL AND date(c.end_date) <= date('now', '+30 days') THEN 'expiring'

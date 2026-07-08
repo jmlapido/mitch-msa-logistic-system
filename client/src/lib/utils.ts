@@ -34,3 +34,11 @@ export function monthLabel(month: string): string {
   const date = new Date(Number(year), Number(m) - 1);
   return date.toLocaleDateString('en-AE', { month: 'long', year: 'numeric' });
 }
+
+export function monthsBetweenRounded(startDate: string, endDate: string): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const totalDays = (end.getTime() - start.getTime()) / 86400000;
+  const months = totalDays / 30.4375;
+  return Math.max(1, Math.round(months));
+}

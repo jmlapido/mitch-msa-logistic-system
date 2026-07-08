@@ -10,14 +10,6 @@ import type { Env } from '../types';
 const contracts = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 contracts.use('*', requireAuth);
 
-const FREQ_PDC_COUNT: Record<string, number> = {
-  monthly: 12,
-  quarterly: 4,
-  'semi-annual': 2,
-  annual: 1,
-  custom: 0,
-};
-
 const contractSchema = z.object({
   tenant_id: z.number().int().positive(),
   contract_no: z.string().min(1).max(100),
@@ -25,8 +17,8 @@ const contractSchema = z.object({
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   annual_rent: z.number().min(0),
   payment_type: z.enum(['cash', 'pdc']).default('pdc'),
-  payment_frequency: z.enum(['monthly', 'quarterly', 'semi-annual', 'annual', 'custom']).default('monthly'),
-  no_of_pdc: z.number().int().min(1).optional(),
+  payment_frequency: z.enum(['monthly', 'quarterly', 'semi-annual', 'annual', 'custom']).default('monthly').optional(),
+  no_of_pdc: z.number().int().min(1),
   notes: z.string().optional(),
 });
 
@@ -48,14 +40,11 @@ contracts.post('/', requireAdmin, zv('json', contractSchema), async (c) => {
   const user = c.get('user');
   const d = c.req.valid('json');
   const isPdc = d.payment_type === 'pdc';
-  const payment_frequency = isPdc ? 'custom' : d.payment_frequency;
-  const no_of_pdc = isPdc
-    ? (d.no_of_pdc ?? 0)
-    : (FREQ_PDC_COUNT[d.payment_frequency] ?? 0);
+  const payment_frequency = isPdc ? 'custom' : 'monthly';
   const result = await c.env.DB.prepare(
     `INSERT INTO contracts (tenant_id, contract_no, start_date, end_date, annual_rent, payment_type, no_of_pdc, payment_frequency, notes, created_by)
      VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING *`
-  ).bind(d.tenant_id, d.contract_no, d.start_date, d.end_date, d.annual_rent, d.payment_type, no_of_pdc, payment_frequency, d.notes ?? null, user.sub).first<{ id: number }>();
+  ).bind(d.tenant_id, d.contract_no, d.start_date, d.end_date, d.annual_rent, d.payment_type, d.no_of_pdc, payment_frequency, d.notes ?? null, user.sub).first<{ id: number }>();
   await auditLog(c.env.DB, user, 'contract.created', 'contract', result?.id ?? null, `Contract #${d.contract_no}`);
   return c.json(result, 201);
 });
@@ -68,9 +57,8 @@ contracts.put('/:id', requireAdmin, zv('json', contractSchema.partial()), async 
   const patch: Record<string, unknown> = { ...d };
   if (d.payment_type === 'pdc') {
     patch.payment_frequency = 'custom';
-    if (d.no_of_pdc !== undefined) patch.no_of_pdc = d.no_of_pdc;
-  } else if (d.payment_frequency && d.payment_frequency !== 'custom') {
-    patch.no_of_pdc = FREQ_PDC_COUNT[d.payment_frequency] ?? 0;
+  } else if (d.payment_type === 'cash') {
+    patch.payment_frequency = 'monthly';
   }
 
   const entries = Object.entries(patch).filter(([, v]) => v !== undefined);

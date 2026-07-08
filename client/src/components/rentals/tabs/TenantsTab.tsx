@@ -202,10 +202,7 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
                           <div className="flex items-center gap-3 shrink-0">
                             {(t.annual_rent || t.monthly_rent) && (
                               <div className="text-right hidden sm:block">
-                                {t.payment_frequency === 'annual'
-                                  ? <div className="text-sm font-semibold"><AedAmount amount={t.annual_rent!} /><span className="text-xs font-normal text-muted-foreground">/yr</span></div>
-                                  : <div className="text-sm font-semibold"><AedAmount amount={t.monthly_rent!} /><span className="text-xs font-normal text-muted-foreground">/mo</span></div>
-                                }
+                                <div className="text-sm font-semibold"><AedAmount amount={t.monthly_rent!} /><span className="text-xs font-normal text-muted-foreground">/mo</span></div>
                                 {t.end_date && <div className="text-xs text-muted-foreground">until {formatDate(t.end_date)}</div>}
                               </div>
                             )}

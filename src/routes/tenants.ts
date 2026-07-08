@@ -30,17 +30,14 @@ tenants.get('/', async (c) => {
       ELSE NULL END as lease_status,
       c.start_date, c.end_date,
       c.annual_rent, c.payment_frequency,
-      ROUND(c.annual_rent / 12, 2) as monthly_rent,
+      ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2) as monthly_rent,
       u.unit_no, bld.name as building_name,
       (SELECT COALESCE(SUM(
          CASE WHEN rp.status = 'partial'
            THEN (CASE
-             WHEN c2.payment_frequency = 'annual'      THEN c2.annual_rent
-             WHEN c2.payment_frequency = 'quarterly'   THEN ROUND(c2.annual_rent / 4.0, 2)
-             WHEN c2.payment_frequency = 'semi-annual' THEN ROUND(c2.annual_rent / 2.0, 2)
-             WHEN c2.payment_frequency = 'custom'      THEN
+             WHEN c2.payment_frequency = 'custom' THEN
                ROUND(c2.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c2.id AND cheque_date IS NOT NULL)), 2)
-             ELSE ROUND(c2.annual_rent / 12.0, 2)
+             ELSE ROUND(c2.annual_rent / MAX(1, c2.no_of_pdc), 2)
            END - rp.amount_paid)
            ELSE rp.amount
          END

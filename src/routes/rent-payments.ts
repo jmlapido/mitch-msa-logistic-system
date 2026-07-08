@@ -25,7 +25,7 @@ rentPayments.get('/', async (c) => {
       LIMIT 1
     )
     WHERE EXISTS (
-      SELECT 1 FROM contracts c WHERE c.id = rent_payments.contract_id AND c.payment_type = 'pdc'
+      SELECT 1 FROM contracts c WHERE c.id = rent_payments.contract_id AND c.payment_type IN ('pdc', 'cash')
     )
     AND EXISTS (
       SELECT 1 FROM pdc_cheques pc
@@ -65,46 +65,14 @@ rentPayments.get('/', async (c) => {
     )
     INSERT OR IGNORE INTO rent_payments (contract_id, month, amount, status)
     SELECT c.id, mg.m,
-      CASE
-        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
-        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
-        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-        ELSE ROUND(c.annual_rent / 12.0, 2)
-        -- 'custom' frequency excluded above; handled in the separate INSERT below
-      END,
+      ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2),
       'pending'
     FROM contracts c
     CROSS JOIN month_gen mg
     WHERE date(c.start_date) <= mg.m || '-28'
       AND date(c.end_date) >= mg.m || '-01'
       AND mg.m <= ?
-      AND c.payment_frequency != 'custom'
-      AND c.payment_type != 'pdc'
-      AND (
-        c.payment_frequency = 'monthly'
-        OR c.payment_frequency IS NULL
-        OR (
-          c.payment_frequency = 'annual'
-          AND (
-            (CAST(strftime('%Y', mg.m) AS INTEGER) * 12 + CAST(strftime('%m', mg.m) AS INTEGER))
-            - (CAST(strftime('%Y', c.start_date) AS INTEGER) * 12 + CAST(strftime('%m', c.start_date) AS INTEGER))
-          ) % 12 = 0
-        )
-        OR (
-          c.payment_frequency = 'quarterly'
-          AND (
-            (CAST(strftime('%Y', mg.m) AS INTEGER) * 12 + CAST(strftime('%m', mg.m) AS INTEGER))
-            - (CAST(strftime('%Y', c.start_date) AS INTEGER) * 12 + CAST(strftime('%m', c.start_date) AS INTEGER))
-          ) % 3 = 0
-        )
-        OR (
-          c.payment_frequency = 'semi-annual'
-          AND (
-            (CAST(strftime('%Y', mg.m) AS INTEGER) * 12 + CAST(strftime('%m', mg.m) AS INTEGER))
-            - (CAST(strftime('%Y', c.start_date) AS INTEGER) * 12 + CAST(strftime('%m', c.start_date) AS INTEGER))
-          ) % 6 = 0
-        )
-      )
+      AND c.payment_type = 'cash'
   `).bind(month, month).run();
 
   // Custom frequency: generate one rent_payment per pdc_cheques entry
@@ -131,10 +99,8 @@ rentPayments.get('/', async (c) => {
       CASE
         WHEN c.payment_type = 'pdc' THEN
           COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2))
-        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
-        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
-        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-        ELSE ROUND(c.annual_rent / 12.0, 2)
+        ELSE
+          COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2))
       END as expected_rent,
       t.id as tenant_id, t.name as tenant_name, t.phone as tenant_phone, t.email as tenant_email,
       u.unit_no, u.type as unit_type,
@@ -142,7 +108,12 @@ rentPayments.get('/', async (c) => {
       c.payment_type,
       CASE
         WHEN c.payment_type = 'cash' THEN
-          rp.month || '-' || printf('%02d', COALESCE(c.due_day, 1))
+          COALESCE(pc.cheque_date, rp.month || '-' || printf('%02d',
+            MIN(
+              CAST(strftime('%d', c.start_date) AS INTEGER),
+              CAST(strftime('%d', date(rp.month || '-01', '+1 month', '-1 day')) AS INTEGER)
+            )
+          ))
         WHEN c.payment_type = 'pdc' THEN
           pc.cheque_date
         ELSE NULL
@@ -150,12 +121,9 @@ rentPayments.get('/', async (c) => {
       (SELECT COALESCE(SUM(
          CASE WHEN rp2.status = 'partial'
            THEN (CASE
-             WHEN c2.payment_frequency = 'annual'      THEN c2.annual_rent
-             WHEN c2.payment_frequency = 'quarterly'   THEN ROUND(c2.annual_rent / 4.0, 2)
-             WHEN c2.payment_frequency = 'semi-annual' THEN ROUND(c2.annual_rent / 2.0, 2)
-             WHEN c2.payment_frequency = 'custom'      THEN
+             WHEN c2.payment_frequency = 'custom' THEN
                ROUND(c2.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c2.id AND cheque_date IS NOT NULL)), 2)
-             ELSE ROUND(c2.annual_rent / 12.0, 2)
+             ELSE ROUND(c2.annual_rent / MAX(1, c2.no_of_pdc), 2)
            END - rp2.amount_paid)
            ELSE rp2.amount
          END
@@ -168,10 +136,8 @@ rentPayments.get('/', async (c) => {
       MAX(0, (CASE
         WHEN c.payment_type = 'pdc' THEN
           COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2))
-        WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
-        WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
-        WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-        ELSE ROUND(c.annual_rent / 12.0, 2)
+        ELSE
+          COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2))
       END) - rp.amount_paid) as balance,
       COALESCE((SELECT SUM(pe.amount) FROM payment_entries pe WHERE pe.rent_payment_id = rp.id AND pe.payment_method = 'cash'), 0) as cash_collected,
       COALESCE((SELECT SUM(pe.amount) FROM payment_entries pe WHERE pe.rent_payment_id = rp.id AND pe.payment_method = 'cheque'), 0) as cheque_collected
@@ -183,7 +149,6 @@ rentPayments.get('/', async (c) => {
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
-        AND c.payment_type = 'pdc'
         AND strftime('%Y-%m', cheque_date) = rp.month
       LIMIT 1
     )
@@ -233,14 +198,11 @@ async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Pr
   const row = await db.prepare(`
     SELECT rp.month,
       COALESCE(
-        CASE WHEN c.payment_type = 'pdc' THEN pc.amount ELSE NULL END,
+        CASE WHEN c.payment_type IN ('pdc', 'cash') THEN pc.amount ELSE NULL END,
         CASE
-          WHEN c.payment_frequency = 'annual'      THEN c.annual_rent
-          WHEN c.payment_frequency = 'quarterly'   THEN ROUND(c.annual_rent / 4.0, 2)
-          WHEN c.payment_frequency = 'semi-annual' THEN ROUND(c.annual_rent / 2.0, 2)
-          WHEN c.payment_frequency = 'custom'      THEN
+          WHEN c.payment_frequency = 'custom' THEN
             ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
-          ELSE ROUND(c.annual_rent / 12.0, 2)
+          ELSE ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2)
         END
       ) as expected_rent,
       COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as new_sum
@@ -249,7 +211,6 @@ async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Pr
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
-        AND c.payment_type = 'pdc'
         AND strftime('%Y-%m', cheque_date) = rp.month
       LIMIT 1
     )

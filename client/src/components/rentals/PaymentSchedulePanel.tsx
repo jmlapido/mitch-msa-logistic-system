@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { DateInput } from '@/components/ui/DateInput';
-import { ChevronDown, ChevronRight, Upload, Eye, Trash2, CalendarDays, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Upload, Eye, Trash2, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -16,20 +16,6 @@ type PdcRow = {
   file_size: number | null;
   file_type: string | null;
   updated_at: string;
-};
-
-const INTERVAL_MONTHS: Record<string, number> = {
-  monthly: 1,
-  quarterly: 3,
-  'semi-annual': 6,
-  annual: 12,
-};
-
-const SLOT_COUNTS: Record<string, number> = {
-  monthly: 12,
-  quarterly: 4,
-  'semi-annual': 2,
-  annual: 1,
 };
 
 function addMonths(dateStr: string, months: number): string {
@@ -58,20 +44,18 @@ function formatBytes(n: number | null): string {
 
 type Props = {
   contractId: number;
-  paymentFrequency: string;
   paymentType: string;
   startDate: string;
   slotCount: number;
   annualRent: number;
 };
 
-export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType, startDate, slotCount, annualRent }: Props) {
+export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotCount, annualRent }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [previewRow, setPreviewRow] = useState<PdcRow | null>(null);
   const [uploading, setUploading] = useState<number | null>(null);
-  const [adding, setAdding] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadingSlot = useRef<number>(0);
   const currentDateRef = useRef<Record<number, string>>({});
@@ -85,61 +69,31 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
     },
   });
 
-  const isCustom = paymentFrequency === 'custom';
   const isPdc = paymentType === 'pdc';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
-  // PDC: virtual slots from no_of_pdc count, blank dates, merges with saved rows
-  const pdcSlots = isPdc
-    ? Array.from({ length: slotCount }, (_, i) => {
-        const n = i + 1;
-        const saved = rows.find(r => r.pdc_number === n);
-        return {
-          pdc_number: n,
-          id: saved?.id ?? 0,
-          contract_id: contractId,
-          cheque_date: saved?.cheque_date ?? null,
-          amount: (saved as PdcRow | undefined)?.amount ?? null,
-          file_name: saved?.file_name ?? null,
-          file_size: saved?.file_size ?? null,
-          file_type: saved?.file_type ?? null,
-          updated_at: saved?.updated_at ?? '',
-        };
-      })
-    : [];
-
-  // Cash standard: auto-dated virtual slots (unchanged behavior)
-  const standardSlots = (!isPdc && !isCustom) ? (() => {
-    const count = SLOT_COUNTS[paymentFrequency] ?? slotCount;
-    const interval = INTERVAL_MONTHS[paymentFrequency] ?? 1;
-    return Array.from({ length: count }, (_, i) => {
-      const n = i + 1;
-      const autoDate = startDate ? addMonths(startDate, i * interval) : null;
-      const saved = rows.find(r => r.pdc_number === n);
-      return {
-        pdc_number: n,
-        id: saved?.id ?? 0,
-        contract_id: contractId,
-        cheque_date: saved?.cheque_date ?? autoDate,
-        amount: null as number | null,
-        file_name: saved?.file_name ?? null,
-        file_size: saved?.file_size ?? null,
-        file_type: saved?.file_type ?? null,
-        updated_at: saved?.updated_at ?? '',
-        autoDate,
-      };
-    });
-  })() : [];
-
-  // Cash custom: actual DB rows
-  const customSlots = (!isPdc && isCustom)
-    ? [...rows].sort((a, b) => a.pdc_number - b.pdc_number).map(r => ({ ...r, amount: null as number | null }))
-    : [];
-
-  const displaySlots = isPdc ? pdcSlots : isCustom ? customSlots : standardSlots;
+  // Both cash and PDC: virtual slots from no_of_pdc count, merged with saved rows.
+  // Cash gets computed defaults (date + even-split amount) for unset slots; PDC starts blank.
+  const displaySlots = Array.from({ length: slotCount }, (_, i) => {
+    const n = i + 1;
+    const saved = rows.find(r => r.pdc_number === n);
+    const autoDate = !isPdc && startDate ? addMonths(startDate, i) : null;
+    const autoAmount = !isPdc ? Math.round((annualRent / Math.max(1, slotCount)) * 100) / 100 : null;
+    return {
+      pdc_number: n,
+      id: saved?.id ?? 0,
+      contract_id: contractId,
+      cheque_date: saved?.cheque_date ?? autoDate,
+      amount: (saved as PdcRow | undefined)?.amount ?? autoAmount,
+      file_name: saved?.file_name ?? null,
+      file_size: saved?.file_size ?? null,
+      file_type: saved?.file_type ?? null,
+      updated_at: saved?.updated_at ?? '',
+    };
+  });
 
   const datedCount = displaySlots.filter(s => s.cheque_date).length;
-  const amountSetCount = isPdc ? displaySlots.filter(s => s.amount != null).length : 0;
+  const amountSetCount = displaySlots.filter(s => s.amount != null).length;
   const uploadedCount = isPdc ? displaySlots.filter(s => s.file_name).length : 0;
   const totalCount = displaySlots.length;
 
@@ -155,32 +109,6 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
       });
       qc.invalidateQueries({ queryKey: ['pdc-cheques', contractId] });
     } catch { toast.error('Failed to save'); }
-  }
-
-  async function addCustomSlot() {
-    setAdding(true);
-    try {
-      const nextNum = customSlots.length > 0 ? Math.max(...customSlots.map(s => s.pdc_number)) + 1 : 1;
-      const res = await fetch('/api/pdc-cheques/date', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ contract_id: contractId, pdc_number: nextNum, cheque_date: null }),
-      });
-      if (!res.ok) throw new Error();
-      qc.invalidateQueries({ queryKey: ['pdc-cheques', contractId] });
-    } catch { toast.error('Failed to add slot'); }
-    finally { setAdding(false); }
-  }
-
-  async function removeCustomSlot(id: number) {
-    if (!confirm('Remove this payment slot?')) return;
-    try {
-      const res = await fetch(`/api/pdc-cheques/${id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error();
-      qc.invalidateQueries({ queryKey: ['pdc-cheques', contractId] });
-      toast.success('Removed');
-    } catch { toast.error('Failed to remove'); }
   }
 
   function triggerUpload(pdcNumber: number) {
@@ -216,19 +144,15 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
     } catch { toast.error('Failed'); }
   }
 
-  const totalAmount = isPdc
-    ? displaySlots.reduce((sum, s) => sum + (s.amount ?? 0), 0)
-    : 0;
+  const totalAmount = displaySlots.reduce((sum, s) => sum + (s.amount ?? 0), 0);
 
   const summaryParts: string[] = [];
   summaryParts.push(`${datedCount}/${totalCount} dated`);
-  if (isPdc) {
-    summaryParts.push(`${amountSetCount}/${totalCount} amounts`);
-    summaryParts.push(`${uploadedCount}/${totalCount} uploaded`);
-    if (amountSetCount > 0 && totalAmount < annualRent) {
-      const shortfall = annualRent - totalAmount;
-      summaryParts.push(`⚠ ${shortfall.toLocaleString('en-US', { maximumFractionDigits: 2 })} uncovered`);
-    }
+  summaryParts.push(`${amountSetCount}/${totalCount} amounts`);
+  if (isPdc) summaryParts.push(`${uploadedCount}/${totalCount} uploaded`);
+  if (amountSetCount > 0 && totalAmount < annualRent) {
+    const shortfall = annualRent - totalAmount;
+    summaryParts.push(`⚠ ${shortfall.toLocaleString('en-US', { maximumFractionDigits: 2 })} uncovered`);
   }
 
   return (
@@ -247,7 +171,7 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
       {open && (
         <div className="mt-2 space-y-1.5">
           {displaySlots.map((s, idx) => (
-            <div key={isPdc ? s.pdc_number : isCustom ? s.id : `${s.pdc_number}-${s.cheque_date ?? ''}`} className="flex items-center gap-2 rounded border px-2 py-1.5 bg-muted/30">
+            <div key={isPdc ? s.pdc_number : `${s.pdc_number}-${s.cheque_date ?? ''}`} className="flex items-center gap-2 rounded border px-2 py-1.5 bg-muted/30">
               <span className="w-5 text-[10px] font-semibold text-muted-foreground shrink-0">#{idx + 1}</span>
 
               <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -263,23 +187,21 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
                   disabled={!isAdmin}
                   className={`text-[11px] bg-transparent border-0 outline-none w-32 h-auto py-0 px-0 rounded-none ${dateColor(s.cheque_date)} ${!isAdmin ? 'cursor-default' : ''}`}
                 />
-                {isPdc && (
-                  <input
-                    key={`amt-${s.pdc_number}-${s.amount}`}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="Amount"
-                    defaultValue={s.amount ?? ''}
-                    disabled={!isAdmin}
-                    onBlur={e => isAdmin && saveSlot(
-                      s.pdc_number,
-                      currentDateRef.current[s.pdc_number] ?? s.cheque_date ?? '',
-                      e.target.value ? Number(e.target.value) : null
-                    )}
-                    className="text-[11px] bg-transparent border-0 border-b border-muted outline-none w-24 h-auto py-0 px-1 rounded-none placeholder:text-muted-foreground/50"
-                  />
-                )}
+                <input
+                  key={`amt-${s.pdc_number}-${s.amount}`}
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="Amount"
+                  defaultValue={s.amount ?? ''}
+                  disabled={!isAdmin}
+                  onBlur={e => isAdmin && saveSlot(
+                    s.pdc_number,
+                    currentDateRef.current[s.pdc_number] ?? s.cheque_date ?? '',
+                    e.target.value ? Number(e.target.value) : null
+                  )}
+                  className="text-[11px] bg-transparent border-0 border-b border-muted outline-none w-24 h-auto py-0 px-1 rounded-none placeholder:text-muted-foreground/50"
+                />
               </div>
 
               {isPdc && (
@@ -314,29 +236,8 @@ export function PaymentSchedulePanel({ contractId, paymentFrequency, paymentType
                   )}
                 </div>
               )}
-
-              {!isPdc && isCustom && isAdmin && (
-                <button
-                  onClick={() => removeCustomSlot(s.id)}
-                  disabled={s.id === 0}
-                  className="p-1 text-muted-foreground hover:text-destructive shrink-0 disabled:opacity-50"
-                  title="Remove slot"
-                >
-                  <Trash2 size={11} />
-                </button>
-              )}
             </div>
           ))}
-
-          {!isPdc && isCustom && isAdmin && (
-            <button
-              onClick={addCustomSlot}
-              disabled={adding}
-              className="flex items-center gap-1 text-[11px] text-primary hover:underline disabled:opacity-50 mt-1"
-            >
-              <Plus size={11} /> {adding ? 'Adding…' : 'Add payment slot'}
-            </button>
-          )}
         </div>
       )}
 
