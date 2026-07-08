@@ -25,7 +25,7 @@ rentPayments.get('/', async (c) => {
       LIMIT 1
     )
     WHERE EXISTS (
-      SELECT 1 FROM contracts c WHERE c.id = rent_payments.contract_id AND c.payment_type = 'pdc'
+      SELECT 1 FROM contracts c WHERE c.id = rent_payments.contract_id AND c.payment_type IN ('pdc', 'cash')
     )
     AND EXISTS (
       SELECT 1 FROM pdc_cheques pc
@@ -108,7 +108,12 @@ rentPayments.get('/', async (c) => {
       c.payment_type,
       CASE
         WHEN c.payment_type = 'cash' THEN
-          rp.month || '-' || printf('%02d', COALESCE(c.due_day, 1))
+          COALESCE(pc.cheque_date, rp.month || '-' || printf('%02d',
+            MIN(
+              CAST(strftime('%d', c.start_date) AS INTEGER),
+              CAST(strftime('%d', date(rp.month || '-01', '+1 month', '-1 day')) AS INTEGER)
+            )
+          ))
         WHEN c.payment_type = 'pdc' THEN
           pc.cheque_date
         ELSE NULL
@@ -144,7 +149,6 @@ rentPayments.get('/', async (c) => {
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
-        AND c.payment_type = 'pdc'
         AND strftime('%Y-%m', cheque_date) = rp.month
       LIMIT 1
     )
@@ -207,7 +211,6 @@ async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Pr
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
-        AND c.payment_type = 'pdc'
         AND strftime('%Y-%m', cheque_date) = rp.month
       LIMIT 1
     )
