@@ -7,6 +7,12 @@ import { planOverpaymentSweep, applyExcessToCandidate, addMonthToYyyyMm, type Ou
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
+function formatMonthLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number) as [number, number];
+  const date = new Date(year, m - 1);
+  return date.toLocaleDateString('en-AE', { month: 'short', year: 'numeric' });
+}
+
 const rentPayments = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 rentPayments.use('*', requireAuth);
 
@@ -264,10 +270,12 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
     )`;
 
   const target = await c.env.DB.prepare(`
-    SELECT rp.month, c.tenant_id, ${expectedRentSql} as expected_rent,
+    SELECT rp.month, c.tenant_id, t.name as tenant_name, u.unit_no, ${expectedRentSql} as expected_rent,
       COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rp.id), 0) as amount_paid
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
+    JOIN tenants t ON c.tenant_id = t.id
+    LEFT JOIN units u ON t.unit_id = u.id
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
@@ -275,7 +283,7 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
       LIMIT 1
     )
     WHERE rp.id = ?
-  `).bind(rentPaymentId).first<{ month: string; tenant_id: number; expected_rent: number; amount_paid: number }>();
+  `).bind(rentPaymentId).first<{ month: string; tenant_id: number; tenant_name: string; unit_no: string | null; expected_rent: number; amount_paid: number }>();
   if (!target) return c.json({ error: 'Payment not found' }, 404);
 
   let otherOutstanding: OutstandingRow[] = [];
@@ -376,13 +384,15 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   await auditLog(c.env.DB, user, 'payment.entry_added', 'payment', rentPaymentId,
     `Added ${finalTargetAmount} on ${d.paid_date}`);
 
+  const originLabel = `${formatMonthLabel(target.month)} (${target.unit_no ? `Unit ${target.unit_no}` : target.tenant_name})`;
+
   for (const swept of allSwept) {
     await c.env.DB.prepare(
       `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, receipt_no, notes, recorded_by, recorded_at, source_entry_id)
        VALUES (?,?,?,?,NULL,?,?,?,?)`
     ).bind(
       swept.rentPaymentId, swept.amount, d.paid_date, d.payment_method,
-      `Auto-applied from overpayment recorded on ${d.paid_date}`, String(user.sub), now, entry!.id
+      `Auto-applied from overpayment on ${originLabel}`, String(user.sub), now, entry!.id
     ).run();
     await recomputePaymentStatus(c.env.DB, swept.rentPaymentId);
     await auditLog(c.env.DB, user, 'payment.auto_applied', 'payment', swept.rentPaymentId,
