@@ -89,30 +89,41 @@ if (plan.leftover > 0) {
     }
     if (!chosenContract) break; // every contract has reached its own end_date; leftover stays on target
 
+    // Critical: check whether a row already exists for this (contract, month) before
+    // generating one. The unchanged `otherOutstanding` query has no month-direction
+    // filter — it already picks up ANY pending/overdue/partial row for this tenant,
+    // past or future. So if a row already exists here, it was already correctly
+    // considered (and possibly already swept into) by planOverpaymentSweep's backward
+    // loop, using its state as of the read that happened before this loop started.
+    // Re-touching it here would double-apply the leftover on top of whatever the
+    // backward loop already decided. Only a month with NO existing row at all is a
+    // genuinely new candidate this loop is responsible for.
+    const existing = await c.env.DB.prepare(
+      'SELECT id FROM rent_payments WHERE contract_id = ? AND month = ?'
+    ).bind(chosenContract.id, chosenMonth).first<{ id: number }>();
+
+    if (existing) {
+      // Already handled (or correctly excluded) by the backward sweep. Skip without
+      // consuming leftover, advance this contract to its next month, and re-loop.
+      nextMonthByContract.set(chosenContract.id, addMonthToYyyyMm(chosenMonth));
+      continue;
+    }
+
     const expectedRent = Math.round((chosenContract.annual_rent / Math.max(1, chosenContract.no_of_pdc)) * 100) / 100;
-    await c.env.DB.prepare(`
-      INSERT OR IGNORE INTO rent_payments (contract_id, month, amount, status)
-      VALUES (?, ?, ?, 'pending')
-    `).bind(chosenContract.id, chosenMonth, expectedRent).run();
+    const inserted = await c.env.DB.prepare(`
+      INSERT INTO rent_payments (contract_id, month, amount, status)
+      VALUES (?, ?, ?, 'pending') RETURNING id
+    `).bind(chosenContract.id, chosenMonth, expectedRent).first<{ id: number }>();
 
-    const row = await c.env.DB.prepare(`
-      SELECT id, ${expectedRentSql} as expected_rent,
-        COALESCE((SELECT SUM(amount) FROM payment_entries WHERE rent_payment_id = rent_payments.id), 0) as amount_paid
-      FROM rent_payments
-      JOIN contracts c ON rent_payments.contract_id = c.id
-      LEFT JOIN pdc_cheques pc ON pc.id = (
-        SELECT id FROM pdc_cheques WHERE contract_id = c.id AND strftime('%Y-%m', cheque_date) = rent_payments.month LIMIT 1
-      )
-      WHERE rent_payments.contract_id = ? AND rent_payments.month = ?
-    `).bind(chosenContract.id, chosenMonth).first<{ id: number; expected_rent: number; amount_paid: number }>();
-
-    const { applied, remainingExcess } = applyExcessToCandidate(leftover, row!.expected_rent, row!.amount_paid);
-    if (applied > 0) allSwept.push({ rentPaymentId: row!.id, amount: applied });
+    // A brand-new row has no entries yet, so its remaining due is simply its full
+    // expected amount — no need to re-query amount_paid via a join.
+    const { applied, remainingExcess } = applyExcessToCandidate(leftover, expectedRent, 0);
+    if (applied > 0) allSwept.push({ rentPaymentId: inserted!.id, amount: applied });
     leftover = remainingExcess;
     nextMonthByContract.set(chosenContract.id, addMonthToYyyyMm(chosenMonth));
   }
 
-  finalTargetAmount = plan.ownAmount + leftover; // whatever's truly left over (rare) falls back to target, same as today
+  finalTargetAmount = Math.round((plan.ownAmount + leftover) * 100) / 100; // whatever's truly left over (rare) falls back to target, same as today
 }
 ```
 
@@ -121,6 +132,8 @@ if (plan.leftover > 0) {
 The rest of the handler (inserting the target's own entry using `finalTargetAmount`, inserting each `allSwept` entry, calling `recomputePaymentStatus` on every affected row, audit logging) is unchanged in structure from today — it just now iterates over `allSwept` instead of `plan.swept`, and uses `finalTargetAmount` instead of `plan.targetAmount`.
 
 **Bounding:** the `while` loop is naturally bounded by contract `end_date`s — a lease has a finite number of months, so the loop cannot run away. No additional iteration cap is needed.
+
+**Why the existence check matters:** without it, a future month that already has a real `rent_payments` row (created earlier because an admin browsed to that month, or because it was already swept into by the backward loop moments earlier in the same request) would get re-processed by this loop using a second, independent read of its `amount_paid` — applying the leftover on top of whatever the backward sweep already applied, double-crediting that month. Skipping any month that already has a row (new or old) avoids this entirely: this loop only ever creates and applies to rows that didn't exist before this request.
 
 **Why cash contracts only:** the `cashContracts` query filters `payment_type = 'cash'`. A PDC/custom contract's future months are only real once a cheque has been dated — those rows, if they exist, are already picked up by the unchanged `otherOutstanding` query (which has no `payment_type` restriction); this loop just doesn't *speculatively create* new PDC rows, since there's no way to know a not-yet-dated cheque's amount.
 
