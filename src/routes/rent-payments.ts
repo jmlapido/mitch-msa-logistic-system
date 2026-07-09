@@ -80,9 +80,13 @@ rentPayments.get('/', async (c) => {
       AND date(c.end_date) >= mg.m || '-01'
       AND mg.m <= ?
       AND c.payment_type = 'cash'
+      AND NOT EXISTS (
+        SELECT 1 FROM pdc_cheques pc
+        WHERE pc.contract_id = c.id AND pc.cheque_date IS NOT NULL
+      )
   `).bind(month, month).run();
 
-  // Custom frequency: generate one rent_payment per pdc_cheques entry
+  // Custom frequency and cash-with-schedule: generate one rent_payment per dated pdc_cheques entry
   await c.env.DB.prepare(`
     INSERT OR IGNORE INTO rent_payments (contract_id, month, amount, status)
     SELECT
@@ -92,7 +96,7 @@ rentPayments.get('/', async (c) => {
       'pending'
     FROM contracts c
     JOIN pdc_cheques pc ON pc.contract_id = c.id
-    WHERE (c.payment_frequency = 'custom' OR c.payment_type = 'pdc')
+    WHERE (c.payment_frequency = 'custom' OR c.payment_type = 'pdc' OR c.payment_type = 'cash')
       AND pc.cheque_date IS NOT NULL
       AND strftime('%Y-%m', pc.cheque_date) <= ?
   `).bind(month).run();
