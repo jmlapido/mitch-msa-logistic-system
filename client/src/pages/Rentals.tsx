@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BuildingsTab } from '@/components/rentals/tabs/BuildingsTab';
 import { UnitsTab } from '@/components/rentals/tabs/UnitsTab';
-import { TenantsTab } from '@/components/rentals/tabs/TenantsTab';
+import { OccupancyTab } from '@/components/rentals/tabs/OccupancyTab';
 import { PaymentsTab } from '@/components/rentals/tabs/PaymentsTab';
 import { ArchivedTab } from '@/components/rentals/tabs/ArchivedTab';
 import { ArchiveBanner } from '@/components/rentals/ArchiveBanner';
@@ -10,11 +10,9 @@ import { ArchiveBanner } from '@/components/rentals/ArchiveBanner';
 export default function Rentals() {
   const [searchParams] = useSearchParams();
   const buildingParam = searchParams.get('building');
-  const tenantParam = searchParams.get('tenant');
 
-  const defaultTab = buildingParam ? 'buildings' : tenantParam ? 'tenants' : 'payments';
+  const defaultTab = buildingParam ? 'buildings' : 'payments';
   const initialBuildingId = buildingParam ? Number(buildingParam) || null : null;
-  const initialTenantId = tenantParam ? Number(tenantParam) || null : null;
 
   return (
     <div>
@@ -29,7 +27,7 @@ export default function Rentals() {
           <TabsTrigger value="archived">Archived</TabsTrigger>
         </TabsList>
         <TabsContent value="payments"><PaymentsTab /></TabsContent>
-        <TabsContent value="tenants"><TenantsTab initialOpenId={initialTenantId ?? undefined} /></TabsContent>
+        <TabsContent value="tenants"><OccupancyTab /></TabsContent>
         <TabsContent value="units"><UnitsTab readonly /></TabsContent>
         <TabsContent value="buildings"><BuildingsTab readonly initialOpenId={initialBuildingId ?? undefined} /></TabsContent>
         <TabsContent value="archived"><ArchivedTab /></TabsContent>

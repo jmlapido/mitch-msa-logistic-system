@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 
 export type Building = { id: number; name: string; type: string; address?: string; notes?: string; unit_count: number; occupied_count: number };
-export type Unit = { id: number; building_id: number; unit_no: string; type: string; floor?: string; notes?: string; building_name: string; occupancy_status: 'occupied' | 'vacant' | 'expiring'; tenant_name?: string; monthly_rent?: number; lease_end?: string; lease_id?: number };
+export type Unit = { id: number; building_id: number; unit_no: string; type: string; floor?: string; notes?: string; building_name: string; occupancy_status: 'occupied' | 'vacant' | 'expiring'; tenant_name?: string; tenant_id?: number | null; monthly_rent?: number; lease_end?: string; lease_id?: number };
 export type Tenant = {
   id: number; name: string;
   tenant_type: 'person' | 'company';
