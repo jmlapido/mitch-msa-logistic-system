@@ -3,7 +3,19 @@ import { api } from '../api';
 
 export type Building = { id: number; name: string; type: string; address?: string; notes?: string; unit_count: number; occupied_count: number };
 export type Unit = { id: number; building_id: number; unit_no: string; type: string; floor?: string; notes?: string; building_name: string; occupancy_status: 'occupied' | 'vacant' | 'expiring'; tenant_name?: string; monthly_rent?: number; lease_end?: string; lease_id?: number };
-export type Tenant = { id: number; name: string; phone?: string; email?: string; id_number?: string; notes?: string; unit_id?: number; lease_id?: number; unit_no?: string; building_name?: string; lease_status?: string; end_date?: string; annual_rent?: number; monthly_rent?: number; payment_frequency?: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'custom' | null; total_balance?: number };
+export type Tenant = {
+  id: number; name: string;
+  tenant_type: 'person' | 'company';
+  phone?: string; phone_alt?: string; email?: string; address?: string;
+  id_number?: string; nationality?: string;
+  trade_license_no?: string; trn?: string;
+  contact_person_name?: string; contact_person_phone?: string; contact_person_email?: string;
+  notes?: string;
+  lease_id?: number; unit_no?: string; building_name?: string; units_summary?: string;
+  lease_status?: string; end_date?: string; annual_rent?: number; monthly_rent?: number;
+  payment_frequency?: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'custom' | null;
+  total_balance?: number;
+};
 export type Lease = { id: number; unit_id: number; tenant_id: number; start_date: string; end_date: string; monthly_rent: number; deposit: number; status: string; notes?: string; tenant_name: string; unit_no: string; building_name: string };
 export type RentPayment = { id: number; lease_id: number; month: string; amount: number; amount_paid: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; balance: number; payment_method?: 'cash' | 'cheque' | null; payment_type: string; cash_collected: number; cheque_collected: number };
 export type RentalDoc = { id: number; entity_type: string; entity_id: number; doc_type: string; file_name: string; uploaded_at: string };
@@ -22,6 +34,9 @@ export type PaymentEntry = {
 export type Contract = {
   id: number;
   tenant_id: number;
+  unit_id?: number | null;
+  unit_no?: string | null;
+  building_name?: string | null;
   contract_no: string;
   start_date: string;
   end_date: string;
@@ -165,15 +180,15 @@ export function useRentalMutations() {
 
     createContract: useMutation({
       mutationFn: (d: Partial<Contract>) => api.post<Contract>('/api/contracts', d),
-      onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ['contracts', v.tenant_id] }),
+      onSuccess: (_, v) => { qc.invalidateQueries({ queryKey: ['contracts', v.tenant_id] }); invAll(); },
     }),
     updateContract: useMutation({
       mutationFn: ({ id, ...d }: Partial<Contract> & { id: number }) => api.put<Contract>(`/api/contracts/${id}`, d),
-      onSuccess: (data) => qc.invalidateQueries({ queryKey: ['contracts', data.tenant_id] }),
+      onSuccess: (data) => { qc.invalidateQueries({ queryKey: ['contracts', data.tenant_id] }); invAll(); },
     }),
     deleteContract: useMutation({
       mutationFn: ({ id, tenantId }: { id: number; tenantId: number }) => api.del(`/api/contracts/${id}`).then(r => ({ ...r, tenantId })),
-      onSuccess: (_: unknown, v: { tenantId: number }) => qc.invalidateQueries({ queryKey: ['contracts', v.tenantId] }),
+      onSuccess: (_: unknown, v: { tenantId: number }) => { qc.invalidateQueries({ queryKey: ['contracts', v.tenantId] }); invAll(); },
     }),
   };
 }
