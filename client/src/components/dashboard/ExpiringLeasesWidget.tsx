@@ -25,7 +25,7 @@ export function ExpiringLeasesWidget({ leases }: Props) {
               <div
                 key={l.id}
                 className="group flex items-center justify-between gap-2 py-2 px-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors border-b last:border-0"
-                onClick={() => navigate(`/rentals?tenant=${l.tenant_id}`)}
+                onClick={() => navigate(`/customers?id=${l.tenant_id}`)}
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{l.tenant_name}</p>
