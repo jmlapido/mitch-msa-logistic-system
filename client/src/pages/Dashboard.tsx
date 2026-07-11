@@ -75,18 +75,18 @@ export default function Dashboard() {
               />
               <StatCard
                 label="Rent Due" value={<AedAmount amount={data.rent.due} />} icon={Home}
-                onClick={() => navigate('/rentals')}
+                onClick={() => navigate('/rentals/payments')}
               />
               <StatCard
                 label="Rent Collected" value={<AedAmount amount={data.rent.collected} />} icon={TrendingUp} color="green"
                 delta={{ value: data.rent.due > 0 ? `${Math.round((data.rent.collected / data.rent.due) * 100)}% collection rate` : '—', direction: pctDir(data.rent.collected, data.prevMonth.rent.collected) }}
-                onClick={() => navigate('/rentals')}
+                onClick={() => navigate('/rentals/payments')}
               />
               <StatCard
                 label="Overdue Rent" value={<AedAmount amount={data.rent.overdue} />} icon={AlertTriangle}
                 color={data.rent.overdue > 0 ? 'red' : 'default'}
                 delta={{ value: data.rent.overdue > 0 ? '▼ needs collection' : '— all collected', direction: data.rent.overdue > 0 ? 'down' : 'neutral' }}
-                onClick={() => navigate('/rentals')}
+                onClick={() => navigate('/rentals/payments')}
               />
             </div>
           </div>

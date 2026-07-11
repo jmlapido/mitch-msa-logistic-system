@@ -21,6 +21,7 @@ export function OccupancyTab() {
   const buildings = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
 
   if (isLoading) return <p className="text-muted-foreground text-sm">Loading…</p>;
+  if (units.length === 0) return <p className="text-muted-foreground text-sm">No units yet — add buildings and units in Settings.</p>;
 
   return (
     <div className="space-y-3">

@@ -28,7 +28,7 @@ export function RentTrendChart({ history }: Props) {
   return (
     <div
       className="bg-card border rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors"
-      onClick={() => navigate('/rentals')}
+      onClick={() => navigate('/rentals/payments')}
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">6-Month Rent Trend</h3>
