@@ -50,7 +50,7 @@ function LastEditedBy({ entityType, entityId }: { entityType: string; entityId: 
   );
 }
 
-export function ContractsPanel({ tenantId }: { tenantId: number }) {
+export function ContractsPanel({ tenantId, readonly = false }: { tenantId: number; readonly?: boolean }) {
   const { data: contracts = [], isLoading } = useContracts(tenantId);
   const { createContract, updateContract, deleteContract } = useRentalMutations();
   const { user } = useAuth();
@@ -161,7 +161,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-medium">Contracts</p>
-        {(user?.role === 'admin' || user?.role === 'superadmin') && (
+        {!readonly && (user?.role === 'admin' || user?.role === 'superadmin') && (
           <button onClick={openAdd} className="flex items-center gap-1 text-xs text-primary hover:underline">
             <Plus size={11} /> Add
           </button>
@@ -216,7 +216,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                       <LastEditedBy entityType="contract" entityId={c.id} />
                     </div>
                   </div>
-                  {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                  {!readonly && (user?.role === 'admin' || user?.role === 'superadmin') && (
                     <div className="flex gap-1 shrink-0">
                       <button onClick={() => openEdit(c)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={11} /></button>
                       <button onClick={() => handleDelete(c)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={11} /></button>

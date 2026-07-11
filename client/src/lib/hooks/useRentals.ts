@@ -62,8 +62,22 @@ export function useTenants() {
   return useQuery<Tenant[]>({ queryKey: ['tenants'], queryFn: () => api.get('/api/tenants') });
 }
 
+export type TenantDetail = Tenant & { status: 'active' | 'archived'; archived_at?: string | null };
+
+export function useTenant(id: number) {
+  return useQuery<TenantDetail>({
+    queryKey: ['tenant', id],
+    queryFn: () => api.get(`/api/tenants/${id}`),
+    enabled: !!id,
+    retry: (count, err) => !(err instanceof Error && err.message === 'Not found') && count < 2,
+  });
+}
+
 export type ArchivedTenant = {
-  id: number; name: string; phone?: string; email?: string; id_number?: string;
+  id: number; name: string; tenant_type: 'person' | 'company';
+  phone?: string; phone_alt?: string; email?: string; address?: string;
+  id_number?: string; nationality?: string; trade_license_no?: string; trn?: string;
+  contact_person_name?: string; contact_person_phone?: string; contact_person_email?: string;
   notes?: string; status: string; archived_at: string;
   unit_no?: string; building_name?: string; last_contract_end?: string; last_annual_rent?: number;
 };
@@ -129,11 +143,11 @@ export function useRentalMutations() {
 
     archiveTenant: useMutation({
       mutationFn: (id: number) => api.post(`/api/tenants/${id}/archive`, {}),
-      onSuccess: () => inv([['tenants'], ['tenants-archived'], ['tenants-pending-archive'], ['units']]),
+      onSuccess: () => inv([['tenants'], ['tenants-archived'], ['tenants-pending-archive'], ['units'], ['tenant']]),
     }),
     restoreTenant: useMutation({
       mutationFn: (id: number) => api.post(`/api/tenants/${id}/restore`, {}),
-      onSuccess: () => inv([['tenants'], ['tenants-archived'], ['tenants-pending-archive']]),
+      onSuccess: () => inv([['tenants'], ['tenants-archived'], ['tenants-pending-archive'], ['tenant']]),
     }),
 
     createLease: useMutation({ mutationFn: (d: Partial<Lease>) => api.post<Lease>('/api/leases', d), onSuccess: invAll }),
