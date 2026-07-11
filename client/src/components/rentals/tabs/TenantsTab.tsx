@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, User, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useTenants, useUnits, useRentalMutations, type Tenant } from '@/lib/hooks/useRentals';
+import { useTenants, useRentalMutations, type Tenant } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
 import { DocumentsPanel } from '../DocumentsPanel';
@@ -18,10 +18,20 @@ import { formatDate } from '@/lib/utils';
 import { AedAmount } from '@/components/ui/AedAmount';
 
 const schema = z.object({
-  name: z.string().min(1), phone: z.string().optional(),
+  tenant_type: z.enum(['person', 'company']),
+  name: z.string().min(1),
+  phone: z.string().optional(),
+  phone_alt: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
-  id_number: z.string().optional(), notes: z.string().optional(),
-  unit_id: z.string().optional(),
+  address: z.string().optional(),
+  id_number: z.string().optional(),
+  nationality: z.string().optional(),
+  trade_license_no: z.string().optional(),
+  trn: z.string().optional(),
+  contact_person_name: z.string().optional(),
+  contact_person_phone: z.string().optional(),
+  contact_person_email: z.string().email().optional().or(z.literal('')),
+  notes: z.string().optional(),
 });
 type F = z.infer<typeof schema>;
 
@@ -66,7 +76,6 @@ function LastEditedBy({ entityType, entityId }: { entityType: string; entityId: 
 
 export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
   const { data: tenants = [], isLoading } = useTenants();
-  const { data: units = [] } = useUnits();
   const { createTenant, updateTenant, deleteTenant } = useRentalMutations();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -74,7 +83,6 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
   const [expanded, setExpanded] = useState<number | null>(initialOpenId ?? null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
   const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm<F>({ resolver: zodResolver(schema) });
 
   // When deep-linked with ?tenant=id, scroll to and reveal that tenant once data loads
@@ -96,13 +104,6 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
     }, 100);
   }, [initialOpenId, tenants]);
 
-  const buildings = [...new Map(units.map(u => [u.building_id, { id: u.building_id, name: u.building_name }])).values()]
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const filteredUnits = selectedBuildingId
-    ? units.filter(u => u.building_id === Number(selectedBuildingId))
-    : [];
-
   const grouped = tenants.reduce<Record<string, Tenant[]>>((acc, t) => {
     const key = t.building_name ?? 'Unassigned';
     if (!acc[key]) acc[key] = [];
@@ -118,16 +119,21 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
     setCollapsedGroups(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function openAdd() { reset({}); setSelectedBuildingId(''); setEditing(null); setOpen(true); }
+  function openAdd() { reset({ tenant_type: 'person' }); setEditing(null); setOpen(true); }
   function openEdit(t: Tenant) {
-    reset({ name: t.name, phone: t.phone, email: t.email, id_number: t.id_number, notes: t.notes, unit_id: t.unit_id ? String(t.unit_id) : '' });
-    const currentUnit = units.find(u => u.id === t.unit_id);
-    setSelectedBuildingId(currentUnit ? String(currentUnit.building_id) : '');
+    reset({
+      tenant_type: t.tenant_type ?? 'person',
+      name: t.name, phone: t.phone, phone_alt: t.phone_alt, email: t.email,
+      address: t.address, id_number: t.id_number, nationality: t.nationality,
+      trade_license_no: t.trade_license_no, trn: t.trn,
+      contact_person_name: t.contact_person_name, contact_person_phone: t.contact_person_phone,
+      contact_person_email: t.contact_person_email, notes: t.notes,
+    });
     setEditing(t); setOpen(true);
   }
 
   async function onSubmit(v: F) {
-    const payload = { ...v, unit_id: v.unit_id ? Number(v.unit_id) : null };
+    const payload = v;
     try {
       if (editing) { await updateTenant.mutateAsync({ id: editing.id, ...payload }); toast.success('Updated'); }
       else { await createTenant.mutateAsync(payload); toast.success('Created'); }
@@ -190,9 +196,14 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
                             {t.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm capitalize">{t.name}</div>
+                            <div className="font-medium text-sm capitalize">
+                              {t.name}
+                              {t.tenant_type === 'company'
+                                ? <Building2 size={12} className="inline ml-1 text-muted-foreground" aria-label="Company" />
+                                : <User size={12} className="inline ml-1 text-muted-foreground" aria-label="Person" />}
+                            </div>
                             <div className="text-xs text-muted-foreground truncate">
-                              {t.unit_no ? `Unit ${t.unit_no}` : 'No unit assigned'}
+                              {t.units_summary ?? 'No unit assigned'}
                               {t.phone && <span className="ml-2">{t.phone}</span>}
                             </div>
                             {(t.total_balance ?? 0) > 0 && (
@@ -221,7 +232,13 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
                               <p className="text-xs font-medium mb-2">Contact</p>
                               <p className="text-xs text-muted-foreground">Phone: {t.phone ?? '—'}</p>
                               <p className="text-xs text-muted-foreground">Email: {t.email ?? '—'}</p>
-                              <p className="text-xs text-muted-foreground">Emirates ID: {t.id_number ?? '—'}</p>
+                              {t.tenant_type !== 'company' && <p className="text-xs text-muted-foreground">Emirates ID: {t.id_number ?? '—'}</p>}
+                              {t.tenant_type === 'person' && t.nationality && <p className="text-xs text-muted-foreground">Nationality: {t.nationality}</p>}
+                              {t.tenant_type === 'company' && <>
+                                {t.trade_license_no && <p className="text-xs text-muted-foreground">Trade License: {t.trade_license_no}</p>}
+                                {t.trn && <p className="text-xs text-muted-foreground">TRN: {t.trn}</p>}
+                                {t.contact_person_name && <p className="text-xs text-muted-foreground">Contact: {t.contact_person_name}{t.contact_person_phone ? ` · ${t.contact_person_phone}` : ''}</p>}
+                              </>}
                               {t.notes && <p className="text-xs text-muted-foreground mt-1">Notes: {t.notes}</p>}
                               <LastEditedBy entityType="tenant" entityId={t.id} />
                             </div>
@@ -243,58 +260,47 @@ export function TenantsTab({ initialOpenId }: { initialOpenId?: number }) {
       )}
 
       <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editing ? 'Edit Tenant' : 'Add Tenant'}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            <div><Label>Name *</Label><Input {...register('name')} className="mt-1" /></div>
             <div>
-              <Label>Building</Label>
-              <Select
-                value={selectedBuildingId || 'none'}
-                onValueChange={v => {
-                  const bid = v === 'none' ? '' : v;
-                  setSelectedBuildingId(bid);
-                  setValue('unit_id', '');
-                }}
-              >
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select building" /></SelectTrigger>
+              <Label>Type *</Label>
+              <Select value={watch('tenant_type')} onValueChange={v => setValue('tenant_type', v as 'person' | 'company')}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">— None —</SelectItem>
-                  {buildings.map(b => (
-                    <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
-                  ))}
+                  <SelectItem value="person">Person</SelectItem>
+                  <SelectItem value="company">Company</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Unit</Label>
-              <Select
-                value={watch('unit_id') || 'none'}
-                onValueChange={v => setValue('unit_id', v === 'none' ? '' : v)}
-                disabled={!selectedBuildingId}
-              >
-                <SelectTrigger className="mt-1"><SelectValue placeholder={selectedBuildingId ? 'Select unit' : 'Select a building first'} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— None —</SelectItem>
-                  {filteredUnits.map(u => {
-                    const isCurrentUnit = editing?.unit_id === u.id;
-                    const unavailable = u.occupancy_status !== 'vacant' && !isCurrentUnit;
-                    return (
-                      <SelectItem key={u.id} value={String(u.id)} disabled={unavailable}>
-                        {u.unit_no}
-                        {u.type && <span className="text-xs text-muted-foreground ml-1 capitalize">({u.type})</span>}
-                        {unavailable && <span className="text-xs text-red-500 ml-1"> · Not available</span>}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+            <div><Label>{watch('tenant_type') === 'company' ? 'Company Name *' : 'Full Name *'}</Label><Input {...register('name')} className="mt-1" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Phone</Label><Input {...register('phone')} className="mt-1" /></div>
-              <div><Label>Emirates ID</Label><Input {...register('id_number')} className="mt-1" /></div>
+              <div><Label>Alt. Phone</Label><Input {...register('phone_alt')} className="mt-1" /></div>
             </div>
             <div><Label>Email</Label><Input {...register('email')} type="email" className="mt-1" /></div>
+            <div><Label>Address</Label><Input {...register('address')} className="mt-1" /></div>
+            {watch('tenant_type') === 'company' ? (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Trade License No.</Label><Input {...register('trade_license_no')} className="mt-1" /></div>
+                  <div><Label>TRN</Label><Input {...register('trn')} className="mt-1" /></div>
+                </div>
+                <div className="border rounded p-2 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Contact Person</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Name</Label><Input {...register('contact_person_name')} className="mt-1" /></div>
+                    <div><Label>Phone</Label><Input {...register('contact_person_phone')} className="mt-1" /></div>
+                  </div>
+                  <div><Label>Email</Label><Input {...register('contact_person_email')} type="email" className="mt-1" /></div>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Emirates ID</Label><Input {...register('id_number')} className="mt-1" /></div>
+                <div><Label>Nationality</Label><Input {...register('nationality')} className="mt-1" /></div>
+              </div>
+            )}
             <div><Label>Notes</Label><Input {...register('notes')} className="mt-1" /></div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
