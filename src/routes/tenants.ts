@@ -12,11 +12,19 @@ tenants.use('*', requireAuth);
 
 const tenantSchema = z.object({
   name: z.string().min(1).max(100),
+  tenant_type: z.enum(['person', 'company']).default('person'),
   phone: z.string().optional(),
+  phone_alt: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
+  address: z.string().optional(),
   id_number: z.string().optional(),
+  nationality: z.string().optional(),
+  trade_license_no: z.string().optional(),
+  trn: z.string().optional(),
+  contact_person_name: z.string().optional(),
+  contact_person_phone: z.string().optional(),
+  contact_person_email: z.string().email().optional().or(z.literal('')),
   notes: z.string().optional(),
-  unit_id: z.number().int().positive().nullable().optional(),
 });
 
 // Active tenants list
@@ -32,6 +40,11 @@ tenants.get('/', async (c) => {
       c.annual_rent, c.payment_frequency,
       ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2) as monthly_rent,
       u.unit_no, bld.name as building_name,
+      (SELECT GROUP_CONCAT(bb.name || ' — ' || uu.unit_no, ', ')
+       FROM contracts cc
+       JOIN units uu ON cc.unit_id = uu.id
+       JOIN buildings bb ON uu.building_id = bb.id
+       WHERE cc.tenant_id = t.id AND date(cc.end_date) >= date('now')) as units_summary,
       (SELECT COALESCE(SUM(
          CASE WHEN rp.status = 'partial'
            THEN (CASE
@@ -47,13 +60,13 @@ tenants.get('/', async (c) => {
        WHERE c2.tenant_id = t.id
          AND rp.status NOT IN ('collected')) as total_balance
     FROM tenants t
-    LEFT JOIN units u ON t.unit_id = u.id
-    LEFT JOIN buildings bld ON u.building_id = bld.id
     LEFT JOIN contracts c ON c.id = (
       SELECT id FROM contracts
       WHERE tenant_id = t.id AND date(end_date) >= date('now')
       ORDER BY end_date DESC LIMIT 1
     )
+    LEFT JOIN units u ON c.unit_id = u.id
+    LEFT JOIN buildings bld ON u.building_id = bld.id
     WHERE t.status = 'active'
     ORDER BY t.name
   `).all();
@@ -66,7 +79,11 @@ tenants.get('/pending-archive', requireAdmin, async (c) => {
     SELECT t.*, u.unit_no, bld.name as building_name,
       MAX(c.end_date) as last_contract_end
     FROM tenants t
-    LEFT JOIN units u ON t.unit_id = u.id
+    LEFT JOIN units u ON u.id = (
+      SELECT unit_id FROM contracts
+      WHERE tenant_id = t.id AND unit_id IS NOT NULL
+      ORDER BY end_date DESC LIMIT 1
+    )
     LEFT JOIN buildings bld ON u.building_id = bld.id
     LEFT JOIN contracts c ON c.tenant_id = t.id
     WHERE t.status = 'active'
@@ -86,7 +103,11 @@ tenants.get('/archived', async (c) => {
       MAX(c.annual_rent) as last_annual_rent,
       u.unit_no, bld.name as building_name
     FROM tenants t
-    LEFT JOIN units u ON t.unit_id = u.id
+    LEFT JOIN units u ON u.id = (
+      SELECT unit_id FROM contracts
+      WHERE tenant_id = t.id AND unit_id IS NOT NULL
+      ORDER BY end_date DESC LIMIT 1
+    )
     LEFT JOIN buildings bld ON u.building_id = bld.id
     LEFT JOIN contracts c ON c.tenant_id = t.id
     WHERE t.status = 'archived'
@@ -106,8 +127,12 @@ tenants.get('/:id', async (c) => {
     WHERE l.tenant_id = ? ORDER BY l.start_date DESC
   `).bind(id).all();
   const { results: contracts } = await c.env.DB.prepare(
-    `SELECT *, CASE WHEN date(end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status
-     FROM contracts WHERE tenant_id = ? ORDER BY start_date DESC`
+    `SELECT co.*, u.unit_no, b.name as building_name,
+       CASE WHEN date(co.end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status
+     FROM contracts co
+     LEFT JOIN units u ON co.unit_id = u.id
+     LEFT JOIN buildings b ON u.building_id = b.id
+     WHERE co.tenant_id = ? ORDER BY co.start_date DESC`
   ).bind(id).all();
   const { results: docs } = await c.env.DB.prepare(
     "SELECT * FROM rental_documents WHERE entity_type = 'tenant' AND entity_id = ? ORDER BY uploaded_at DESC"
@@ -119,8 +144,15 @@ tenants.post('/', zv('json', tenantSchema), async (c) => {
   const user = c.get('user');
   const d = c.req.valid('json');
   const result = await c.env.DB.prepare(
-    'INSERT INTO tenants (name, phone, email, id_number, notes, unit_id) VALUES (?,?,?,?,?,?) RETURNING *'
-  ).bind(d.name, d.phone ?? null, d.email || null, d.id_number ?? null, d.notes ?? null, d.unit_id ?? null).first();
+    `INSERT INTO tenants (name, tenant_type, phone, phone_alt, email, address, id_number, nationality,
+       trade_license_no, trn, contact_person_name, contact_person_phone, contact_person_email, notes)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING *`
+  ).bind(
+    d.name, d.tenant_type, d.phone ?? null, d.phone_alt ?? null, d.email || null, d.address ?? null,
+    d.id_number ?? null, d.nationality ?? null, d.trade_license_no ?? null, d.trn ?? null,
+    d.contact_person_name ?? null, d.contact_person_phone ?? null, d.contact_person_email || null,
+    d.notes ?? null
+  ).first();
   await auditLog(c.env.DB, user, 'tenant.created', 'tenant', (result as { id: number } | null)?.id ?? null, `Created tenant: ${d.name}`);
   return c.json(result, 201);
 });
@@ -141,12 +173,12 @@ tenants.put('/:id', requireAdmin, zv('json', tenantSchema.partial()), async (c) 
 tenants.post('/:id/archive', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
-  const tenant = await c.env.DB.prepare('SELECT * FROM tenants WHERE id = ? AND status = ?').bind(id, 'active').first<{ name: string; unit_id: number | null }>();
+  const tenant = await c.env.DB.prepare('SELECT * FROM tenants WHERE id = ? AND status = ?').bind(id, 'active').first<{ name: string }>();
   if (!tenant) return c.json({ error: 'Tenant not found or already archived' }, 404);
 
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    "UPDATE tenants SET status = 'archived', archived_at = ?, unit_id = NULL WHERE id = ?"
+    "UPDATE tenants SET status = 'archived', archived_at = ? WHERE id = ?"
   ).bind(now, id).run();
 
   await auditLog(c.env.DB, user, 'tenant.archived', 'tenant', id, `Archived tenant: ${tenant.name}`);
