@@ -45,7 +45,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function LegacyRentalsRedirect() {
   const [searchParams] = useSearchParams();
   const building = searchParams.get('building');
-  return <Navigate to={building ? `/rentals/buildings?building=${building}` : '/rentals/payments'} replace />;
+  return <Navigate to={building ? `/rentals/buildings?building=${encodeURIComponent(building)}` : '/rentals/payments'} replace />;
 }
 
 export default function App() {

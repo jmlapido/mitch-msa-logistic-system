@@ -229,6 +229,7 @@ export function ContractsPanel({ tenantId, readonly = false }: { tenantId: numbe
                   startDate={c.start_date}
                   slotCount={c.no_of_pdc}
                   annualRent={c.annual_rent}
+                  readonly={readonly}
                 />
               </div>
             );

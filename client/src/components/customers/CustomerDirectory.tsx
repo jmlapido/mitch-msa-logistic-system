@@ -93,7 +93,7 @@ export function CustomerDirectory() {
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {mode === 'archived'
-                    ? (t.building_name ? `${t.building_name}${t.unit_no ? ` — ${t.unit_no}` : ''} (last)` : 'No unit recorded')
+                    ? `${t.building_name ? `${t.building_name}${t.unit_no ? ` — ${t.unit_no}` : ''} (last)` : 'No unit recorded'}${t.end_date ? ` · ended ${formatDate(t.end_date)}` : ''}`
                     : (t.units_summary ?? 'No unit assigned')}
                   {t.phone && <span className="ml-2">{t.phone}</span>}
                 </div>

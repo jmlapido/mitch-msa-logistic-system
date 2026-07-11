@@ -125,7 +125,7 @@ export function useExpiringLeases(days = 60) {
 export function useRentalMutations() {
   const qc = useQueryClient();
   const inv = (keys: string[][]) => keys.forEach(k => qc.invalidateQueries({ queryKey: k }));
-  const invAll = () => inv([['buildings'], ['units'], ['tenants'], ['leases'], ['rent-payments'], ['dashboard']]);
+  const invAll = () => inv([['buildings'], ['units'], ['tenants'], ['leases'], ['rent-payments'], ['dashboard'], ['tenant']]);
   const invDocs = (type: string, id: number) => qc.invalidateQueries({ queryKey: ['rental-docs', type, id] });
 
   return {

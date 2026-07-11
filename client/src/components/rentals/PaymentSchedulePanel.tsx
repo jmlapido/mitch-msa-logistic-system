@@ -61,9 +61,10 @@ type Props = {
   startDate: string;
   slotCount: number;
   annualRent: number;
+  readonly?: boolean;
 };
 
-export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotCount, annualRent }: Props) {
+export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotCount, annualRent, readonly = false }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -85,6 +86,7 @@ export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotC
 
   const isPdc = paymentType === 'pdc';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const canMutate = !readonly && isAdmin;
 
   // Both cash and PDC: virtual slots from no_of_pdc count, merged with saved rows.
   // Cash gets computed defaults (date + even-split amount) for unset slots; PDC starts blank.
@@ -195,13 +197,13 @@ export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotC
                 <DateInput
                   value={s.cheque_date ?? ''}
                   onChange={v => {
-                    if (isAdmin) {
+                    if (canMutate) {
                       currentDateRef.current[s.pdc_number] = v;
                       saveSlot(s.pdc_number, v, s.amount ?? null);
                     }
                   }}
-                  disabled={!isAdmin}
-                  className={`text-[11px] bg-transparent border-0 outline-none w-32 h-auto py-0 px-0 rounded-none ${dateColor(s.cheque_date)} ${!isAdmin ? 'cursor-default' : ''}`}
+                  disabled={!canMutate}
+                  className={`text-[11px] bg-transparent border-0 outline-none w-32 h-auto py-0 px-0 rounded-none ${dateColor(s.cheque_date)} ${!canMutate ? 'cursor-default' : ''}`}
                 />
                 <input
                   key={`amt-${s.pdc_number}-${s.amount}`}
@@ -210,8 +212,8 @@ export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotC
                   step="0.01"
                   placeholder="Amount"
                   defaultValue={s.amount ?? ''}
-                  disabled={!isAdmin}
-                  onBlur={e => isAdmin && saveSlot(
+                  disabled={!canMutate}
+                  onBlur={e => canMutate && saveSlot(
                     s.pdc_number,
                     currentDateRef.current[s.pdc_number] ?? s.cheque_date ?? '',
                     e.target.value ? Number(e.target.value) : null
@@ -228,7 +230,7 @@ export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotC
                       <button onClick={() => setPreviewRow(s as PdcRow)} className="p-1 text-muted-foreground hover:text-foreground" title="Preview">
                         <Eye size={12} />
                       </button>
-                      {isAdmin && (
+                      {canMutate && (
                         <>
                           <button onClick={() => triggerUpload(s.pdc_number)} className="p-1 text-muted-foreground hover:text-foreground" title="Replace">
                             <Upload size={12} />
@@ -239,7 +241,7 @@ export function PaymentSchedulePanel({ contractId, paymentType, startDate, slotC
                         </>
                       )}
                     </>
-                  ) : isAdmin ? (
+                  ) : canMutate ? (
                     <button
                       onClick={() => triggerUpload(s.pdc_number)}
                       disabled={uploading === s.pdc_number}
