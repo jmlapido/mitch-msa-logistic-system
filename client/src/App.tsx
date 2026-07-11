@@ -7,6 +7,7 @@ import { TopNav } from '@/components/layout/TopNav';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Bills from '@/pages/Bills';
+import Customers from '@/pages/Customers';
 import Rentals from '@/pages/Rentals';
 import Partners from '@/pages/Partners';
 import Reports from '@/pages/Reports';
@@ -53,6 +54,7 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/bills" element={<Bills />} />
+                    <Route path="/customers" element={<Customers />} />
                     <Route path="/rentals" element={<Rentals />} />
                     <Route path="/partners" element={<Partners />} />
                     <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
