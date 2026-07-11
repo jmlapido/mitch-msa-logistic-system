@@ -10,7 +10,7 @@ import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useContracts, useRentalMutations, type Contract } from '@/lib/hooks/useRentals';
+import { useContracts, useUnits, useRentalMutations, type Contract } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
 import { formatDate, monthsBetweenRounded } from '@/lib/utils';
@@ -25,6 +25,7 @@ const schema = z.object({
   payment_type: z.enum(['cash', 'pdc']),
   no_of_pdc: z.string().optional(),
   notes: z.string().optional(),
+  unit_id: z.string().optional(),
 });
 type F = z.infer<typeof schema>;
 
@@ -57,6 +58,11 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   const [editing, setEditing] = useState<Contract | null>(null);
   const [durationAmt, setDurationAmt] = useState('');
   const [durationUnit, setDurationUnit] = useState<'days' | 'months'>('months');
+  const { data: units = [] } = useUnits();
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
+  const buildings = [...new Map(units.map(u => [u.building_id, { id: u.building_id, name: u.building_name }])).values()]
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const filteredUnits = selectedBuildingId ? units.filter(u => u.building_id === Number(selectedBuildingId)) : [];
 
   const { register, handleSubmit, reset, watch, setValue, control, formState: { isSubmitting, errors, dirtyFields } } = useForm<F>({
     resolver: zodResolver(schema),
@@ -81,10 +87,11 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
   function openAdd() {
     reset({
       contract_no: '', start_date: '', end_date: '', annual_rent: '',
-      payment_type: 'pdc', no_of_pdc: '1', notes: '',
+      payment_type: 'pdc', no_of_pdc: '1', notes: '', unit_id: '',
     });
     setDurationAmt('');
     setEditing(null);
+    setSelectedBuildingId('');
     setOpen(true);
   }
 
@@ -97,7 +104,10 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       payment_type: c.payment_type ?? 'pdc',
       no_of_pdc: String(c.no_of_pdc ?? 1),
       notes: c.notes ?? '',
+      unit_id: c.unit_id ? String(c.unit_id) : '',
     });
+    const currentUnit = units.find(u => u.id === c.unit_id);
+    setSelectedBuildingId(currentUnit ? String(currentUnit.building_id) : '');
     setDurationAmt('');
     setEditing(c);
     setOpen(true);
@@ -109,8 +119,15 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
       toast.error(isPdc ? 'Number of cheques must be at least 1' : 'Number of payments must be at least 1');
       return;
     }
+    // Unit is required for new contracts; a legacy contract that never had a
+    // unit recorded may keep none.
+    if (!v.unit_id && !(editing && editing.unit_id == null)) {
+      toast.error('Please select a unit');
+      return;
+    }
     const payload = {
       tenant_id: tenantId,
+      unit_id: v.unit_id ? Number(v.unit_id) : undefined,
       contract_no: v.contract_no,
       start_date: v.start_date,
       end_date: v.end_date,
@@ -129,7 +146,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
         toast.success('Contract added');
       }
       setOpen(false);
-    } catch { toast.error('Failed'); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed'); }
   }
 
   async function handleDelete(c: Contract) {
@@ -137,7 +154,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
     try {
       await deleteContract.mutateAsync({ id: c.id, tenantId });
       toast.success('Deleted');
-    } catch { toast.error('Failed'); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed'); }
   }
 
   return (
@@ -173,6 +190,7 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
                       </span>
                     </div>
                     <div className="text-muted-foreground space-y-0.5">
+                      <p>{c.unit_no ? `${c.building_name} — ${c.unit_no}` : <span className="italic">Unit not recorded</span>}</p>
                       <p>{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
                       <p>Annual Rent: <span className="font-medium text-foreground"><AedAmount amount={c.annual_rent} /></span></p>
                       <p>
@@ -226,6 +244,40 @@ export function ContractsPanel({ tenantId }: { tenantId: number }) {
               <Label>Contract No. *</Label>
               <Input {...register('contract_no')} className="mt-1" placeholder="e.g. CTR-2024-001" />
               {errors.contract_no && <p className="text-xs text-destructive">{errors.contract_no.message}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Building *</Label>
+                <Select
+                  value={selectedBuildingId || 'none'}
+                  onValueChange={v => { setSelectedBuildingId(v === 'none' ? '' : v); setValue('unit_id', ''); }}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select building" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Select —</SelectItem>
+                    {buildings.map(b => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Unit *</Label>
+                <Select
+                  value={watch('unit_id') || 'none'}
+                  onValueChange={v => setValue('unit_id', v === 'none' ? '' : v)}
+                  disabled={!selectedBuildingId}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue placeholder={selectedBuildingId ? 'Select unit' : 'Building first'} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Select —</SelectItem>
+                    {filteredUnits.map(u => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.unit_no}
+                        {u.occupancy_status !== 'vacant' && u.id !== editing?.unit_id && <span className="text-xs text-amber-600 ml-1">· occupied</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
