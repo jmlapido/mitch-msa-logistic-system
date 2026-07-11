@@ -40,11 +40,12 @@ tenants.get('/', async (c) => {
       c.annual_rent, c.payment_frequency,
       ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2) as monthly_rent,
       u.unit_no, bld.name as building_name,
-      (SELECT GROUP_CONCAT(bb.name || ' — ' || uu.unit_no, ', ')
-       FROM contracts cc
+      (SELECT GROUP_CONCAT(x, ', ') FROM (
+         SELECT DISTINCT bb.name || ' — ' || uu.unit_no AS x
+         FROM contracts cc
        JOIN units uu ON cc.unit_id = uu.id
        JOIN buildings bb ON uu.building_id = bb.id
-       WHERE cc.tenant_id = t.id AND date(cc.end_date) >= date('now')) as units_summary,
+       WHERE cc.tenant_id = t.id AND date(cc.end_date) >= date('now'))) as units_summary,
       (SELECT COALESCE(SUM(
          CASE WHEN rp.status = 'partial'
            THEN (CASE

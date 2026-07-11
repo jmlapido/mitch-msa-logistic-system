@@ -46,7 +46,10 @@ export function CustomerFormDialog({ open, editing, onClose }: { open: boolean; 
     } else {
       reset({ tenant_type: 'person' });
     }
-  }, [open, editing, reset]);
+    // Keyed on editing?.id (not the object) so a background refetch that
+    // replaces the row identity doesn't wipe in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing?.id, reset]);
 
   async function onSubmit(v: F) {
     try {
