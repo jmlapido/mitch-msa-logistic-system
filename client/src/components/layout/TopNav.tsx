@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Moon, Sun, LogOut, User, Menu, X } from 'lucide-react';
+import { Moon, Sun, LogOut, User, Menu, X, ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSettings } from '@/lib/hooks/useSettings';
@@ -11,10 +11,15 @@ import {
 const BASE_NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/bills', label: 'Bills' },
-  { to: '/customers', label: 'Customers' },
-  { to: '/rentals', label: 'Rentals' },
   { to: '/partners', label: 'Sponsorships' },
   { to: '/reports', label: 'Reports' },
+];
+
+const RENTALS_MENU = [
+  { to: '/rentals/payments', label: 'Payments' },
+  { to: '/customers', label: 'Customers' },
+  { to: '/rentals/units', label: 'Units' },
+  { to: '/rentals/buildings', label: 'Buildings' },
 ];
 
 export function TopNav() {
@@ -35,6 +40,8 @@ export function TopNav() {
 
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
+  const rentalsActive = location.pathname.startsWith('/rentals') || location.pathname.startsWith('/customers');
+
   return (
     <nav className="bg-gradient-to-r from-[#3dd4ce] to-[#1a9994] dark:from-[#1e9e98] dark:to-[#0f6b67] text-white shadow-md no-print sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 flex items-center h-14 gap-4">
@@ -46,7 +53,38 @@ export function TopNav() {
         </Link>
 
         <div className="hidden md:flex items-center gap-1 flex-1">
-          {navLinks.map(({ to, label }) => {
+          {navLinks.slice(0, 2).map(({ to, label }) => {
+            const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
+            return (
+              <Link
+                key={to} to={to}
+                className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                  active ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={`px-3 py-1.5 rounded text-sm transition-colors inline-flex items-center gap-1 ${
+                  rentalsActive ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'
+                }`}
+              >
+                Rentals <ChevronDown size={13} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {RENTALS_MENU.map(({ to, label }) => (
+                <DropdownMenuItem key={to} asChild>
+                  <Link to={to} className={location.pathname.startsWith(to) ? 'font-semibold' : ''}>{label}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {navLinks.slice(2).map(({ to, label }) => {
             const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
               <Link
@@ -95,15 +133,27 @@ export function TopNav() {
 
       {mobileOpen && (
         <div className="md:hidden border-t border-white/20 px-4 py-2 space-y-1">
-          {navLinks.map(({ to, label }) => {
+          {navLinks.slice(0, 2).map(({ to, label }) => {
             const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
-              <Link
-                key={to} to={to}
-                className={`block px-3 py-2 rounded text-sm transition-colors ${
-                  active ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'
-                }`}
-              >
+              <Link key={to} to={to} className={`block px-3 py-2 rounded text-sm transition-colors ${active ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'}`}>
+                {label}
+              </Link>
+            );
+          })}
+          <div className="px-3 py-1 text-xs uppercase tracking-wide text-white/60">Rentals</div>
+          {RENTALS_MENU.map(({ to, label }) => {
+            const active = location.pathname.startsWith(to);
+            return (
+              <Link key={to} to={to} className={`block pl-6 pr-3 py-2 rounded text-sm transition-colors ${active ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'}`}>
+                {label}
+              </Link>
+            );
+          })}
+          {navLinks.slice(2).map(({ to, label }) => {
+            const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
+            return (
+              <Link key={to} to={to} className={`block px-3 py-2 rounded text-sm transition-colors ${active ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'}`}>
                 {label}
               </Link>
             );
