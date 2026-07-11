@@ -20,9 +20,8 @@ buildings.get('/', async (c) => {
     SELECT b.*,
       (SELECT COUNT(*) FROM units u WHERE u.building_id = b.id) as unit_count,
       (SELECT COUNT(*) FROM units u
-       WHERE u.building_id = b.id AND (
-         EXISTS (SELECT 1 FROM leases l WHERE l.unit_id = u.id AND l.status = 'active')
-         OR EXISTS (SELECT 1 FROM tenants t WHERE t.unit_id = u.id)
+       WHERE u.building_id = b.id AND EXISTS (
+         SELECT 1 FROM contracts c WHERE c.unit_id = u.id AND date(c.end_date) >= date('now')
        )) as occupied_count
     FROM buildings b ORDER BY b.name
   `).all();

@@ -93,7 +93,7 @@ reports.get('/', async (c) => {
       FROM rent_payments rp
       JOIN contracts c ON rp.contract_id = c.id
       JOIN tenants t ON c.tenant_id = t.id
-      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN units u ON c.unit_id = u.id
       LEFT JOIN buildings b ON u.building_id = b.id
       WHERE rp.month BETWEEN ? AND ?
     `;
@@ -113,7 +113,7 @@ reports.get('/', async (c) => {
       FROM rent_payments rp
       JOIN contracts c ON rp.contract_id = c.id
       JOIN tenants t ON c.tenant_id = t.id
-      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN units u ON c.unit_id = u.id
       LEFT JOIN buildings b ON u.building_id = b.id
       WHERE rp.month BETWEEN ? AND ?
       GROUP BY b.id ORDER BY b.name
@@ -133,7 +133,7 @@ reports.get('/', async (c) => {
       FROM rent_payments rp
       JOIN contracts c ON rp.contract_id = c.id
       JOIN tenants t ON c.tenant_id = t.id
-      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN units u ON c.unit_id = u.id
       LEFT JOIN buildings b ON u.building_id = b.id
       WHERE rp.status IN ('overdue', 'partial')
         AND t.status = 'active'
@@ -151,7 +151,7 @@ reports.get('/', async (c) => {
       FROM rent_payments rp
       JOIN contracts c ON rp.contract_id = c.id
       JOIN tenants t ON c.tenant_id = t.id
-      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN units u ON c.unit_id = u.id
       LEFT JOIN buildings b ON u.building_id = b.id
       WHERE rp.status IN ('overdue', 'partial')
         AND t.status = 'active'
@@ -173,7 +173,7 @@ reports.get('/', async (c) => {
         CAST(julianday(c.end_date) - julianday('now') AS INTEGER) as days_left
       FROM contracts c
       JOIN tenants t ON c.tenant_id = t.id
-      LEFT JOIN units u ON t.unit_id = u.id
+      LEFT JOIN units u ON c.unit_id = u.id
       LEFT JOIN buildings b ON u.building_id = b.id
       WHERE date(c.end_date) BETWEEN ? AND ?
         AND t.status = 'active'

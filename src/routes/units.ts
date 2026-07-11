@@ -31,17 +31,16 @@ units.get('/', async (c) => {
       CASE
         WHEN c.id IS NOT NULL AND date(c.end_date) <= date('now', '+30 days') THEN 'expiring'
         WHEN c.id IS NOT NULL THEN 'occupied'
-        WHEN tn.id IS NOT NULL THEN 'occupied'
         ELSE 'vacant'
       END as occupancy_status
     FROM units u
     JOIN buildings b ON u.building_id = b.id
-    LEFT JOIN tenants tn ON tn.unit_id = u.id
     LEFT JOIN contracts c ON c.id = (
       SELECT id FROM contracts
-      WHERE tenant_id = tn.id AND date(end_date) >= date('now')
+      WHERE unit_id = u.id AND date(end_date) >= date('now')
       ORDER BY end_date DESC LIMIT 1
     )
+    LEFT JOIN tenants tn ON c.tenant_id = tn.id
   `;
   if (buildingId) query += ` WHERE u.building_id = ${Number(buildingId)}`;
   query += ' ORDER BY b.name, u.unit_no';

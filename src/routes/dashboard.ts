@@ -90,8 +90,7 @@ dashboard.get('/', async (c) => {
       COALESCE(SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected
     FROM buildings b
     JOIN units u ON u.building_id = b.id
-    JOIN tenants tn ON tn.unit_id = u.id
-    JOIN contracts c ON c.tenant_id = tn.id AND date(c.end_date) >= date('now')
+    JOIN contracts c ON c.unit_id = u.id AND date(c.end_date) >= date('now')
     LEFT JOIN rent_payments rp ON rp.contract_id = c.id AND rp.month = ?
     GROUP BY b.id ORDER BY b.name
   `).bind(month).all();
@@ -100,12 +99,10 @@ dashboard.get('/', async (c) => {
     SELECT b.id as building_id, b.name as building_name, b.type,
       COUNT(u.id) as total_units,
       SUM(CASE WHEN (
-        EXISTS (SELECT 1 FROM leases l WHERE l.unit_id = u.id AND l.status = 'active')
-        OR EXISTS (SELECT 1 FROM tenants t WHERE t.unit_id = u.id)
+        EXISTS (SELECT 1 FROM contracts c WHERE c.unit_id = u.id AND date(c.end_date) >= date('now'))
       ) THEN 1 ELSE 0 END) as occupied,
       SUM(CASE WHEN NOT (
-        EXISTS (SELECT 1 FROM leases l WHERE l.unit_id = u.id AND l.status = 'active')
-        OR EXISTS (SELECT 1 FROM tenants t WHERE t.unit_id = u.id)
+        EXISTS (SELECT 1 FROM contracts c WHERE c.unit_id = u.id AND date(c.end_date) >= date('now'))
       ) THEN 1 ELSE 0 END) as vacant
     FROM buildings b
     LEFT JOIN units u ON u.building_id = b.id
@@ -119,7 +116,7 @@ dashboard.get('/', async (c) => {
       t.name as tenant_name, u.unit_no, b.name as building_name
     FROM contracts c
     JOIN tenants t ON c.tenant_id = t.id
-    LEFT JOIN units u ON t.unit_id = u.id
+    LEFT JOIN units u ON c.unit_id = u.id
     LEFT JOIN buildings b ON u.building_id = b.id
     WHERE date(c.end_date) BETWEEN date('now') AND date('now', '+60 days')
     ORDER BY c.end_date

@@ -155,7 +155,7 @@ rentPayments.get('/', async (c) => {
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
     JOIN tenants t ON c.tenant_id = t.id
-    LEFT JOIN units u ON t.unit_id = u.id
+    LEFT JOIN units u ON c.unit_id = u.id
     LEFT JOIN buildings b ON u.building_id = b.id
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
@@ -279,7 +279,7 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
     FROM rent_payments rp
     JOIN contracts c ON rp.contract_id = c.id
     JOIN tenants t ON c.tenant_id = t.id
-    LEFT JOIN units u ON t.unit_id = u.id
+    LEFT JOIN units u ON c.unit_id = u.id
     LEFT JOIN pdc_cheques pc ON pc.id = (
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
