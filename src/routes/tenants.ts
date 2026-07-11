@@ -162,9 +162,13 @@ tenants.put('/:id', requireAdmin, zv('json', tenantSchema.partial()), async (c) 
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');
   const entries = Object.entries(d).filter(([, v]) => v !== undefined);
-  const fields = entries.map(([k]) => `${k} = ?`).join(', ');
+  // Normalize cleared email fields ('') to NULL so PUT can actually clear them,
+  // rather than storing an empty string.
+  const normalized = entries.map(([k, v]) =>
+    [k, (k === 'email' || k === 'contact_person_email') && v === '' ? null : v] as [string, unknown]);
+  const fields = normalized.map(([k]) => `${k} = ?`).join(', ');
   await c.env.DB.prepare(`UPDATE tenants SET ${fields} WHERE id = ?`)
-    .bind(...entries.map(([, v]) => v ?? null), id).run();
+    .bind(...normalized.map(([, v]) => v ?? null), id).run();
   await auditLog(c.env.DB, user, 'tenant.edited', 'tenant', id, `Updated: ${entries.map(([k]) => k).join(', ')}`);
   return c.json(await c.env.DB.prepare('SELECT * FROM tenants WHERE id = ?').bind(id).first());
 });

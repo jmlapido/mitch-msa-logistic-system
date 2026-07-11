@@ -71,7 +71,13 @@ contracts.put('/:id', requireAdmin, zv('json', contractSchema.partial()), async 
   const effUnitId = d.unit_id ?? existing.unit_id;
   const effStart = d.start_date ?? existing.start_date;
   const effEnd = d.end_date ?? existing.end_date;
-  if (effUnitId != null) {
+  // Legacy backfilled contracts may already overlap another same-tenant contract on the
+  // same unit (see migrations/0015-tenant-profile-first.sql). Only re-check for conflicts
+  // when the unit or dates are actually changing, so an edit that doesn't move the contract
+  // (e.g. notes-only) can never be permanently 409-blocked by pre-existing overlaps.
+  const unitOrDatesChanged =
+    effUnitId !== existing.unit_id || effStart !== existing.start_date || effEnd !== existing.end_date;
+  if (effUnitId != null && unitOrDatesChanged) {
     const conflict = await findOverlappingContract(c.env.DB, effUnitId, effStart, effEnd, id);
     if (conflict) {
       return c.json({ error: `Unit is already covered by contract #${conflict.contract_no} (${conflict.tenant_name}) for these dates` }, 409);

@@ -1,6 +1,10 @@
 -- 0015-tenant-profile-first.sql
 -- Tenant profile-first redesign: the contract (not the tenant) links to a unit,
 -- and tenants become standalone person/company profiles.
+--
+-- NOTE: assumes the deployed DB state where tenants.unit_id exists (added ad hoc
+-- outside schema.sql) and the contracts table exists (migrate-payment-frequency.sql).
+-- Fresh bootstraps should use schema.sql (already post-0015) and skip this file.
 
 -- 1. Contracts become the tenant<->unit link
 ALTER TABLE contracts ADD COLUMN unit_id INTEGER REFERENCES units(id);

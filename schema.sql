@@ -103,6 +103,15 @@ CREATE TABLE IF NOT EXISTS tenants (
   email      TEXT,
   id_number  TEXT,
   notes      TEXT,
+  tenant_type TEXT NOT NULL DEFAULT 'person' CHECK(tenant_type IN ('person','company')),
+  phone_alt   TEXT,
+  address     TEXT,
+  nationality TEXT,
+  trade_license_no TEXT,
+  trn         TEXT,
+  contact_person_name  TEXT,
+  contact_person_phone TEXT,
+  contact_person_email TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
