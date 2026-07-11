@@ -3,26 +3,37 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useTenants, type Tenant } from '@/lib/hooks/useRentals';
+import { useTenants, useArchivedTenants, type Tenant } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { AedAmount } from '@/components/ui/AedAmount';
 import { formatDate } from '@/lib/utils';
+import { ArchiveBanner } from '@/components/rentals/ArchiveBanner';
 import { filterCustomers, sortCustomers, avatarColor, type SortKey } from './directoryUtils';
 import { LeaseStatusBadge, TypeIcon } from './badges';
 import { CustomerFormDialog } from './CustomerFormDialog';
 
 export function CustomerDirectory() {
   const { data: tenants = [], isLoading } = useTenants();
+  const { data: archived = [], isLoading: archivedLoading } = useArchivedTenants();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [mode, setMode] = useState<'active' | 'archived'>('active');
   const [formOpen, setFormOpen] = useState(false);
 
-  const visible = sortCustomers(filterCustomers(tenants, query), sortKey);
+  // Archived rows reuse the Tenant-shaped pipeline: map last_contract_end onto
+  // end_date so sortCustomers('expiring') works; badges/balance render from
+  // fields that are simply absent.
+  const archivedAsTenants: Tenant[] = archived.map(a => ({ ...a, end_date: a.last_contract_end }));
+
+  const source = mode === 'active' ? tenants : archivedAsTenants;
+  const loading = mode === 'active' ? isLoading : archivedLoading;
+  const visible = sortCustomers(filterCustomers(source, query), sortKey);
 
   return (
     <div>
+      <ArchiveBanner />
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="relative flex-1 min-w-48">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -42,15 +53,25 @@ export function CustomerDirectory() {
           <option value="balance">Sort: Balance</option>
           <option value="expiring">Sort: Expiring First</option>
         </select>
-        {(user?.role === 'admin' || user?.role === 'superadmin') && (
+        <div className="flex rounded border overflow-hidden text-xs">
+          <button
+            className={`px-2.5 py-2 ${mode === 'active' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+            onClick={() => setMode('active')}
+          >Active</button>
+          <button
+            className={`px-2.5 py-2 ${mode === 'archived' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+            onClick={() => setMode('archived')}
+          >Archived</button>
+        </div>
+        {mode === 'active' && (user?.role === 'admin' || user?.role === 'superadmin') && (
           <Button size="sm" onClick={() => setFormOpen(true)}><Plus size={14} className="mr-1" /> Add Customer</Button>
         )}
       </div>
 
-      {isLoading ? (
+      {loading ? (
         <p className="text-muted-foreground text-sm">Loading…</p>
       ) : visible.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No customers match</p>
+        <p className="text-muted-foreground text-sm">{query ? 'No customers match' : mode === 'archived' ? 'No archived customers' : 'No customers yet'}</p>
       ) : (
         <div className="border rounded-lg divide-y overflow-hidden">
           {visible.map((t: Tenant) => (
@@ -71,7 +92,9 @@ export function CustomerDirectory() {
                   <TypeIcon type={t.tenant_type} />
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {t.units_summary ?? 'No unit assigned'}
+                  {mode === 'archived'
+                    ? (t.building_name ? `${t.building_name}${t.unit_no ? ` — ${t.unit_no}` : ''} (last)` : 'No unit recorded')
+                    : (t.units_summary ?? 'No unit assigned')}
                   {t.phone && <span className="ml-2">{t.phone}</span>}
                 </div>
                 {(t.total_balance ?? 0) > 0 && (
@@ -85,7 +108,9 @@ export function CustomerDirectory() {
                     {t.end_date && <div className="text-xs text-muted-foreground">until {formatDate(t.end_date)}</div>}
                   </div>
                 )}
-                <LeaseStatusBadge tenant={t} />
+                {mode === 'archived'
+                  ? <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Archived</span>
+                  : <LeaseStatusBadge tenant={t} />}
                 <span className="text-muted-foreground text-xs">›</span>
               </div>
             </div>
