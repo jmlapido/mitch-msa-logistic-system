@@ -1,16 +1,22 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useBuildings } from '@/lib/hooks/useRentals';
+import { useBuildings, useUnits } from '@/lib/hooks/useRentals';
 import { OccupancyTab } from '@/components/rentals/tabs/OccupancyTab';
 
 export default function RentalsUnits() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: buildings = [] } = useBuildings();
+  const { data: units = [] } = useUnits();
   const buildingParam = searchParams.get('building');
   const selectedId = buildingParam ? Number(buildingParam) || null : null;
   // Validate against the loaded list: a stray ?building= falls back to "all".
   const selected = buildings.find(b => b.id === selectedId) ?? null;
   const rosterRef = useRef<HTMLDivElement>(null);
+
+  const expiringByBuilding = units.reduce<Record<number, number>>((acc, u) => {
+    if (u.occupancy_status === 'expiring') acc[u.building_id] = (acc[u.building_id] ?? 0) + 1;
+    return acc;
+  }, {});
 
   // Scroll the units table into view when a building is selected (card click
   // or ?building= deep link); clearing the selection doesn't scroll.
@@ -43,6 +49,9 @@ export default function RentalsUnits() {
             <p className="text-xs mt-2">
               <span className="text-muted-foreground">{b.unit_count} units</span>
               <span className="text-green-600 ml-2">{b.occupied_count} occupied</span>
+              {expiringByBuilding[b.id] ? (
+                <span className="text-amber-600 dark:text-amber-400 ml-2">{expiringByBuilding[b.id]} expiring</span>
+              ) : null}
               <span className="text-muted-foreground ml-2">{b.unit_count - b.occupied_count} vacant</span>
             </p>
           </div>

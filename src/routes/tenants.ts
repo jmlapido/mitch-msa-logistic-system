@@ -33,7 +33,7 @@ tenants.get('/', async (c) => {
     SELECT t.*,
       c.id as lease_id,
       CASE WHEN c.id IS NOT NULL THEN
-        CASE WHEN date(c.end_date) <= date('now', '+30 days') THEN 'expiring'
+        CASE WHEN date(c.end_date) <= date('now', '+60 days') THEN 'expiring'
              ELSE 'active' END
       ELSE NULL END as lease_status,
       c.start_date, c.end_date,

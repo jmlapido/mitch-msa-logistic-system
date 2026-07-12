@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { useRentPayments, useBuildings, useRentalMutations, usePaymentEntries, type RentPayment, type PaymentEntry } from '@/lib/hooks/useRentals';
+import { isExpiring } from '@/lib/expiry';
+import { ExpiringBadge } from '@/components/customers/badges';
 import { ContractsPanel } from '../ContractsPanel';
 import { MonthYearSelector } from '@/components/ui/MonthYearSelector';
 import { currentMonth, monthLabel, formatDate } from '@/lib/utils';
@@ -127,6 +129,9 @@ export function PaymentsTab() {
                                 >
                                   <span className="capitalize">{p.tenant_name}</span>
                                 </button>
+                                {isExpiring(p.contract_end) && (
+                                  <div><ExpiringBadge endDate={p.contract_end!} /></div>
+                                )}
                               </td>
                               <td className="px-3 py-2 text-right text-xs"><AedAmount amount={p.expected_rent} /></td>
                               <td className="hidden sm:table-cell px-3 py-2 text-right">
