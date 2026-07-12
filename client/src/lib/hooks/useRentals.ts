@@ -17,7 +17,7 @@ export type Tenant = {
   total_balance?: number;
 };
 export type Lease = { id: number; unit_id: number; tenant_id: number; start_date: string; end_date: string; monthly_rent: number; deposit: number; status: string; notes?: string; tenant_name: string; unit_no: string; building_name: string };
-export type RentPayment = { id: number; lease_id: number; month: string; amount: number; amount_paid: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; balance: number; payment_method?: 'cash' | 'cheque' | null; payment_type: string; cash_collected: number; cheque_collected: number };
+export type RentPayment = { id: number; lease_id: number; month: string; amount: number; amount_paid: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; balance: number; payment_method?: 'cash' | 'cheque' | null; payment_type: string; contract_end?: string; cash_collected: number; cheque_collected: number };
 export type RentalDoc = { id: number; entity_type: string; entity_id: number; doc_type: string; file_name: string; uploaded_at: string };
 export type PaymentEntry = {
   id: number;

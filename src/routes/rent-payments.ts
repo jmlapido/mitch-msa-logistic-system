@@ -117,6 +117,7 @@ rentPayments.get('/', async (c) => {
       u.unit_no, u.type as unit_type,
       b.id as building_id, b.name as building_name,
       c.payment_type,
+      c.end_date as contract_end,
       CASE
         WHEN c.payment_type = 'cash' THEN
           COALESCE(pc.cheque_date, rp.month || '-' || printf('%02d',

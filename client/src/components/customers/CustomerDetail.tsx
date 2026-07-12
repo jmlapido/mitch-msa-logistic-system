@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Pencil, Archive, ArchiveRestore } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, ArchiveRestore, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { useTenant, useTenants, useRentalMutations } from '@/lib/hooks/useRentals';
+import { useTenant, useTenants, useRentalMutations, useContracts } from '@/lib/hooks/useRentals';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { isExpiring } from '@/lib/expiry';
 import { AedAmount } from '@/components/ui/AedAmount';
 import { ContractsPanel } from '@/components/rentals/ContractsPanel';
 import { DocumentsPanel } from '@/components/rentals/DocumentsPanel';
@@ -30,6 +31,8 @@ export function CustomerDetail({ id }: { id: number }) {
   const [editOpen, setEditOpen] = useState(false);
 
   const listRow = tenants.find(x => x.id === id);
+  const { data: contracts = [] } = useContracts(id);
+  const expiringCount = contracts.filter(c => c.status === 'valid' && isExpiring(c.end_date)).length;
   const isArchived = t?.status === 'archived';
   const canEdit = user?.role === 'admin' || user?.role === 'superadmin';
 
@@ -98,6 +101,13 @@ export function CustomerDetail({ id }: { id: number }) {
           </Button>
         )}
       </div>
+
+      {expiringCount > 0 && (
+        <div className="border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 rounded-lg px-4 py-2.5 text-sm font-medium inline-flex items-center gap-2">
+          <Clock size={14} />
+          {expiringCount === 1 ? '1 contract expiring within 2 months' : `${expiringCount} contracts expiring within 2 months`}
+        </div>
+      )}
 
       {(listRow?.total_balance ?? 0) > 0 && (
         <div className="border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 rounded-lg px-4 py-2.5 text-sm font-medium">
