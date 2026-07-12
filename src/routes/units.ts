@@ -22,7 +22,7 @@ units.get('/', async (c) => {
     SELECT u.*, b.name as building_name, b.type as building_type,
       c.id as lease_id,
       CASE WHEN c.id IS NOT NULL THEN
-        CASE WHEN date(c.end_date) <= date('now', '+30 days') THEN 'expiring'
+        CASE WHEN date(c.end_date) <= date('now', '+60 days') THEN 'expiring'
              ELSE 'active' END
       ELSE NULL END as lease_status,
       c.end_date as lease_end,
@@ -30,7 +30,7 @@ units.get('/', async (c) => {
       tn.name as tenant_name,
       tn.id as tenant_id,
       CASE
-        WHEN c.id IS NOT NULL AND date(c.end_date) <= date('now', '+30 days') THEN 'expiring'
+        WHEN c.id IS NOT NULL AND date(c.end_date) <= date('now', '+60 days') THEN 'expiring'
         WHEN c.id IS NOT NULL THEN 'occupied'
         ELSE 'vacant'
       END as occupancy_status
