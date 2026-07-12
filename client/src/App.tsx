@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/hooks/useAuth';
@@ -10,7 +10,6 @@ import Bills from '@/pages/Bills';
 import Customers from '@/pages/Customers';
 import RentalsPayments from './pages/RentalsPayments';
 import RentalsUnits from './pages/RentalsUnits';
-import RentalsBuildings from './pages/RentalsBuildings';
 import Partners from '@/pages/Partners';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
@@ -45,7 +44,12 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function LegacyRentalsRedirect() {
   const [searchParams] = useSearchParams();
   const building = searchParams.get('building');
-  return <Navigate to={building ? `/rentals/buildings?building=${encodeURIComponent(building)}` : '/rentals/payments'} replace />;
+  return <Navigate to={building ? `/rentals/units?building=${encodeURIComponent(building)}` : '/rentals/payments'} replace />;
+}
+
+function LegacyBuildingsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/rentals/units${search}`} replace />;
 }
 
 export default function App() {
@@ -66,7 +70,7 @@ export default function App() {
                     <Route path="/rentals" element={<LegacyRentalsRedirect />} />
                     <Route path="/rentals/payments" element={<RentalsPayments />} />
                     <Route path="/rentals/units" element={<RentalsUnits />} />
-                    <Route path="/rentals/buildings" element={<RentalsBuildings />} />
+                    <Route path="/rentals/buildings" element={<LegacyBuildingsRedirect />} />
                     <Route path="/partners" element={<Partners />} />
                     <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
                     <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
