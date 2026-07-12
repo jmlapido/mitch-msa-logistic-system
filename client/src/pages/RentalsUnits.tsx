@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useBuildings } from '@/lib/hooks/useRentals';
 import { OccupancyTab } from '@/components/rentals/tabs/OccupancyTab';
@@ -9,6 +10,14 @@ export default function RentalsUnits() {
   const selectedId = buildingParam ? Number(buildingParam) || null : null;
   // Validate against the loaded list: a stray ?building= falls back to "all".
   const selected = buildings.find(b => b.id === selectedId) ?? null;
+  const rosterRef = useRef<HTMLDivElement>(null);
+
+  // Scroll the units table into view when a building is selected (card click
+  // or ?building= deep link); clearing the selection doesn't scroll.
+  useEffect(() => {
+    if (selected) rosterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
 
   function toggle(id: number) {
     if (selected?.id === id) setSearchParams({});
@@ -40,18 +49,20 @@ export default function RentalsUnits() {
         ))}
       </div>
 
-      {selected && (
-        <div className="flex items-center gap-2 mb-3 text-sm">
-          <span className="text-muted-foreground">
-            Showing units in <span className="font-medium text-foreground">{selected.name}</span>
-          </span>
-          <button onClick={() => setSearchParams({})} className="text-xs text-primary hover:underline">
-            All buildings
-          </button>
-        </div>
-      )}
+      <div ref={rosterRef} className="scroll-mt-16">
+        {selected && (
+          <div className="flex items-center gap-2 mb-3 text-sm">
+            <span className="text-muted-foreground">
+              Showing units in <span className="font-medium text-foreground">{selected.name}</span>
+            </span>
+            <button onClick={() => setSearchParams({})} className="text-xs text-primary hover:underline">
+              All buildings
+            </button>
+          </div>
+        )}
 
-      <OccupancyTab buildingId={selected?.id ?? null} />
+        <OccupancyTab buildingId={selected?.id ?? null} />
+      </div>
     </div>
   );
 }
