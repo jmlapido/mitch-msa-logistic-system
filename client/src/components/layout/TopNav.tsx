@@ -18,8 +18,7 @@ const BASE_NAV = [
 const RENTALS_MENU = [
   { to: '/rentals/payments', label: 'Payments' },
   { to: '/customers', label: 'Customers' },
-  { to: '/rentals/units', label: 'Units' },
-  { to: '/rentals/buildings', label: 'Buildings' },
+  { to: '/rentals/units', label: 'Buildings & Units' },
 ];
 
 export function TopNav() {

@@ -36,7 +36,7 @@ export function RentBarChart({ buildings }: Props) {
             onClick={(e) => {
               if (e?.activePayload?.[0]) {
                 const building = e.activePayload[0].payload as { id: number };
-                navigate(`/rentals/buildings?building=${building.id}`);
+                navigate(`/rentals/units?building=${building.id}`);
               }
             }}
           >

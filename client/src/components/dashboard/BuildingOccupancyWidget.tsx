@@ -26,7 +26,7 @@ export function BuildingOccupancyWidget({ buildings }: Props) {
               <div
                 key={b.building_id}
                 className="group cursor-pointer py-1.5 hover:bg-muted rounded transition-colors px-1 border-b last:border-0"
-                onClick={() => navigate(`/rentals/buildings?building=${b.building_id}`)}
+                onClick={() => navigate(`/rentals/units?building=${b.building_id}`)}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">

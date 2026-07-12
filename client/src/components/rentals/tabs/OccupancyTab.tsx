@@ -10,9 +10,11 @@ function occupancyBadge(status: Unit['occupancy_status']) {
   return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Occupied</span>;
 }
 
-export function OccupancyTab() {
-  const { data: units = [], isLoading } = useUnits();
+export function OccupancyTab({ buildingId = null }: { buildingId?: number | null }) {
+  const { data: allUnits = [], isLoading } = useUnits();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const units = buildingId != null ? allUnits.filter(u => u.building_id === buildingId) : allUnits;
 
   const grouped = units.reduce<Record<string, Unit[]>>((acc, u) => {
     (acc[u.building_name] ??= []).push(u);
