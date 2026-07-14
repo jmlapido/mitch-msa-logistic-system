@@ -134,11 +134,13 @@ dashboard.get('/', async (c) => {
   `).bind(month, month, month, month).first<{ overdue_rent: number; expiring_contracts: number; pending_archive: number; unpaid_bills: number }>();
 
   const chequesDue = await db.prepare(`
-    SELECT pc.cheque_date, pc.amount, pc.pdc_number, t.id as tenant_id, t.name as tenant_name
+    SELECT pc.id as id, pc.cheque_date, pc.amount, pc.pdc_number, t.id as tenant_id, t.name as tenant_name
     FROM pdc_cheques pc
     JOIN contracts c ON pc.contract_id = c.id
     JOIN tenants t ON c.tenant_id = t.id
     WHERE pc.cheque_date BETWEEN date('now') AND date('now', '+30 days')
+      AND c.payment_type = 'pdc'
+      AND date(c.end_date) >= date('now')
     ORDER BY pc.cheque_date
     LIMIT 8
   `).all();

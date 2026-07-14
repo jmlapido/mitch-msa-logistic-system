@@ -33,7 +33,7 @@ export type DashboardData = {
     category_name: string; category_color: string; category_icon: string; priority_rank: number;
   }>;
   actionCounts: { overdueRentCount: number; expiringContractsCount: number; pendingArchiveCount: number; unpaidBillsCount: number };
-  chequesDue: { cheque_date: string; amount: number | null; pdc_number: number; tenant_id: number; tenant_name: string }[];
+  chequesDue: { id: number; cheque_date: string; amount: number | null; pdc_number: number; tenant_id: number; tenant_name: string }[];
   topBalances: { id: number; name: string; total_balance: number }[];
   rentByBuilding: Array<{
     building_id: number; building_name: string; unit_count: number; expected: number; collected: number;

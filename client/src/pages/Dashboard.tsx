@@ -54,7 +54,7 @@ export default function Dashboard() {
       ) : (
         <div className="space-y-6">
 
-          <ActionStrip counts={data.actionCounts} />
+          <ActionStrip counts={data.actionCounts} monthName={monthLabel(month)} />
 
           {/* Bills & Rent stat cards */}
           <div>

@@ -16,7 +16,7 @@ export function ChequesDueWidget({ cheques }: Props) {
         <div className="space-y-1">
           {cheques.map(ch => (
             <div
-              key={`${ch.tenant_id}-${ch.pdc_number}-${ch.cheque_date}`}
+              key={ch.id}
               className="group flex items-center justify-between gap-2 py-2 px-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors border-b last:border-0"
               onClick={() => navigate(`/customers?id=${ch.tenant_id}`)}
             >
