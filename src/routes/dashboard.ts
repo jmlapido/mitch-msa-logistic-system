@@ -112,7 +112,16 @@ dashboard.get('/', async (c) => {
 
   const actionCounts = await db.prepare(`
     SELECT
-      (SELECT COUNT(*) FROM rent_payments rp WHERE rp.month = ? AND rp.status IN ('overdue','partial')) as overdue_rent,
+      -- Same semantics as the Overdue Rent stat card: active contracts with no
+      -- collected payment for the month, once the 5th has passed.
+      (SELECT COUNT(*) FROM contracts oc
+       WHERE date(oc.end_date) >= date('now')
+         AND date(oc.start_date) <= ? || '-28'
+         AND NOT EXISTS (
+           SELECT 1 FROM rent_payments rp
+           WHERE rp.contract_id = oc.id AND rp.month = ? AND rp.status = 'collected'
+         )
+         AND date(? || '-05') < date('now')) as overdue_rent,
       (SELECT COUNT(*) FROM contracts c WHERE date(c.end_date) BETWEEN date('now') AND date('now', '+60 days')) as expiring_contracts,
       (SELECT COUNT(*) FROM (
         SELECT t.id FROM tenants t
@@ -122,7 +131,7 @@ dashboard.get('/', async (c) => {
         HAVING COUNT(c.id) > 0 AND MAX(date(c.end_date)) < date('now')
       )) as pending_archive,
       (SELECT COUNT(*) FROM bill_entries be WHERE be.month = ? AND be.status = 'unpaid') as unpaid_bills
-  `).bind(month, month).first<{ overdue_rent: number; expiring_contracts: number; pending_archive: number; unpaid_bills: number }>();
+  `).bind(month, month, month, month).first<{ overdue_rent: number; expiring_contracts: number; pending_archive: number; unpaid_bills: number }>();
 
   const chequesDue = await db.prepare(`
     SELECT pc.cheque_date, pc.amount, pc.pdc_number, t.id as tenant_id, t.name as tenant_name
