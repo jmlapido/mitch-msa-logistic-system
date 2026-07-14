@@ -304,7 +304,10 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                                 )}
                                 {canEdit && (
                                   <button
-                                    onClick={() => mutations.deletePayment.mutateAsync({ id: p.id, partnerId: partner.id }).then(() => toast.success('Deleted')).catch((err: unknown) => { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); })}
+                                    onClick={() => {
+                                      if (!confirm(`Delete this payment of AED ${p.amount.toLocaleString()}? Attached receipts will also be removed.`)) return;
+                                      mutations.deletePayment.mutateAsync({ id: p.id, partnerId: partner.id }).then(() => toast.success('Deleted')).catch((err: unknown) => { console.error(err); toast.error(err instanceof Error ? err.message : 'Failed'); });
+                                    }}
                                     className="text-muted-foreground hover:text-destructive"
                                   >
                                     <Trash2 size={11} />
