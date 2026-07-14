@@ -13,7 +13,7 @@ export function BuildingOccupancyWidget({ buildings }: Props) {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-card border rounded-lg p-4">
+    <div className="bg-card border rounded-lg p-4 min-w-0 overflow-hidden">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Buildings — Occupancy</h3>
       {buildings.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">No buildings found</p>

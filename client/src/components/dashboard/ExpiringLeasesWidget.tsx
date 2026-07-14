@@ -13,7 +13,7 @@ function daysBadgeClass(days: number): string {
 export function ExpiringLeasesWidget({ leases }: Props) {
   const navigate = useNavigate();
   return (
-    <div className="bg-card border rounded-lg p-4">
+    <div className="bg-card border rounded-lg p-4 min-w-0 overflow-hidden">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Expiring Leases (60 days)</h3>
       {leases.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">No leases expiring soon</p>
