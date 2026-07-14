@@ -22,9 +22,20 @@ function dueDateColor(dateStr: string, status: string): string {
   return 'text-foreground';
 }
 
+const STATUS_RANK: Record<string, number> = { overdue: 0, partial: 1, pending: 2, collected: 3 };
+
+function sortRows(items: RentPayment[], key: 'status' | 'unit'): RentPayment[] {
+  return [...items].sort((a, b) => {
+    const byUnit = (a.unit_no ?? '').localeCompare(b.unit_no ?? '', undefined, { numeric: true });
+    if (key === 'unit') return byUnit;
+    return (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9) || byUnit;
+  });
+}
+
 export function PaymentsTab() {
   const [month, setMonth] = useState(currentMonth());
   const [buildingFilter, setBuildingFilter] = useState<number | undefined>();
+  const [sortKey, setSortKey] = useState<'status' | 'unit'>('status');
   const [tenantDetail, setTenantDetail] = useState<RentPayment | null>(null);
   const { data: payments = [], isLoading } = useRentPayments(month, buildingFilter);
   const { data: buildings = [] } = useBuildings();
@@ -77,6 +88,11 @@ export function PaymentsTab() {
           <option value="">All buildings</option>
           {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
+        <select value={sortKey} onChange={e => setSortKey(e.target.value as 'status' | 'unit')}
+          className="text-xs px-2 py-1 rounded border bg-background border-border">
+          <option value="status">Sort: Status</option>
+          <option value="unit">Sort: Unit</option>
+        </select>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
@@ -117,7 +133,7 @@ export function PaymentsTab() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {group.items.map(p => {
+                        {sortRows(group.items, sortKey).map(p => {
                           const shouldHighlight = p.status === 'overdue' || p.status === 'partial' || (p.balance ?? 0) > 0;
                           return (
                             <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
