@@ -65,19 +65,6 @@ dashboard.get('/', async (c) => {
     LIMIT 8
   `).bind(month, month, month).all();
 
-  const upcomingRows = await db.prepare(`
-    SELECT
-      be.id as entry_id, be.amount, b.particulars, b.due_day,
-      c.name as category_name, c.color as category_color, c.icon as category_icon
-    FROM bill_entries be
-    JOIN bills b ON be.bill_id = b.id
-    JOIN categories c ON b.category_id = c.id
-    WHERE be.month = ? AND be.status = 'unpaid'
-      AND (b.due_day IS NULL OR date(? || '-' || printf('%02d', b.due_day)) >= date('now'))
-    ORDER BY b.due_day ASC NULLS LAST, be.amount DESC
-    LIMIT 8
-  `).bind(month, month).all();
-
   const rentByBuilding = await db.prepare(`
     SELECT
       b.id as building_id, b.name as building_name,
@@ -120,6 +107,52 @@ dashboard.get('/', async (c) => {
     LEFT JOIN buildings b ON u.building_id = b.id
     WHERE date(c.end_date) BETWEEN date('now') AND date('now', '+60 days')
     ORDER BY c.end_date
+    LIMIT 8
+  `).all();
+
+  const actionCounts = await db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM rent_payments rp WHERE rp.month = ? AND rp.status IN ('overdue','partial')) as overdue_rent,
+      (SELECT COUNT(*) FROM contracts c WHERE date(c.end_date) BETWEEN date('now') AND date('now', '+60 days')) as expiring_contracts,
+      (SELECT COUNT(*) FROM (
+        SELECT t.id FROM tenants t
+        LEFT JOIN contracts c ON c.tenant_id = t.id
+        WHERE t.status = 'active'
+        GROUP BY t.id
+        HAVING COUNT(c.id) > 0 AND MAX(date(c.end_date)) < date('now')
+      )) as pending_archive,
+      (SELECT COUNT(*) FROM bill_entries be WHERE be.month = ? AND be.status = 'unpaid') as unpaid_bills
+  `).bind(month, month).first<{ overdue_rent: number; expiring_contracts: number; pending_archive: number; unpaid_bills: number }>();
+
+  const chequesDue = await db.prepare(`
+    SELECT pc.cheque_date, pc.amount, pc.pdc_number, t.id as tenant_id, t.name as tenant_name
+    FROM pdc_cheques pc
+    JOIN contracts c ON pc.contract_id = c.id
+    JOIN tenants t ON c.tenant_id = t.id
+    WHERE pc.cheque_date BETWEEN date('now') AND date('now', '+30 days')
+    ORDER BY pc.cheque_date
+    LIMIT 8
+  `).all();
+
+  const topBalances = await db.prepare(`
+    SELECT t.id, t.name,
+      COALESCE(SUM(
+        CASE WHEN rp.status = 'partial'
+          THEN (CASE
+            WHEN c.payment_frequency = 'custom' THEN
+              ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+            ELSE ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2)
+          END - rp.amount_paid)
+          ELSE rp.amount
+        END
+      ), 0) as total_balance
+    FROM tenants t
+    JOIN contracts c ON c.tenant_id = t.id
+    JOIN rent_payments rp ON rp.contract_id = c.id
+    WHERE t.status = 'active' AND rp.status NOT IN ('collected')
+    GROUP BY t.id
+    HAVING total_balance > 0
+    ORDER BY total_balance DESC
     LIMIT 8
   `).all();
 
@@ -190,28 +223,6 @@ dashboard.get('/', async (c) => {
     WHERE p.is_archived = 0
   `).first<{ active_sponsors: number; total_contract_value: number; total_collected: number; total_overdue: number }>();
 
-  const activeSponsors = await db.prepare(`
-    SELECT p.id as partner_id, p.company_name,
-      pc.id as contract_id, pc.expected_amount, pc.payment_frequency,
-      pc.end_date as contract_end,
-      COALESCE(pp.total_paid, 0) as total_paid,
-      CASE
-        WHEN COALESCE(pp.total_paid, 0) >= pc.expected_amount THEN 'paid'
-        WHEN date(pc.end_date) < date('now') AND COALESCE(pp.total_paid, 0) < pc.expected_amount THEN 'overdue'
-        WHEN COALESCE(pp.total_paid, 0) > 0 THEN 'partial'
-        ELSE 'pending'
-      END as status
-    FROM partners p
-    JOIN partner_contracts pc ON pc.partner_id = p.id AND pc.status = 'active'
-    LEFT JOIN (
-      SELECT contract_id, SUM(amount) as total_paid
-      FROM partner_payments GROUP BY contract_id
-    ) pp ON pp.contract_id = pc.id
-    WHERE p.is_archived = 0
-    ORDER BY p.company_name
-    LIMIT 8
-  `).all<{ partner_id: number; company_name: string; contract_id: number; expected_amount: number; payment_frequency: string; contract_end: string; total_paid: number; status: string }>();
-
   const expiringSponsors = await db.prepare(`
     SELECT p.id as partner_id, p.company_name,
       pc.end_date, pc.expected_amount, pc.payment_frequency,
@@ -264,11 +275,17 @@ dashboard.get('/', async (c) => {
       overdue: sponsorshipSummary?.total_overdue ?? 0,
       activeCount: sponsorshipSummary?.active_sponsors ?? 0,
     },
-    activeSponsors: activeSponsors.results,
     expiringSponsors: expiringSponsors.results,
     priorityPayments: priorityRows.results,
-    upcomingBills: upcomingRows.results,
     rentByBuilding: rentByBuilding.results,
+    actionCounts: {
+      overdueRentCount: actionCounts?.overdue_rent ?? 0,
+      expiringContractsCount: actionCounts?.expiring_contracts ?? 0,
+      pendingArchiveCount: actionCounts?.pending_archive ?? 0,
+      unpaidBillsCount: actionCounts?.unpaid_bills ?? 0,
+    },
+    chequesDue: chequesDue.results,
+    topBalances: topBalances.results,
     expiringLeases: expiringLeases.results,
     buildingOccupancy: buildingOccupancy.results,
   });
