@@ -3,15 +3,15 @@ import { ChevronLeft, ChevronRight, Receipt, CheckCircle, XCircle, Home, Trendin
 import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '@/lib/hooks/useDashboard';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { BillsDonutChart } from '@/components/dashboard/BillsDonutChart';
 import { RentBarChart } from '@/components/dashboard/RentBarChart';
 import { BillsTrendChart } from '@/components/dashboard/BillsTrendChart';
 import { RentTrendChart } from '@/components/dashboard/RentTrendChart';
 import { SponsorshipStatCards } from '@/components/dashboard/SponsorshipStatCards';
+import { ActionStrip } from '@/components/dashboard/ActionStrip';
 import { PriorityPaymentsWidget } from '@/components/dashboard/PriorityPaymentsWidget';
-import { UpcomingBillsWidget } from '@/components/dashboard/UpcomingBillsWidget';
+import { ChequesDueWidget } from '@/components/dashboard/ChequesDueWidget';
+import { TopBalancesWidget } from '@/components/dashboard/TopBalancesWidget';
 import { ExpiringLeasesWidget } from '@/components/dashboard/ExpiringLeasesWidget';
-import { ActiveSponsorsWidget } from '@/components/dashboard/ActiveSponsorsWidget';
 import { ExpiringSponsorsWidget } from '@/components/dashboard/ExpiringSponsorsWidget';
 import { BuildingOccupancyWidget } from '@/components/dashboard/BuildingOccupancyWidget';
 import { currentMonth, monthLabel } from '@/lib/utils';
@@ -54,6 +54,8 @@ export default function Dashboard() {
       ) : (
         <div className="space-y-6">
 
+          <ActionStrip counts={data.actionCounts} />
+
           {/* Bills & Rent stat cards */}
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 px-0.5">Bills &amp; Rent</p>
@@ -95,10 +97,7 @@ export default function Dashboard() {
           <SponsorshipStatCards sponsorships={data.sponsorships} />
 
           {/* Charts row */}
-          <div className="grid gap-4 md:grid-cols-[1fr_1.7fr]">
-            <BillsDonutChart paid={data.bills.paid} unpaid={data.bills.unpaid} />
-            <RentBarChart buildings={data.rentByBuilding} />
-          </div>
+          <RentBarChart buildings={data.rentByBuilding} />
 
           {/* Trend charts */}
           <div className="grid gap-4 md:grid-cols-2">
@@ -109,14 +108,14 @@ export default function Dashboard() {
           {/* Widget row 1 — Bills & Rent */}
           <div className="grid gap-4 md:grid-cols-3">
             <PriorityPaymentsWidget items={data.priorityPayments} month={month} />
-            <UpcomingBillsWidget items={data.upcomingBills} month={month} />
+            <TopBalancesWidget balances={data.topBalances} />
             <ExpiringLeasesWidget leases={data.expiringLeases} />
           </div>
 
           {/* Widget row 2 — Rentals & Sponsorships */}
           <div className="grid gap-4 md:grid-cols-3">
             <BuildingOccupancyWidget buildings={data.buildingOccupancy} />
-            <ActiveSponsorsWidget sponsors={data.activeSponsors} />
+            <ChequesDueWidget cheques={data.chequesDue} />
             <ExpiringSponsorsWidget sponsors={data.expiringSponsors} />
           </div>
 
