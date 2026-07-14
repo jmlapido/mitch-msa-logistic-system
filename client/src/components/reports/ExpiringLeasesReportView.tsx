@@ -35,8 +35,8 @@ export function ExpiringLeasesReportView({ rows, from, to }: Props) {
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[
               { label: 'Expired', count: rows.filter(r => r.days_left < 0).length, cls: 'text-red-600' },
-              { label: 'Expiring ≤ 30 days', count: rows.filter(r => r.days_left >= 0 && r.days_left <= 30).length, cls: 'text-orange-500' },
-              { label: 'Expiring 31–90 days', count: rows.filter(r => r.days_left > 30).length, cls: 'text-yellow-600' },
+              { label: 'Expiring ≤ 60 days', count: rows.filter(r => r.days_left >= 0 && r.days_left <= 60).length, cls: 'text-orange-500' },
+              { label: 'Expiring 61–90 days', count: rows.filter(r => r.days_left > 60).length, cls: 'text-yellow-600' },
             ].map(c => (
               <div key={c.label} className="bg-card border rounded-lg p-3 text-center">
                 <p className="text-xs text-muted-foreground">{c.label}</p>
