@@ -258,7 +258,7 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
               {payments.length === 0
                 ? <p className="text-xs text-muted-foreground">No payments recorded yet.</p>
                 : (
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-lg overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead className="bg-muted text-muted-foreground">
                         <tr>
@@ -273,8 +273,8 @@ export function PartnerModal({ partner, open, onClose }: { partner: Partner; ope
                       <tbody className="divide-y divide-border">
                         {payments.map(p => (
                           <tr key={p.id} className="hover:bg-muted/20">
-                            <td className="px-2 py-1.5">{formatDate(p.paid_date)}</td>
-                            <td className="px-2 py-1.5 text-right text-green-600 font-medium"><AedAmount amount={p.amount} /></td>
+                            <td className="px-2 py-1.5 whitespace-nowrap">{formatDate(p.paid_date)}</td>
+                            <td className="px-2 py-1.5 text-right text-green-600 font-medium whitespace-nowrap"><AedAmount amount={p.amount} /></td>
                             <td className="px-2 py-1.5 capitalize">{p.payment_method}</td>
                             <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">
                               {p.contract_no ? `#${p.contract_no}` : `${formatDate(p.contract_start)} – ${formatDate(p.contract_end)}`}
