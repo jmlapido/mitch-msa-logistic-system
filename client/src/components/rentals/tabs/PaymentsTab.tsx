@@ -24,18 +24,50 @@ function dueDateColor(dateStr: string, status: string): string {
 
 const STATUS_RANK: Record<string, number> = { overdue: 0, partial: 1, pending: 2, collected: 3 };
 
-function sortRows(items: RentPayment[], key: 'status' | 'unit'): RentPayment[] {
+type SortKey = 'status' | 'unit' | 'due';
+type SortDir = 'asc' | 'desc';
+
+function sortRows(items: RentPayment[], key: SortKey, dir: SortDir): RentPayment[] {
+  const mul = dir === 'asc' ? 1 : -1;
   return [...items].sort((a, b) => {
     const byUnit = (a.unit_no ?? '').localeCompare(b.unit_no ?? '', undefined, { numeric: true });
-    if (key === 'unit') return byUnit;
-    return (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9) || byUnit;
+    let cmp: number;
+    if (key === 'unit') cmp = byUnit;
+    else if (key === 'status') cmp = (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9);
+    else {
+      // due date; rows without one sort last regardless of direction
+      if (!a.due_date && !b.due_date) cmp = 0;
+      else if (!a.due_date) return 1;
+      else if (!b.due_date) return -1;
+      else cmp = a.due_date.localeCompare(b.due_date);
+    }
+    return cmp * mul || byUnit;
   });
+}
+
+function SortHeader({ label, k, sortKey, sortDir, onSort, className = 'text-left' }: {
+  label: string; k: SortKey; sortKey: SortKey; sortDir: SortDir; onSort: (k: SortKey) => void; className?: string;
+}) {
+  const active = sortKey === k;
+  return (
+    <th className={`${className} px-3 py-1.5`}>
+      <button onClick={() => onSort(k)} className={`inline-flex items-center gap-0.5 hover:text-foreground ${active ? 'text-foreground font-semibold' : ''}`}>
+        {label}{active ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+      </button>
+    </th>
+  );
 }
 
 export function PaymentsTab() {
   const [month, setMonth] = useState(currentMonth());
   const [buildingFilter, setBuildingFilter] = useState<number | undefined>();
-  const [sortKey, setSortKey] = useState<'status' | 'unit'>('status');
+  const [sortKey, setSortKey] = useState<SortKey>('status');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  function handleSort(k: SortKey) {
+    if (k === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('asc'); }
+  }
   const [tenantDetail, setTenantDetail] = useState<RentPayment | null>(null);
   const { data: payments = [], isLoading } = useRentPayments(month, buildingFilter);
   const { data: buildings = [] } = useBuildings();
@@ -88,10 +120,11 @@ export function PaymentsTab() {
           <option value="">All buildings</option>
           {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
-        <select value={sortKey} onChange={e => setSortKey(e.target.value as 'status' | 'unit')}
+        <select value={sortKey} onChange={e => { setSortKey(e.target.value as SortKey); setSortDir('asc'); }}
           className="text-xs px-2 py-1 rounded border bg-background border-border">
           <option value="status">Sort: Status</option>
           <option value="unit">Sort: Unit</option>
+          <option value="due">Sort: Due Date</option>
         </select>
       </div>
 
@@ -121,19 +154,19 @@ export function PaymentsTab() {
                     <table className="w-full text-sm">
                       <thead className="text-xs text-muted-foreground">
                         <tr>
-                          <th className="text-left px-3 py-1.5">Unit</th>
+                          <SortHeader label="Unit" k="unit" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                           <th className="text-left px-3 py-1.5">Tenant</th>
                           <th className="text-right px-3 py-1.5">Rent</th>
                           <th className="hidden sm:table-cell text-right px-3 py-1.5">Collected</th>
                           <th className="hidden sm:table-cell text-right px-3 py-1.5 text-red-500">Overdue</th>
                           <th className="hidden sm:table-cell text-right px-3 py-1.5">Balance</th>
                           <th className="hidden sm:table-cell text-center px-3 py-1.5">Paid Date</th>
-                          <th className="hidden sm:table-cell text-center px-3 py-1.5">Due Date</th>
-                          <th className="text-center px-3 py-1.5">Status</th>
+                          <SortHeader label="Due Date" k="due" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="hidden sm:table-cell text-center" />
+                          <SortHeader label="Status" k="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="text-center" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {sortRows(group.items, sortKey).map(p => {
+                        {sortRows(group.items, sortKey, sortDir).map(p => {
                           const shouldHighlight = p.status === 'overdue' || p.status === 'partial' || (p.balance ?? 0) > 0;
                           return (
                             <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
