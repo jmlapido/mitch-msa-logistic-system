@@ -18,7 +18,7 @@ export function CustomerDirectory() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortKey, setSortKey] = useState<SortKey>('balance');
   const [mode, setMode] = useState<'active' | 'archived'>('active');
   const [formOpen, setFormOpen] = useState(false);
 
