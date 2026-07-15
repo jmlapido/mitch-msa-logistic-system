@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Pencil, Archive, ArchiveRestore, Clock } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, ArchiveRestore, Clock, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useTenant, useTenants, useRentalMutations, useContracts } from '@/lib/hooks/useRentals';
@@ -26,7 +26,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 export function CustomerDetail({ id }: { id: number }) {
   const { data: t, isLoading, isError } = useTenant(id);
   const { data: tenants = [] } = useTenants();
-  const { archiveTenant, restoreTenant } = useRentalMutations();
+  const { archiveTenant, restoreTenant, applyCredit } = useRentalMutations();
   const { user } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
 
@@ -56,6 +56,14 @@ export function CustomerDetail({ id }: { id: number }) {
   async function handleRestore() {
     try { await restoreTenant.mutateAsync(id); toast.success('Restored'); }
     catch (e) { toast.error(e instanceof Error ? e.message : 'Failed'); }
+  }
+  async function handleApplyCredit() {
+    const credit = listRow?.overpayment_credit ?? 0;
+    if (!confirm(`Apply AED ${credit.toLocaleString()} credit to outstanding dues?`)) return;
+    try {
+      const res = await applyCredit.mutateAsync(id);
+      toast.success(`Applied AED ${res.moved.toLocaleString()} to dues`);
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed'); }
   }
 
   return (
@@ -112,6 +120,19 @@ export function CustomerDetail({ id }: { id: number }) {
       {(listRow?.total_balance ?? 0) > 0 && (
         <div className="border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 rounded-lg px-4 py-2.5 text-sm font-medium">
           <AedAmount amount={listRow!.total_balance!} /> total rental balance due
+        </div>
+      )}
+
+      {(listRow?.overpayment_credit ?? 0) > 0.009 && (
+        <div className="border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 rounded-lg px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2">
+            <Wallet size={14} />
+            <AedAmount amount={listRow!.overpayment_credit!} /> overpayment credit
+            {(listRow?.total_balance ?? 0) <= 0 && <span className="font-normal text-green-600/70 dark:text-green-400/70">— will apply to future dues</span>}
+          </span>
+          {canEdit && !isArchived && (listRow?.total_balance ?? 0) > 0 && (
+            <Button size="sm" variant="outline" onClick={handleApplyCredit}>Apply to dues</Button>
+          )}
         </div>
       )}
 

@@ -15,6 +15,7 @@ export type Tenant = {
   lease_status?: string; end_date?: string; annual_rent?: number; monthly_rent?: number;
   payment_frequency?: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'custom' | null;
   total_balance?: number;
+  overpayment_credit?: number;
 };
 export type Lease = { id: number; unit_id: number; tenant_id: number; start_date: string; end_date: string; monthly_rent: number; deposit: number; status: string; notes?: string; tenant_name: string; unit_no: string; building_name: string };
 export type RentPayment = { id: number; lease_id: number; month: string; amount: number; amount_paid: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; balance: number; payment_method?: 'cash' | 'cheque' | null; payment_type: string; contract_end?: string; cash_collected: number; cheque_collected: number };
@@ -148,6 +149,10 @@ export function useRentalMutations() {
     restoreTenant: useMutation({
       mutationFn: (id: number) => api.post(`/api/tenants/${id}/restore`, {}),
       onSuccess: () => inv([['tenants'], ['tenants-archived'], ['tenants-pending-archive'], ['tenant']]),
+    }),
+    applyCredit: useMutation({
+      mutationFn: (id: number) => api.post<{ moved: number }>(`/api/tenants/${id}/apply-credit`, {}),
+      onSuccess: () => inv([['tenants'], ['tenant'], ['rent-payments'], ['contracts'], ['payment-entries'], ['dashboard']]),
     }),
 
     createLease: useMutation({ mutationFn: (d: Partial<Lease>) => api.post<Lease>('/api/leases', d), onSuccess: invAll }),
