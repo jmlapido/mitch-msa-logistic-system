@@ -437,15 +437,13 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
       `Reversed ${child.amount} auto-applied from entry ${entryId}`);
   }
 
-  // Transfer pairs must live and die together: deleting the positive leg of an
-  // apply-credit transfer (source_entry_id set) must also remove the paired
-  // negative leg on the source rent_payment row, or the credit ledger would be
-  // left unbalanced (the debit would vanish while its offsetting credit stays).
+  // transfer pairs (negative source leg) live and die together; sweep children
+  // reference a real positive cash entry which must survive.
   if (target.source_entry_id != null) {
     const source = await c.env.DB.prepare(
       'SELECT id, rent_payment_id, amount FROM payment_entries WHERE id = ?'
     ).bind(target.source_entry_id).first<{ id: number; rent_payment_id: number; amount: number }>();
-    if (source) {
+    if (source && source.amount < 0) {
       await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ?').bind(source.id).run();
       await recomputePaymentStatus(c.env.DB, source.rent_payment_id);
       await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', source.rent_payment_id,
