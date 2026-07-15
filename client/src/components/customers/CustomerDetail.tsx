@@ -131,7 +131,7 @@ export function CustomerDetail({ id }: { id: number }) {
             {(listRow?.total_balance ?? 0) <= 0 && <span className="font-normal text-green-600/70 dark:text-green-400/70">— will apply to future dues</span>}
           </span>
           {canEdit && !isArchived && (listRow?.total_balance ?? 0) > 0 && (
-            <Button size="sm" variant="outline" onClick={handleApplyCredit}>Apply to dues</Button>
+            <Button size="sm" variant="outline" onClick={handleApplyCredit} disabled={applyCredit.isPending}>Apply to dues</Button>
           )}
         </div>
       )}

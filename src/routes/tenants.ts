@@ -66,8 +66,15 @@ tenants.get('/', async (c) => {
       -- recomputePaymentStatus, and this tenants.ts credit SQL. ORDER BY pc.id
       -- makes the pick deterministic if a month ever has more than one
       -- non-NULL-amount cheque row.
+      -- Credit is computed from entry_sum (actual payment_entries), not
+      -- rp.amount_paid: migration 0006 backfilled amount_paid on legacy rows
+      -- without creating matching payment_entries rows. If we based credit on
+      -- amount_paid, an apply-credit transfer's negative entry on such a row
+      -- would collapse amount_paid below what any entry-backed math expects,
+      -- effectively fabricating or destroying credit that never had entries
+      -- behind it.
       (SELECT COALESCE(SUM(MAX(0,
-         rp.amount_paid - COALESCE(
+         COALESCE((SELECT SUM(pe.amount) FROM payment_entries pe WHERE pe.rent_payment_id = rp.id), 0) - COALESCE(
            (SELECT pc.amount FROM pdc_cheques pc
             WHERE pc.contract_id = c2.id AND strftime('%Y-%m', pc.cheque_date) = rp.month AND pc.amount IS NOT NULL
             ORDER BY pc.id
@@ -257,17 +264,26 @@ tenants.post('/:id/apply-credit', requireAdmin, async (c) => {
       END
     )`;
 
+  // entry_sum (actual payment_entries total) drives CREDIT/source computation,
+  // not rp.amount_paid: migration 0006 backfilled amount_paid on legacy rows
+  // without creating matching payment_entries rows, so amount_paid can overstate
+  // real, transferable credit on those rows. A negative entry written against
+  // such a row (as apply-credit does) would collapse it below what its (absent)
+  // entries can support. DUES are unaffected — what's owed is still judged
+  // against amount_paid/status as before.
   const { results: rows } = await c.env.DB.prepare(`
-    SELECT rp.id, rp.month, rp.status, rp.amount_paid, ${expectedRentSql} as expected_rent
+    SELECT rp.id, rp.month, rp.status, rp.amount_paid,
+      COALESCE((SELECT SUM(pe.amount) FROM payment_entries pe WHERE pe.rent_payment_id = rp.id), 0) as entry_sum,
+      ${expectedRentSql} as expected_rent
     FROM rent_payments rp
     JOIN contracts co ON rp.contract_id = co.id
     WHERE co.tenant_id = ?
     ORDER BY rp.month ASC, rp.id ASC
-  `).bind(id).all<{ id: number; month: string; status: string; amount_paid: number; expected_rent: number }>();
+  `).bind(id).all<{ id: number; month: string; status: string; amount_paid: number; entry_sum: number; expected_rent: number }>();
 
   const sources = rows
-    .filter(r => r.amount_paid > r.expected_rent)
-    .map(r => ({ id: r.id, month: r.month, credit: r.amount_paid - r.expected_rent }));
+    .filter(r => r.entry_sum > r.expected_rent)
+    .map(r => ({ id: r.id, month: r.month, credit: r.entry_sum - r.expected_rent }));
   const dues = rows
     .filter(r => ['pending', 'overdue', 'partial'].includes(r.status) && r.expected_rent > r.amount_paid)
     .map(r => ({ id: r.id, month: r.month, due: r.expected_rent - r.amount_paid }));

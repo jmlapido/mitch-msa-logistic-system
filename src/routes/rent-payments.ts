@@ -422,8 +422,8 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
   const entryId = Number(c.req.param('entryId'));
 
   const target = await c.env.DB.prepare(
-    'SELECT id FROM payment_entries WHERE id = ? AND rent_payment_id = ?'
-  ).bind(entryId, rentPaymentId).first();
+    'SELECT id, source_entry_id FROM payment_entries WHERE id = ? AND rent_payment_id = ?'
+  ).bind(entryId, rentPaymentId).first<{ id: number; source_entry_id: number | null }>();
   if (!target) return c.json({ error: 'Entry not found' }, 404);
 
   const { results: children } = await c.env.DB.prepare(
@@ -435,6 +435,22 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
     await recomputePaymentStatus(c.env.DB, child.rent_payment_id);
     await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', child.rent_payment_id,
       `Reversed ${child.amount} auto-applied from entry ${entryId}`);
+  }
+
+  // Transfer pairs must live and die together: deleting the positive leg of an
+  // apply-credit transfer (source_entry_id set) must also remove the paired
+  // negative leg on the source rent_payment row, or the credit ledger would be
+  // left unbalanced (the debit would vanish while its offsetting credit stays).
+  if (target.source_entry_id != null) {
+    const source = await c.env.DB.prepare(
+      'SELECT id, rent_payment_id, amount FROM payment_entries WHERE id = ?'
+    ).bind(target.source_entry_id).first<{ id: number; rent_payment_id: number; amount: number }>();
+    if (source) {
+      await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ?').bind(source.id).run();
+      await recomputePaymentStatus(c.env.DB, source.rent_payment_id);
+      await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', source.rent_payment_id,
+        `Reversed ${source.amount} transfer source paired with entry ${entryId}`);
+    }
   }
 
   const result = await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
