@@ -62,10 +62,15 @@ tenants.get('/', async (c) => {
        JOIN contracts c2 ON rp.contract_id = c2.id
        WHERE c2.tenant_id = t.id
          AND rp.status NOT IN ('collected')) as total_balance,
+      -- Expected-rent lookup must stay consistent across the rent-payments list,
+      -- recomputePaymentStatus, and this tenants.ts credit SQL. ORDER BY pc.id
+      -- makes the pick deterministic if a month ever has more than one
+      -- non-NULL-amount cheque row.
       (SELECT COALESCE(SUM(MAX(0,
          rp.amount_paid - COALESCE(
            (SELECT pc.amount FROM pdc_cheques pc
             WHERE pc.contract_id = c2.id AND strftime('%Y-%m', pc.cheque_date) = rp.month AND pc.amount IS NOT NULL
+            ORDER BY pc.id
             LIMIT 1),
            CASE
              WHEN c2.payment_frequency = 'custom' THEN
@@ -235,10 +240,15 @@ tenants.post('/:id/apply-credit', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
 
+  // Expected-rent lookup must stay consistent across the rent-payments list,
+  // recomputePaymentStatus, and this tenants.ts credit SQL. ORDER BY pc.id
+  // makes the pick deterministic if a month ever has more than one
+  // non-NULL-amount cheque row.
   const expectedRentSql = `
     COALESCE(
       (SELECT pc.amount FROM pdc_cheques pc
        WHERE pc.contract_id = co.id AND strftime('%Y-%m', pc.cheque_date) = rp.month AND pc.amount IS NOT NULL
+       ORDER BY pc.id
        LIMIT 1),
       CASE
         WHEN co.payment_frequency = 'custom' THEN
@@ -265,20 +275,58 @@ tenants.post('/:id/apply-credit', requireAdmin, async (c) => {
   const apps = planCreditTransfer(sources, dues);
   if (apps.length === 0) return c.json({ moved: 0, applications: [] });
 
+  // NOTE: D1 has no multi-statement transactions (mirroring the same
+  // tradeoff documented in rent-payments.ts ~252 for the overpayment sweep),
+  // so this loop can't be wrapped in a single atomic commit. Each application
+  // writes a linked negative/positive payment_entries pair; if the paired
+  // positive insert fails we compensate by deleting the already-written
+  // negative entry for that one application. If the loop still fails partway
+  // (compensation itself can't undo *earlier*, already-completed
+  // applications), the outer catch reconciles every touched row's status so
+  // the data is at least internally consistent, then surfaces a distinct
+  // error to the caller instead of pretending the whole transfer succeeded.
   const today = new Date().toISOString().slice(0, 10);
   const touched = new Set<number>();
-  for (const a of apps) {
-    const neg = await c.env.DB.prepare(
-      `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, notes, recorded_by)
-       VALUES (?,?,?,NULL,?,?) RETURNING id`
-    ).bind(a.fromId, -a.amount, today, `Credit transferred to ${a.toMonth}`, user.sub).first<{ id: number }>();
-    await c.env.DB.prepare(
-      `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, notes, recorded_by, source_entry_id)
-       VALUES (?,?,?,NULL,?,?,?)`
-    ).bind(a.toId, a.amount, today, `Credit applied from ${a.fromMonth}`, user.sub, neg?.id ?? null).run();
-    touched.add(a.fromId); touched.add(a.toId);
+  const completedApps: typeof apps = [];
+  try {
+    for (const a of apps) {
+      const neg = await c.env.DB.prepare(
+        `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, notes, recorded_by)
+         VALUES (?,?,?,NULL,?,?) RETURNING id`
+      ).bind(a.fromId, -a.amount, today, `Credit transferred to ${a.toMonth}`, user.sub).first<{ id: number }>();
+      if (!neg?.id) {
+        throw new Error(`Failed to insert source credit entry for rent_payment ${a.fromId}`);
+      }
+      try {
+        await c.env.DB.prepare(
+          `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, notes, recorded_by, source_entry_id)
+           VALUES (?,?,?,NULL,?,?,?)`
+        ).bind(a.toId, a.amount, today, `Credit applied from ${a.fromMonth}`, user.sub, neg.id).run();
+      } catch (pairErr) {
+        // Compensating action: the negative (source) entry was written but its
+        // paired positive (destination) entry failed, so undo the negative
+        // entry rather than leaving an orphaned, unlinked debit behind.
+        try {
+          await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ?').bind(neg.id).run();
+        } catch {
+          // Best-effort compensation only; the original pairErr below is what
+          // gets surfaced/handled by the outer catch either way.
+        }
+        throw pairErr;
+      }
+      touched.add(a.fromId); touched.add(a.toId);
+      completedApps.push(a);
+    }
+    for (const rowId of touched) await recomputePaymentStatus(c.env.DB, rowId);
+  } catch (err) {
+    // Reconcile whatever was actually written so far so no row is left with
+    // an amount_paid/status that doesn't match its payment_entries.
+    for (const rowId of touched) await recomputePaymentStatus(c.env.DB, rowId);
+    const movedSoFar = Math.round(completedApps.reduce((s, a) => s + a.amount, 0) * 100) / 100;
+    await auditLog(c.env.DB, user, 'tenant.credit.apply_failed', 'tenant', id,
+      `Credit transfer failed partway through: applied AED ${movedSoFar} across ${completedApps.length} of ${apps.length} planned transfer(s) before error: ${err instanceof Error ? err.message : String(err)}`);
+    return c.json({ error: 'Credit transfer partially applied and reconciled; please review payment history', moved: movedSoFar }, 500);
   }
-  for (const rowId of touched) await recomputePaymentStatus(c.env.DB, rowId);
 
   const moved = Math.round(apps.reduce((s, a) => s + a.amount, 0) * 100) / 100;
   await auditLog(c.env.DB, user, 'tenant.credit.applied', 'tenant', id, `Applied AED ${moved} overpayment credit across ${apps.length} transfer(s)`);

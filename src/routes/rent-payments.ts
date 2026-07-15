@@ -207,6 +207,11 @@ const addEntrySchema = z.object({
 });
 
 export async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Promise<void> {
+  // Expected-rent lookup must stay consistent across the rent-payments list,
+  // this function, and the tenants.ts overpayment-credit SQL. Prefer a
+  // non-NULL-amount cheque row (deterministic tie-break by id) so a month
+  // with two cheque rows (e.g. one placeholder with a NULL amount) can't make
+  // this computation diverge from the others and cause status flapping.
   const row = await db.prepare(`
     SELECT rp.month,
       COALESCE(
@@ -224,6 +229,7 @@ export async function recomputePaymentStatus(db: D1Database, rentPaymentId: numb
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
         AND strftime('%Y-%m', cheque_date) = rp.month
+      ORDER BY (amount IS NULL) ASC, id ASC
       LIMIT 1
     )
     WHERE rp.id = ?
