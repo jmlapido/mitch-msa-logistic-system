@@ -320,14 +320,17 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   if (plan.leftover > 0) {
     let leftover = plan.leftover;
     const { results: cashContracts } = await c.env.DB.prepare(`
-      SELECT id, annual_rent, no_of_pdc, end_date
+      SELECT id, annual_rent, no_of_pdc, start_date, end_date
       FROM contracts
       WHERE tenant_id = ? AND payment_type = 'cash' AND date(end_date) >= date('now')
-    `).bind(target.tenant_id).all<{ id: number; annual_rent: number; no_of_pdc: number; end_date: string }>();
+    `).bind(target.tenant_id).all<{ id: number; annual_rent: number; no_of_pdc: number; start_date: string; end_date: string }>();
 
     const nextMonthByContract = new Map<number, string>();
     for (const contract of cashContracts) {
-      nextMonthByContract.set(contract.id, addMonthToYyyyMm(target.month));
+      // Never generate a row before the contract begins.
+      const startMonth = contract.start_date.slice(0, 7);
+      const candidate = addMonthToYyyyMm(target.month);
+      nextMonthByContract.set(contract.id, candidate < startMonth ? startMonth : candidate);
     }
 
     while (leftover > 0) {

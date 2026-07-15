@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { planOverpaymentSweep, applyExcessToCandidate, addMonthToYyyyMm } from './paymentSweep';
+import { planCreditTransfer } from './paymentSweep';
 
 describe('applyExcessToCandidate', () => {
   it('applies the full excess when it is less than the remaining due', () => {
@@ -102,5 +103,43 @@ describe('addMonthToYyyyMm', () => {
   it('zero-pads single-digit months', () => {
     expect(addMonthToYyyyMm('2026-01')).toBe('2026-02');
     expect(addMonthToYyyyMm('2026-09')).toBe('2026-10');
+  });
+});
+
+describe('planCreditTransfer', () => {
+  const src = (id: number, month: string, credit: number) => ({ id, month, credit });
+  const due = (id: number, month: string, d: number) => ({ id, month, due: d });
+
+  it('moves a single credit into a single due (exact)', () => {
+    expect(planCreditTransfer([src(1, '2026-05', 500)], [due(9, '2026-07', 500)]))
+      .toEqual([{ fromId: 1, fromMonth: '2026-05', toId: 9, toMonth: '2026-07', amount: 500 }]);
+  });
+
+  it('splits one credit across multiple dues, oldest first', () => {
+    expect(planCreditTransfer([src(1, '2026-05', 800)], [due(9, '2026-07', 500), due(10, '2026-08', 500)]))
+      .toEqual([
+        { fromId: 1, fromMonth: '2026-05', toId: 9, toMonth: '2026-07', amount: 500 },
+        { fromId: 1, fromMonth: '2026-05', toId: 10, toMonth: '2026-08', amount: 300 },
+      ]);
+  });
+
+  it('drains multiple credits into one due', () => {
+    expect(planCreditTransfer([src(1, '2026-04', 200), src(2, '2026-05', 400)], [due(9, '2026-07', 500)]))
+      .toEqual([
+        { fromId: 1, fromMonth: '2026-04', toId: 9, toMonth: '2026-07', amount: 200 },
+        { fromId: 2, fromMonth: '2026-05', toId: 9, toMonth: '2026-07', amount: 300 },
+      ]);
+  });
+
+  it('returns empty when either side is empty or non-positive', () => {
+    expect(planCreditTransfer([], [due(9, '2026-07', 500)])).toEqual([]);
+    expect(planCreditTransfer([src(1, '2026-05', 500)], [])).toEqual([]);
+    expect(planCreditTransfer([src(1, '2026-05', 0)], [due(9, '2026-07', 500)])).toEqual([]);
+    expect(planCreditTransfer([src(1, '2026-05', 500)], [due(9, '2026-07', 0)])).toEqual([]);
+  });
+
+  it('rounds to 2 decimals', () => {
+    const apps = planCreditTransfer([src(1, '2026-05', 100.555)], [due(9, '2026-07', 100.555)]);
+    expect(apps).toEqual([{ fromId: 1, fromMonth: '2026-05', toId: 9, toMonth: '2026-07', amount: 100.56 }]);
   });
 });
