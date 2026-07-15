@@ -206,7 +206,7 @@ const addEntrySchema = z.object({
   notes: z.string().optional(),
 });
 
-async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Promise<void> {
+export async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Promise<void> {
   const row = await db.prepare(`
     SELECT rp.month,
       COALESCE(

@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
 import { auditLog } from '../lib/auditLog';
+import { planCreditTransfer } from '../lib/paymentSweep';
+import { recomputePaymentStatus } from './rent-payments';
 import type { Env } from '../types';
 import type { AuthVariables } from '../middleware/requireAuth';
 
@@ -59,7 +61,22 @@ tenants.get('/', async (c) => {
        FROM rent_payments rp
        JOIN contracts c2 ON rp.contract_id = c2.id
        WHERE c2.tenant_id = t.id
-         AND rp.status NOT IN ('collected')) as total_balance
+         AND rp.status NOT IN ('collected')) as total_balance,
+      (SELECT COALESCE(SUM(MAX(0,
+         rp.amount_paid - COALESCE(
+           (SELECT pc.amount FROM pdc_cheques pc
+            WHERE pc.contract_id = c2.id AND strftime('%Y-%m', pc.cheque_date) = rp.month AND pc.amount IS NOT NULL
+            LIMIT 1),
+           CASE
+             WHEN c2.payment_frequency = 'custom' THEN
+               ROUND(c2.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c2.id AND cheque_date IS NOT NULL)), 2)
+             ELSE ROUND(c2.annual_rent / MAX(1, c2.no_of_pdc), 2)
+           END
+         )
+       )), 0)
+       FROM rent_payments rp
+       JOIN contracts c2 ON rp.contract_id = c2.id
+       WHERE c2.tenant_id = t.id) as overpayment_credit
     FROM tenants t
     LEFT JOIN contracts c ON c.id = (
       SELECT id FROM contracts
@@ -211,6 +228,61 @@ tenants.delete('/:id', requireAdmin, async (c) => {
   await c.env.DB.prepare('DELETE FROM tenants WHERE id = ?').bind(id).run();
   await auditLog(c.env.DB, user, 'tenant.deleted', 'tenant', id);
   return c.json({ ok: true });
+});
+
+// Apply a tenant's overpayment credit to their outstanding dues.
+tenants.post('/:id/apply-credit', requireAdmin, async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+
+  const expectedRentSql = `
+    COALESCE(
+      (SELECT pc.amount FROM pdc_cheques pc
+       WHERE pc.contract_id = co.id AND strftime('%Y-%m', pc.cheque_date) = rp.month AND pc.amount IS NOT NULL
+       LIMIT 1),
+      CASE
+        WHEN co.payment_frequency = 'custom' THEN
+          ROUND(co.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = co.id AND cheque_date IS NOT NULL)), 2)
+        ELSE ROUND(co.annual_rent / MAX(1, co.no_of_pdc), 2)
+      END
+    )`;
+
+  const { results: rows } = await c.env.DB.prepare(`
+    SELECT rp.id, rp.month, rp.status, rp.amount_paid, ${expectedRentSql} as expected_rent
+    FROM rent_payments rp
+    JOIN contracts co ON rp.contract_id = co.id
+    WHERE co.tenant_id = ?
+    ORDER BY rp.month ASC, rp.id ASC
+  `).bind(id).all<{ id: number; month: string; status: string; amount_paid: number; expected_rent: number }>();
+
+  const sources = rows
+    .filter(r => r.amount_paid > r.expected_rent)
+    .map(r => ({ id: r.id, month: r.month, credit: r.amount_paid - r.expected_rent }));
+  const dues = rows
+    .filter(r => ['pending', 'overdue', 'partial'].includes(r.status) && r.expected_rent > r.amount_paid)
+    .map(r => ({ id: r.id, month: r.month, due: r.expected_rent - r.amount_paid }));
+
+  const apps = planCreditTransfer(sources, dues);
+  if (apps.length === 0) return c.json({ moved: 0, applications: [] });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const touched = new Set<number>();
+  for (const a of apps) {
+    const neg = await c.env.DB.prepare(
+      `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, notes, recorded_by)
+       VALUES (?,?,?,NULL,?,?) RETURNING id`
+    ).bind(a.fromId, -a.amount, today, `Credit transferred to ${a.toMonth}`, user.sub).first<{ id: number }>();
+    await c.env.DB.prepare(
+      `INSERT INTO payment_entries (rent_payment_id, amount, paid_date, payment_method, notes, recorded_by, source_entry_id)
+       VALUES (?,?,?,NULL,?,?,?)`
+    ).bind(a.toId, a.amount, today, `Credit applied from ${a.fromMonth}`, user.sub, neg?.id ?? null).run();
+    touched.add(a.fromId); touched.add(a.toId);
+  }
+  for (const rowId of touched) await recomputePaymentStatus(c.env.DB, rowId);
+
+  const moved = Math.round(apps.reduce((s, a) => s + a.amount, 0) * 100) / 100;
+  await auditLog(c.env.DB, user, 'tenant.credit.applied', 'tenant', id, `Applied AED ${moved} overpayment credit across ${apps.length} transfer(s)`);
+  return c.json({ moved, applications: apps.map(a => ({ fromMonth: a.fromMonth, toMonth: a.toMonth, amount: a.amount })) });
 });
 
 export default tenants;
