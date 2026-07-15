@@ -410,6 +410,7 @@ function PaymentPopover({
                     <div className="flex flex-col">
                       <span className="text-foreground">{formatDate(e.paid_date)} · <span className="capitalize">{e.payment_method ?? '—'}</span></span>
                       {e.receipt_no && <span className="text-muted-foreground">#{e.receipt_no}</span>}
+                      {e.notes && <p className="text-[10px] text-muted-foreground italic truncate">{e.notes}</p>}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium"><AedAmount amount={e.amount} /></span>

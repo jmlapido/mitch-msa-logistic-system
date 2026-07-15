@@ -206,7 +206,12 @@ const addEntrySchema = z.object({
   notes: z.string().optional(),
 });
 
-async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Promise<void> {
+export async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Promise<void> {
+  // Expected-rent lookup must stay consistent across the rent-payments list,
+  // this function, and the tenants.ts overpayment-credit SQL. Prefer a
+  // non-NULL-amount cheque row (deterministic tie-break by id) so a month
+  // with two cheque rows (e.g. one placeholder with a NULL amount) can't make
+  // this computation diverge from the others and cause status flapping.
   const row = await db.prepare(`
     SELECT rp.month,
       COALESCE(
@@ -224,6 +229,7 @@ async function recomputePaymentStatus(db: D1Database, rentPaymentId: number): Pr
       SELECT id FROM pdc_cheques
       WHERE contract_id = c.id
         AND strftime('%Y-%m', cheque_date) = rp.month
+      ORDER BY (amount IS NULL) ASC, id ASC
       LIMIT 1
     )
     WHERE rp.id = ?
@@ -320,14 +326,17 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   if (plan.leftover > 0) {
     let leftover = plan.leftover;
     const { results: cashContracts } = await c.env.DB.prepare(`
-      SELECT id, annual_rent, no_of_pdc, end_date
+      SELECT id, annual_rent, no_of_pdc, start_date, end_date
       FROM contracts
       WHERE tenant_id = ? AND payment_type = 'cash' AND date(end_date) >= date('now')
-    `).bind(target.tenant_id).all<{ id: number; annual_rent: number; no_of_pdc: number; end_date: string }>();
+    `).bind(target.tenant_id).all<{ id: number; annual_rent: number; no_of_pdc: number; start_date: string; end_date: string }>();
 
     const nextMonthByContract = new Map<number, string>();
     for (const contract of cashContracts) {
-      nextMonthByContract.set(contract.id, addMonthToYyyyMm(target.month));
+      // Never generate a row before the contract begins.
+      const startMonth = contract.start_date.slice(0, 7);
+      const candidate = addMonthToYyyyMm(target.month);
+      nextMonthByContract.set(contract.id, candidate < startMonth ? startMonth : candidate);
     }
 
     while (leftover > 0) {
@@ -413,8 +422,8 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
   const entryId = Number(c.req.param('entryId'));
 
   const target = await c.env.DB.prepare(
-    'SELECT id FROM payment_entries WHERE id = ? AND rent_payment_id = ?'
-  ).bind(entryId, rentPaymentId).first();
+    'SELECT id, source_entry_id FROM payment_entries WHERE id = ? AND rent_payment_id = ?'
+  ).bind(entryId, rentPaymentId).first<{ id: number; source_entry_id: number | null }>();
   if (!target) return c.json({ error: 'Entry not found' }, 404);
 
   const { results: children } = await c.env.DB.prepare(
@@ -426,6 +435,20 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
     await recomputePaymentStatus(c.env.DB, child.rent_payment_id);
     await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', child.rent_payment_id,
       `Reversed ${child.amount} auto-applied from entry ${entryId}`);
+  }
+
+  // transfer pairs (negative source leg) live and die together; sweep children
+  // reference a real positive cash entry which must survive.
+  if (target.source_entry_id != null) {
+    const source = await c.env.DB.prepare(
+      'SELECT id, rent_payment_id, amount FROM payment_entries WHERE id = ?'
+    ).bind(target.source_entry_id).first<{ id: number; rent_payment_id: number; amount: number }>();
+    if (source && source.amount < 0) {
+      await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ?').bind(source.id).run();
+      await recomputePaymentStatus(c.env.DB, source.rent_payment_id);
+      await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', source.rent_payment_id,
+        `Reversed ${source.amount} transfer source paired with entry ${entryId}`);
+    }
   }
 
   const result = await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
