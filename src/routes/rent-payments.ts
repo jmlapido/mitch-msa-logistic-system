@@ -42,14 +42,18 @@ rentPayments.get('/', async (c) => {
     )
   `).run();
 
-  // Remove PDC rent_payment rows with no matching cheque and no payment data.
+  // Remove rent_payment rows with no matching cheque and no payment data.
   // Safe: only removes pending/overdue rows with zero amount_paid and no entries.
+  // Covers 'pdc' contracts (always dated) and 'cash' contracts that HAVE since
+  // been given a dated schedule — cash contracts with NO dated cheques at all
+  // are excluded via the final EXISTS guard, since their monthly rows are the
+  // calendar-walk block's legitimate ongoing dues, not orphaned duplicates.
   await c.env.DB.prepare(`
     DELETE FROM rent_payments
     WHERE id IN (
       SELECT rp.id FROM rent_payments rp
       JOIN contracts c ON rp.contract_id = c.id
-      WHERE c.payment_type = 'pdc'
+      WHERE c.payment_type IN ('pdc', 'cash')
         AND rp.amount_paid = 0
         AND rp.status IN ('pending', 'overdue')
         AND NOT EXISTS (
@@ -59,6 +63,10 @@ rentPayments.get('/', async (c) => {
         )
         AND NOT EXISTS (
           SELECT 1 FROM payment_entries pe WHERE pe.rent_payment_id = rp.id
+        )
+        AND (
+          c.payment_type = 'pdc'
+          OR EXISTS (SELECT 1 FROM pdc_cheques pc2 WHERE pc2.contract_id = rp.contract_id AND pc2.cheque_date IS NOT NULL)
         )
     )
   `).run();
@@ -438,17 +446,16 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
   }
 
   // transfer pairs (negative source leg) live and die together; sweep children
-  // reference a real positive cash entry which must survive.
+  // reference a real positive cash entry which must survive. source_entry_id
+  // is a self-referencing FK with no ON DELETE clause, so the row it points
+  // to (the source) cannot be deleted while this row (the target) still
+  // references it — the target must be deleted FIRST, then the source.
+  let sourceToDelete: { id: number; rent_payment_id: number; amount: number } | null = null;
   if (target.source_entry_id != null) {
     const source = await c.env.DB.prepare(
       'SELECT id, rent_payment_id, amount FROM payment_entries WHERE id = ?'
     ).bind(target.source_entry_id).first<{ id: number; rent_payment_id: number; amount: number }>();
-    if (source && source.amount < 0) {
-      await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ?').bind(source.id).run();
-      await recomputePaymentStatus(c.env.DB, source.rent_payment_id);
-      await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', source.rent_payment_id,
-        `Reversed ${source.amount} transfer source paired with entry ${entryId}`);
-    }
+    if (source && source.amount < 0) sourceToDelete = source;
   }
 
   const result = await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ? AND rent_payment_id = ?')
@@ -459,6 +466,14 @@ rentPayments.delete('/:id/entries/:entryId', async (c) => {
     await auditLog(c.env.DB, user, 'payment.entry_deleted', 'payment', rentPaymentId,
       `Deleted entry ${entryId}`);
   }
+
+  if (sourceToDelete) {
+    await c.env.DB.prepare('DELETE FROM payment_entries WHERE id = ?').bind(sourceToDelete.id).run();
+    await recomputePaymentStatus(c.env.DB, sourceToDelete.rent_payment_id);
+    await auditLog(c.env.DB, user, 'payment.auto_applied_reversed', 'payment', sourceToDelete.rent_payment_id,
+      `Reversed ${sourceToDelete.amount} transfer source paired with entry ${entryId}`);
+  }
+
   return c.json({ ok: true });
 });
 
