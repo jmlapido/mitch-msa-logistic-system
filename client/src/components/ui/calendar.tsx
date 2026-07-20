@@ -21,7 +21,7 @@ function Calendar({
       captionLayout={captionLayout}
       className={cn('p-3', className)}
       formatters={{
-        formatMonthDropdown: (date) => date.toLocaleString('default', { month: 'short' }),
+        formatMonthDropdown: (date) => date.toLocaleString('en-GB', { month: 'short' }),
       }}
       classNames={{
         months: cn('flex flex-col gap-4', defaultClassNames.months),
@@ -33,7 +33,11 @@ function Calendar({
         dropdowns: cn('flex items-center justify-center gap-1.5 text-sm font-medium', defaultClassNames.dropdowns),
         dropdown_root: cn('relative rounded-md border border-input', defaultClassNames.dropdown_root),
         dropdown: cn('absolute inset-0 bg-popover opacity-0', defaultClassNames.dropdown),
-        caption_label: cn('px-2 py-1 text-sm font-medium select-none', defaultClassNames.caption_label),
+        caption_label: cn(
+          'font-medium select-none',
+          captionLayout === 'label' ? 'text-sm' : 'flex h-8 items-center gap-1 rounded-md px-2 text-sm',
+          defaultClassNames.caption_label
+        ),
         month_grid: cn('w-full border-collapse', defaultClassNames.month_grid),
         weekdays: cn('flex', defaultClassNames.weekdays),
         weekday: cn('w-9 text-[0.8rem] font-normal text-muted-foreground', defaultClassNames.weekday),
