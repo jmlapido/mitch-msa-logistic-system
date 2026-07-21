@@ -18,7 +18,7 @@ export type Tenant = {
   overpayment_credit?: number;
 };
 export type Lease = { id: number; unit_id: number; tenant_id: number; start_date: string; end_date: string; monthly_rent: number; deposit: number; status: string; notes?: string; tenant_name: string; unit_no: string; building_name: string };
-export type RentPayment = { id: number; lease_id: number; month: string; amount: number; amount_paid: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; balance: number; payment_method?: 'cash' | 'cheque' | null; payment_type: string; contract_end?: string; cash_collected: number; cheque_collected: number };
+export type RentPayment = { id: number; lease_id: number; month: string; amount: number; amount_paid: number; status: string; paid_date?: string; receipt_no?: string; notes?: string; due_date?: string; tenant_id: number; tenant_name: string; tenant_phone?: string; tenant_email?: string; unit_no: string; building_name: string; building_id: number; expected_rent: number; tenant_overdue: number; tenant_written_off: number; balance: number; payment_method?: 'cash' | 'cheque' | null; payment_type: string; contract_end?: string; cash_collected: number; cheque_collected: number; written_off_amount?: number | null; written_off_reason?: string | null; written_off_by?: number | null; written_off_at?: string | null };
 export type RentalDoc = { id: number; entity_type: string; entity_id: number; doc_type: string; file_name: string; uploaded_at: string };
 export type PaymentEntry = {
   id: number;
@@ -47,7 +47,9 @@ export type Contract = {
   due_day?: number;
   payment_frequency: 'monthly' | 'quarterly' | 'semi-annual' | 'annual' | 'custom';
   notes?: string;
-  status: 'valid' | 'expired';
+  status: 'valid' | 'expired' | 'terminated';
+  terminated_at?: string | null;
+  termination_reason?: string | null;
   created_at: string;
   pdc_total?: number | null;
 };
@@ -182,6 +184,20 @@ export function useRentalMutations() {
         qc.invalidateQueries({ queryKey: ['tenants'] });
       },
     }),
+    writeOffPayment: useMutation({
+      mutationFn: ({ id, reason }: { id: number; reason: string }) => api.post(`/api/rent-payments/${id}/write-off`, { reason }),
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['rent-payments'] });
+        qc.invalidateQueries({ queryKey: ['tenants'] });
+      },
+    }),
+    undoWriteOffPayment: useMutation({
+      mutationFn: (id: number) => api.post(`/api/rent-payments/${id}/undo-write-off`, {}),
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['rent-payments'] });
+        qc.invalidateQueries({ queryKey: ['tenants'] });
+      },
+    }),
 
     uploadDoc: async (file: File, entityType: string, entityId: number, docType: string) => {
       const fd = new FormData();
@@ -208,6 +224,14 @@ export function useRentalMutations() {
     deleteContract: useMutation({
       mutationFn: ({ id, tenantId }: { id: number; tenantId: number }) => api.del(`/api/contracts/${id}`).then(r => ({ ...r, tenantId })),
       onSuccess: (_: unknown, v: { tenantId: number }) => { qc.invalidateQueries({ queryKey: ['contracts', v.tenantId] }); invAll(); },
+    }),
+    terminateContract: useMutation({
+      mutationFn: ({ id, reason }: { id: number; reason: string }) => api.post<Contract>(`/api/contracts/${id}/terminate`, { reason }),
+      onSuccess: (data) => { qc.invalidateQueries({ queryKey: ['contracts', data.tenant_id] }); invAll(); },
+    }),
+    undoTerminateContract: useMutation({
+      mutationFn: (id: number) => api.post<Contract>(`/api/contracts/${id}/undo-terminate`, {}),
+      onSuccess: (data) => { qc.invalidateQueries({ queryKey: ['contracts', data.tenant_id] }); invAll(); },
     }),
   };
 }
