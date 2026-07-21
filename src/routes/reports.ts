@@ -87,7 +87,14 @@ reports.get('/', async (c) => {
       GROUP BY month ORDER BY month
     `).bind(from + '-01', to + '-31').all();
 
-    return c.json({ type, from, to, billRows, monthSummary, catSummary, rentMonthly, commissionsMonthly });
+    const { results: writtenOffMonthly } = await db.prepare(`
+      SELECT month, SUM(written_off_amount) as total
+      FROM rent_payments
+      WHERE status = 'written_off' AND month BETWEEN ? AND ?
+      GROUP BY month ORDER BY month
+    `).bind(from, to).all();
+
+    return c.json({ type, from, to, billRows, monthSummary, catSummary, rentMonthly, commissionsMonthly, writtenOffMonthly });
   }
 
   // ── Rental Collection ────────────────────────────────────────────────────

@@ -140,6 +140,7 @@ export default function Reports() {
                 monthSummary={arr('monthSummary')}
                 rentMonthly={arr('rentMonthly')}
                 commissionsMonthly={arr('commissionsMonthly')}
+                writtenOffMonthly={arr('writtenOffMonthly')}
                 from={from} to={to}
               />
             </TabsContent>
