@@ -7,6 +7,7 @@ import { RentBarChart } from '@/components/dashboard/RentBarChart';
 import { BillsTrendChart } from '@/components/dashboard/BillsTrendChart';
 import { RentTrendChart } from '@/components/dashboard/RentTrendChart';
 import { SponsorshipStatCards } from '@/components/dashboard/SponsorshipStatCards';
+import { CommissionStatCards } from '@/components/dashboard/CommissionStatCards';
 import { ActionStrip } from '@/components/dashboard/ActionStrip';
 import { PriorityPaymentsWidget } from '@/components/dashboard/PriorityPaymentsWidget';
 import { ChequesDueWidget } from '@/components/dashboard/ChequesDueWidget';
@@ -95,6 +96,9 @@ export default function Dashboard() {
 
           {/* Sponsorship stat cards */}
           <SponsorshipStatCards sponsorships={data.sponsorships} />
+
+          {/* Commission stat cards */}
+          <CommissionStatCards commissions={data.commissions} />
 
           {/* Charts row */}
           <RentBarChart buildings={data.rentByBuilding} />

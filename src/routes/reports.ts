@@ -80,7 +80,14 @@ reports.get('/', async (c) => {
       GROUP BY rp.month ORDER BY rp.month
     `).bind(from, to).all();
 
-    return c.json({ type, from, to, billRows, monthSummary, catSummary, rentMonthly });
+    const { results: commissionsMonthly } = await db.prepare(`
+      SELECT strftime('%Y-%m', paid_date) as month, SUM(amount) as total
+      FROM commissions
+      WHERE paid_date BETWEEN ? AND ?
+      GROUP BY month ORDER BY month
+    `).bind(from + '-01', to + '-31').all();
+
+    return c.json({ type, from, to, billRows, monthSummary, catSummary, rentMonthly, commissionsMonthly });
   }
 
   // ── Rental Collection ────────────────────────────────────────────────────
@@ -228,6 +235,28 @@ reports.get('/', async (c) => {
     `).bind(fromDate, toDate).all();
 
     return c.json({ type, from, to, rows, payments });
+  }
+
+  // ── Commissions ──────────────────────────────────────────────────────────
+  if (type === 'commissions') {
+    const fromDate = from + '-01';
+    const toDate = to + '-31';
+
+    const { results: rows } = await db.prepare(`
+      SELECT name, amount, paid_date, payment_method, cheque_number, notes
+      FROM commissions
+      WHERE paid_date BETWEEN ? AND ?
+      ORDER BY paid_date DESC
+    `).bind(fromDate, toDate).all();
+
+    const { results: monthSummary } = await db.prepare(`
+      SELECT strftime('%Y-%m', paid_date) as month, SUM(amount) as total, COUNT(*) as count
+      FROM commissions
+      WHERE paid_date BETWEEN ? AND ?
+      GROUP BY month ORDER BY month
+    `).bind(fromDate, toDate).all();
+
+    return c.json({ type, from, to, rows, monthSummary });
   }
 
   return c.json({ error: 'Invalid report type' }, 400);

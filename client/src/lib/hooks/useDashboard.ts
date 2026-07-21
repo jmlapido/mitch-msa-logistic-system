@@ -18,6 +18,7 @@ export type DashboardData = {
     overdue: number;
     activeCount: number;
   };
+  commissions: { total: number; count: number };
   expiringSponsors: Array<{
     partner_id: number;
     company_name: string;
