@@ -84,7 +84,7 @@ export function PaymentsTab() {
   const totalCollected = payments.reduce((s, p) => s + p.amount_paid, 0);
   const totalPending = totalExpected - totalCollected;
   const totalOverdue = payments.reduce((s, p) => s + (p.tenant_overdue ?? 0), 0);
-  const totalWrittenOff = payments.reduce((s, p) => s + (p.tenant_written_off ?? 0), 0);
+  const totalWrittenOff = payments.reduce((s, p) => s + (p.status === 'written_off' ? (p.written_off_amount ?? 0) : (p.tenant_written_off ?? 0)), 0);
   const totalCash = payments.reduce((s, p) => s + (p.cash_collected ?? 0), 0);
   const totalCheque = payments.reduce((s, p) => s + (p.cheque_collected ?? 0), 0);
 
