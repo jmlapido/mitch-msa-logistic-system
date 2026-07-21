@@ -234,6 +234,11 @@ dashboard.get('/', async (c) => {
     WHERE p.is_archived = 0
   `).first<{ active_sponsors: number; total_contract_value: number; total_collected: number; total_overdue: number }>();
 
+  const commissionsStats = await db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+    FROM commissions WHERE strftime('%Y-%m', paid_date) = ?
+  `).bind(month).first<{ total: number; count: number }>();
+
   const expiringSponsors = await db.prepare(`
     SELECT p.id as partner_id, p.company_name,
       pc.end_date, pc.expected_amount, pc.payment_frequency,
@@ -285,6 +290,10 @@ dashboard.get('/', async (c) => {
       pending: Math.max(0, (sponsorshipSummary?.total_contract_value ?? 0) - (sponsorshipSummary?.total_collected ?? 0) - (sponsorshipSummary?.total_overdue ?? 0)),
       overdue: sponsorshipSummary?.total_overdue ?? 0,
       activeCount: sponsorshipSummary?.active_sponsors ?? 0,
+    },
+    commissions: {
+      total: commissionsStats?.total ?? 0,
+      count: commissionsStats?.count ?? 0,
     },
     expiringSponsors: expiringSponsors.results,
     priorityPayments: priorityRows.results,
