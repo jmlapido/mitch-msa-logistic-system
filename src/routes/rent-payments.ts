@@ -91,6 +91,7 @@ rentPayments.get('/', async (c) => {
     WHERE date(c.start_date) <= mg.m || '-28'
       AND date(c.end_date) >= mg.m || '-01'
       AND mg.m <= ?
+      AND c.terminated_at IS NULL
       AND c.payment_type = 'cash'
       AND NOT EXISTS (
         SELECT 1 FROM pdc_cheques pc
@@ -111,6 +112,7 @@ rentPayments.get('/', async (c) => {
     WHERE (c.payment_frequency = 'custom' OR c.payment_type = 'pdc' OR c.payment_type = 'cash')
       AND pc.cheque_date IS NOT NULL
       AND strftime('%Y-%m', pc.cheque_date) <= ?
+      AND c.terminated_at IS NULL
   `).bind(month).run();
 
   await c.env.DB.prepare(

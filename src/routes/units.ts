@@ -38,7 +38,7 @@ units.get('/', async (c) => {
     JOIN buildings b ON u.building_id = b.id
     LEFT JOIN contracts c ON c.id = (
       SELECT id FROM contracts
-      WHERE unit_id = u.id AND date(end_date) >= date('now')
+      WHERE unit_id = u.id AND date(end_date) >= date('now') AND terminated_at IS NULL
       ORDER BY end_date DESC LIMIT 1
     )
     LEFT JOIN tenants tn ON c.tenant_id = tn.id

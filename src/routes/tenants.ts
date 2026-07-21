@@ -47,7 +47,7 @@ tenants.get('/', async (c) => {
          FROM contracts cc
        JOIN units uu ON cc.unit_id = uu.id
        JOIN buildings bb ON uu.building_id = bb.id
-       WHERE cc.tenant_id = t.id AND date(cc.end_date) >= date('now'))) as units_summary,
+       WHERE cc.tenant_id = t.id AND date(cc.end_date) >= date('now') AND cc.terminated_at IS NULL)) as units_summary,
       (SELECT COALESCE(SUM(
          CASE WHEN rp.status = 'partial'
            THEN (CASE
@@ -92,7 +92,7 @@ tenants.get('/', async (c) => {
     FROM tenants t
     LEFT JOIN contracts c ON c.id = (
       SELECT id FROM contracts
-      WHERE tenant_id = t.id AND date(end_date) >= date('now')
+      WHERE tenant_id = t.id AND date(end_date) >= date('now') AND terminated_at IS NULL
       ORDER BY end_date DESC LIMIT 1
     )
     LEFT JOIN units u ON c.unit_id = u.id

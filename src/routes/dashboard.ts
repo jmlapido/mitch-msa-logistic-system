@@ -38,6 +38,7 @@ dashboard.get('/', async (c) => {
     END), 0) as overdue
     FROM contracts c
     WHERE date(c.end_date) >= date('now')
+      AND c.terminated_at IS NULL
       AND date(c.start_date) <= ? || '-28'
       AND NOT EXISTS (
         SELECT 1 FROM rent_payments rp
@@ -77,7 +78,7 @@ dashboard.get('/', async (c) => {
       COALESCE(SUM(CASE WHEN rp.status = 'collected' THEN rp.amount ELSE 0 END), 0) as collected
     FROM buildings b
     JOIN units u ON u.building_id = b.id
-    JOIN contracts c ON c.unit_id = u.id AND date(c.end_date) >= date('now')
+    JOIN contracts c ON c.unit_id = u.id AND date(c.end_date) >= date('now') AND c.terminated_at IS NULL
     LEFT JOIN rent_payments rp ON rp.contract_id = c.id AND rp.month = ?
     GROUP BY b.id ORDER BY b.name
   `).bind(month).all();
@@ -86,10 +87,10 @@ dashboard.get('/', async (c) => {
     SELECT b.id as building_id, b.name as building_name, b.type,
       COUNT(u.id) as total_units,
       SUM(CASE WHEN (
-        EXISTS (SELECT 1 FROM contracts c WHERE c.unit_id = u.id AND date(c.end_date) >= date('now'))
+        EXISTS (SELECT 1 FROM contracts c WHERE c.unit_id = u.id AND date(c.end_date) >= date('now') AND c.terminated_at IS NULL)
       ) THEN 1 ELSE 0 END) as occupied,
       SUM(CASE WHEN NOT (
-        EXISTS (SELECT 1 FROM contracts c WHERE c.unit_id = u.id AND date(c.end_date) >= date('now'))
+        EXISTS (SELECT 1 FROM contracts c WHERE c.unit_id = u.id AND date(c.end_date) >= date('now') AND c.terminated_at IS NULL)
       ) THEN 1 ELSE 0 END) as vacant
     FROM buildings b
     LEFT JOIN units u ON u.building_id = b.id
@@ -116,6 +117,7 @@ dashboard.get('/', async (c) => {
       -- collected payment for the month, once the 5th has passed.
       (SELECT COUNT(*) FROM contracts oc
        WHERE date(oc.end_date) >= date('now')
+         AND oc.terminated_at IS NULL
          AND date(oc.start_date) <= ? || '-28'
          AND NOT EXISTS (
            SELECT 1 FROM rent_payments rp
