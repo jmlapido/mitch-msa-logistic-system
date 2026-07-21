@@ -272,7 +272,7 @@ rentPayments.post('/:id/undo-write-off', async (c) => {
 
   await c.env.DB.prepare(`
     UPDATE rent_payments
-    SET written_off_amount = NULL, written_off_reason = NULL, written_off_by = NULL, written_off_at = NULL
+    SET status = 'pending', written_off_amount = NULL, written_off_reason = NULL, written_off_by = NULL, written_off_at = NULL
     WHERE id = ?
   `).bind(id).run();
   await recomputePaymentStatus(c.env.DB, id);
