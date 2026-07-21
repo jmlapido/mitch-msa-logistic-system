@@ -191,7 +191,12 @@ export function PaymentsTab() {
                                 {p.status === 'partial' && (
                                   <span className="text-orange-600 text-xs"><AedAmount amount={p.amount_paid} /> <span className="text-muted-foreground">/ <AedAmount amount={p.expected_rent} /></span></span>
                                 )}
-                                {p.status !== 'collected' && p.status !== 'partial' && <span className="text-muted-foreground">—</span>}
+                                {p.status === 'written_off' && (
+                                  p.amount_paid > 0
+                                    ? <span className="text-slate-500 text-xs"><AedAmount amount={p.amount_paid} /></span>
+                                    : <span className="text-muted-foreground">—</span>
+                                )}
+                                {p.status !== 'collected' && p.status !== 'partial' && p.status !== 'written_off' && <span className="text-muted-foreground">—</span>}
                               </td>
                               <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
                                 {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium"><AedAmount amount={p.tenant_overdue} /></span> : '—'}
