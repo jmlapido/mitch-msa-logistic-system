@@ -71,6 +71,17 @@ export default {
 
     for (const { id } of expiredTenants) {
       try {
+        // payment_entries.rent_payment_id has no DB-level foreign key
+        // anymore (migrations/0017 dropped it — see that file's comment for
+        // why), so it needs explicit cleanup before the rent_payments rows
+        // it references are deleted below.
+        await env.DB.prepare(`
+          DELETE FROM payment_entries WHERE rent_payment_id IN (
+            SELECT id FROM rent_payments WHERE contract_id IN (
+              SELECT id FROM contracts WHERE tenant_id = ?
+            )
+          )
+        `).bind(id).run();
         await env.DB.prepare(
           'DELETE FROM rent_payments WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
         ).bind(id).run();

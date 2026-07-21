@@ -171,6 +171,14 @@ contracts.post('/:id/undo-terminate', requireAdmin, async (c) => {
 contracts.delete('/:id', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
+  // Neither rent_payments.contract_id nor payment_entries.rent_payment_id
+  // has a DB-level foreign key anymore (migrations/0017 dropped both — see
+  // that file's comment for why), so cleanup here is explicit rather than
+  // an ON DELETE CASCADE.
+  await c.env.DB.prepare(
+    'DELETE FROM payment_entries WHERE rent_payment_id IN (SELECT id FROM rent_payments WHERE contract_id = ?)'
+  ).bind(id).run();
+  await c.env.DB.prepare('DELETE FROM rent_payments WHERE contract_id = ?').bind(id).run();
   await c.env.DB.prepare('DELETE FROM contracts WHERE id = ?').bind(id).run();
   await auditLog(c.env.DB, user, 'contract.deleted', 'contract', id);
   return c.json({ ok: true });
