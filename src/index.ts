@@ -21,6 +21,7 @@ import auditLogsRoutes from './routes/audit-logs';
 import partnersRoutes from './routes/partners';
 import partnerPaymentsRoutes from './routes/partner-payments';
 import commissionsRoutes from './routes/commissions';
+import withdrawalsRoutes from './routes/withdrawals';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -50,6 +51,7 @@ app.route('/api/audit-logs', auditLogsRoutes);
 app.route('/api/partners', partnersRoutes);
 app.route('/api/partner-payments', partnerPaymentsRoutes);
 app.route('/api/commissions', commissionsRoutes);
+app.route('/api/withdrawals', withdrawalsRoutes);
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
