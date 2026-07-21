@@ -22,7 +22,7 @@ function dueDateColor(dateStr: string, status: string): string {
   return 'text-foreground';
 }
 
-const STATUS_RANK: Record<string, number> = { overdue: 0, partial: 1, pending: 2, collected: 3 };
+const STATUS_RANK: Record<string, number> = { overdue: 0, partial: 1, pending: 2, collected: 3, written_off: 4 };
 
 type SortKey = 'status' | 'unit' | 'due';
 type SortDir = 'asc' | 'desc';
@@ -71,7 +71,7 @@ export function PaymentsTab() {
   const [tenantDetail, setTenantDetail] = useState<RentPayment | null>(null);
   const { data: payments = [], isLoading } = useRentPayments(month, buildingFilter);
   const { data: buildings = [] } = useBuildings();
-  const { addPaymentEntry, deletePaymentEntry } = useRentalMutations();
+  const { addPaymentEntry, deletePaymentEntry, writeOffPayment, undoWriteOffPayment } = useRentalMutations();
 
   const grouped = payments.reduce<Record<string, { name: string; items: RentPayment[] }>>((acc, p) => {
     const key = String(p.building_id);
@@ -84,11 +84,12 @@ export function PaymentsTab() {
   const totalCollected = payments.reduce((s, p) => s + p.amount_paid, 0);
   const totalPending = totalExpected - totalCollected;
   const totalOverdue = payments.reduce((s, p) => s + (p.tenant_overdue ?? 0), 0);
+  const totalWrittenOff = payments.reduce((s, p) => s + (p.tenant_written_off ?? 0), 0);
   const totalCash = payments.reduce((s, p) => s + (p.cash_collected ?? 0), 0);
   const totalCheque = payments.reduce((s, p) => s + (p.cheque_collected ?? 0), 0);
 
   const sidebar = useMemo(() => {
-    const statusOrder = ['overdue', 'partial', 'pending', 'collected'] as const;
+    const statusOrder = ['overdue', 'partial', 'pending', 'collected', 'written_off'] as const;
     const byStatus: Record<string, { count: number; amount: number }> = {};
 
     for (const p of payments) {
@@ -96,6 +97,7 @@ export function PaymentsTab() {
       byStatus[p.status]!.count += 1;
       if (p.status === 'collected') byStatus[p.status]!.amount += p.amount_paid;
       else if (p.status === 'overdue') byStatus[p.status]!.amount += p.tenant_overdue ?? 0;
+      else if (p.status === 'written_off') byStatus[p.status]!.amount += p.written_off_amount ?? 0;
       else byStatus[p.status]!.amount += p.expected_rent - p.amount_paid;
     }
 
@@ -128,11 +130,12 @@ export function PaymentsTab() {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-5">
         <StatCard label="Expected" value={<AedAmount amount={totalExpected} />} />
         <StatCard label="Collected" value={<AedAmount amount={totalCollected} />} valueClass="text-green-600" />
         <StatCard label="Pending" value={<AedAmount amount={totalPending} />} valueClass={totalPending > 0 ? 'text-yellow-600' : undefined} />
         <StatCard label="Total Overdue" value={<AedAmount amount={totalOverdue} />} valueClass={totalOverdue > 0 ? 'text-red-600' : undefined} />
+        <StatCard label="Written Off" value={<AedAmount amount={totalWrittenOff} />} valueClass={totalWrittenOff > 0 ? 'text-slate-500' : undefined} />
         <StatCard label="Cash Collected" value={<AedAmount amount={totalCash} />} valueClass={totalCash > 0 ? 'text-green-600' : undefined} />
         <StatCard label="Cheque Collected" value={<AedAmount amount={totalCheque} />} valueClass={totalCheque > 0 ? 'text-green-600' : undefined} />
       </div>
@@ -167,7 +170,7 @@ export function PaymentsTab() {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {sortRows(group.items, sortKey, sortDir).map(p => {
-                          const shouldHighlight = p.status === 'overdue' || p.status === 'partial' || (p.balance ?? 0) > 0;
+                          const shouldHighlight = p.status === 'overdue' || p.status === 'partial' || (p.status !== 'written_off' && (p.balance ?? 0) > 0);
                           return (
                             <tr key={p.id} className={`hover:bg-muted/20 ${shouldHighlight ? 'bg-red-50 dark:bg-red-950/20' : ''}`}>
                               <td className="px-3 py-2 font-medium">{p.unit_no}</td>
@@ -194,7 +197,9 @@ export function PaymentsTab() {
                                 {(p.tenant_overdue ?? 0) > 0 ? <span className="text-red-600 font-medium"><AedAmount amount={p.tenant_overdue} /></span> : '—'}
                               </td>
                               <td className="hidden sm:table-cell px-3 py-2 text-right text-xs">
-                                {(p.balance ?? 0) > 0 ? <span className="text-red-600 font-semibold"><AedAmount amount={p.balance} /></span> : <span className="text-green-600">—</span>}
+                                {p.status === 'written_off'
+                                  ? <span className="text-slate-500 italic">Written off</span>
+                                  : (p.balance ?? 0) > 0 ? <span className="text-red-600 font-semibold"><AedAmount amount={p.balance} /></span> : <span className="text-green-600">—</span>}
                               </td>
                               <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">{formatDate(p.paid_date)}</td>
                               <td className="hidden sm:table-cell px-3 py-2 text-center text-xs">
@@ -204,7 +209,13 @@ export function PaymentsTab() {
                               </td>
                               <td className="px-3 py-2 text-center">
                                 <div className="flex flex-col items-center gap-0.5">
-                                  <PaymentPopover payment={p} onAdd={addPaymentEntry.mutateAsync} onDelete={deletePaymentEntry.mutateAsync} />
+                                  <PaymentPopover
+                                    payment={p}
+                                    onAdd={addPaymentEntry.mutateAsync}
+                                    onDelete={deletePaymentEntry.mutateAsync}
+                                    onWriteOff={writeOffPayment.mutateAsync}
+                                    onUndoWriteOff={undoWriteOffPayment.mutateAsync}
+                                  />
                                 </div>
                               </td>
                             </tr>
@@ -226,24 +237,28 @@ export function PaymentsTab() {
               <div className="space-y-2">
                 {sidebar.statusRows.map(({ status, count, amount }) => {
                   const amountColor =
-                    status === 'collected' ? 'text-green-600' :
-                    status === 'overdue'   ? 'text-red-600'   :
-                    status === 'partial'   ? 'text-orange-600' :
+                    status === 'collected'   ? 'text-green-600' :
+                    status === 'overdue'     ? 'text-red-600'   :
+                    status === 'partial'     ? 'text-orange-600' :
+                    status === 'written_off' ? 'text-slate-500' :
                     'text-yellow-600';
                   const amountLabel =
-                    status === 'collected' ? 'Collected' :
-                    status === 'overdue'   ? 'Overdue'   :
+                    status === 'collected'   ? 'Collected' :
+                    status === 'overdue'     ? 'Overdue'   :
+                    status === 'written_off' ? 'Written Off' :
                     'Remaining';
                   const badgeStyle: Record<string, string> = {
-                    collected: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-                    partial:   'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-                    pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-                    overdue:   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+                    collected:    'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                    partial:      'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+                    pending:      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+                    overdue:      'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+                    written_off:  'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
                   };
+                  const statusLabel = status === 'written_off' ? 'Written Off' : status;
                   return (
                     <div key={status} className="text-xs">
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className={`px-1.5 py-0.5 rounded-full font-medium capitalize ${badgeStyle[status] ?? ''}`}>{status}</span>
+                        <span className={`px-1.5 py-0.5 rounded-full font-medium capitalize ${badgeStyle[status] ?? ''}`}>{statusLabel}</span>
                         <span className="text-muted-foreground">{count} unit{count !== 1 ? 's' : ''}</span>
                       </div>
                       <div className="flex justify-between">
@@ -323,10 +338,14 @@ function PaymentPopover({
   payment,
   onAdd,
   onDelete,
+  onWriteOff,
+  onUndoWriteOff,
 }: {
   payment: RentPayment;
   onAdd: (d: { rentPaymentId: number; amount: number; paid_date: string; payment_method: 'cash' | 'cheque'; receipt_no?: string; notes?: string }) => Promise<unknown>;
   onDelete: (d: { rentPaymentId: number; entryId: number }) => Promise<unknown>;
+  onWriteOff: (d: { id: number; reason: string }) => Promise<unknown>;
+  onUndoWriteOff: (id: number) => Promise<unknown>;
 }) {
   const [open, setOpen] = useState(false);
   const { data: entries = [], isLoading: loadingEntries } = usePaymentEntries(payment.id, open);
@@ -338,6 +357,8 @@ function PaymentPopover({
   const [receipt, setReceipt] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showWriteOffForm, setShowWriteOffForm] = useState(false);
+  const [writeOffReason, setWriteOffReason] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -351,10 +372,11 @@ function PaymentPopover({
   }, [open, payment.expected_rent, payment.amount_paid, payment.payment_type]);
 
   const STATUS_STYLE: Record<string, string> = {
-    collected: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    partial:   'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-    pending:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    overdue:   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    collected:   'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    partial:     'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+    pending:     'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    overdue:     'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    written_off: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
   };
 
   async function handleAdd() {
@@ -382,6 +404,27 @@ function PaymentPopover({
     } catch { toast.error('Failed'); }
   }
 
+  async function handleWriteOff() {
+    if (!writeOffReason.trim()) return;
+    setSubmitting(true);
+    try {
+      await onWriteOff({ id: payment.id, reason: writeOffReason.trim() });
+      toast.success('Payment written off');
+      setOpen(false);
+    } catch { toast.error('Failed'); }
+    finally { setSubmitting(false); }
+  }
+
+  async function handleUndoWriteOff() {
+    setSubmitting(true);
+    try {
+      await onUndoWriteOff(payment.id);
+      toast.success('Write-off undone');
+      setOpen(false);
+    } catch { toast.error('Failed'); }
+    finally { setSubmitting(false); }
+  }
+
   const totalPaid = entries.reduce((s, e) => s + e.amount, 0);
 
   return (
@@ -390,7 +433,7 @@ function PaymentPopover({
         className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_STYLE[payment.status] ?? ''}`}
         onClick={() => setOpen(true)}
       >
-        {payment.status}
+        {payment.status === 'written_off' ? 'Written Off' : payment.status}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -427,35 +470,75 @@ function PaymentPopover({
               </div>
             )}
 
-            <div className="border-t pt-3 space-y-3">
-              <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Add Payment</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} onFocus={e => e.target.select()} type="number" className="mt-1 h-8 text-xs" /></div>
-                <div><Label className="text-xs">Date</Label><DateInput value={date} onChange={setDate} className="mt-1 h-8 text-xs" /></div>
+            {payment.status === 'written_off' ? (
+              <div className="border-t pt-3 space-y-2">
+                <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Written Off</p>
+                <p className="text-xs text-foreground">
+                  <AedAmount amount={payment.written_off_amount ?? 0} /> written off{payment.written_off_at ? ` on ${formatDate(payment.written_off_at.slice(0, 10))}` : ''}
+                </p>
+                {payment.written_off_reason && <p className="text-xs text-muted-foreground italic">{payment.written_off_reason}</p>}
+                <Button variant="outline" className="w-full" onClick={handleUndoWriteOff} disabled={submitting}>
+                  Undo Write-Off
+                </Button>
               </div>
-              <div>
-                <Label className="text-xs">Method</Label>
-                <div className="flex gap-2 mt-1">
-                  {(['cash', 'cheque'] as const).map(m => (
-                    <button key={m} type="button" onClick={() => setPaymentMethod(m)}
-                      className={`flex-1 text-xs py-1.5 rounded border capitalize transition-colors ${
-                        paymentMethod === m
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                      }`}>
-                      {m}
-                    </button>
-                  ))}
+            ) : (
+              <>
+                <div className="border-t pt-3 space-y-3">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Add Payment</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label className="text-xs">Amount</Label><Input value={amount} onChange={e => setAmount(e.target.value)} onFocus={e => e.target.select()} type="number" className="mt-1 h-8 text-xs" /></div>
+                    <div><Label className="text-xs">Date</Label><DateInput value={date} onChange={setDate} className="mt-1 h-8 text-xs" /></div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Method</Label>
+                    <div className="flex gap-2 mt-1">
+                      {(['cash', 'cheque'] as const).map(m => (
+                        <button key={m} type="button" onClick={() => setPaymentMethod(m)}
+                          className={`flex-1 text-xs py-1.5 rounded border capitalize transition-colors ${
+                            paymentMethod === m
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                          }`}>
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label className="text-xs">Receipt No.</Label><Input value={receipt} onChange={e => setReceipt(e.target.value)} className="mt-1 h-8 text-xs" /></div>
+                    <div><Label className="text-xs">Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} className="mt-1 h-8 text-xs" placeholder="Optional" /></div>
+                  </div>
+                  <Button className="w-full" onClick={handleAdd} disabled={submitting}>
+                    <Check size={14} className="mr-1.5" /> Record Payment
+                  </Button>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Receipt No.</Label><Input value={receipt} onChange={e => setReceipt(e.target.value)} className="mt-1 h-8 text-xs" /></div>
-                <div><Label className="text-xs">Notes</Label><Input value={notes} onChange={e => setNotes(e.target.value)} className="mt-1 h-8 text-xs" placeholder="Optional" /></div>
-              </div>
-              <Button className="w-full" onClick={handleAdd} disabled={submitting}>
-                <Check size={14} className="mr-1.5" /> Record Payment
-              </Button>
-            </div>
+
+                {(payment.status === 'overdue' || payment.status === 'partial') && (
+                  <div className="border-t pt-3 space-y-2">
+                    {!showWriteOffForm ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowWriteOffForm(true)}
+                        className="text-xs text-muted-foreground hover:text-destructive underline"
+                      >
+                        Write off remaining balance
+                      </button>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label className="text-xs">Reason</Label>
+                        <Input value={writeOffReason} onChange={e => setWriteOffReason(e.target.value)} className="h-8 text-xs" placeholder="e.g. Tenant evicted, unrecoverable" />
+                        <div className="flex gap-2">
+                          <Button type="button" variant="outline" className="flex-1" onClick={() => setShowWriteOffForm(false)}>Cancel</Button>
+                          <Button type="button" variant="destructive" className="flex-1" onClick={handleWriteOff} disabled={submitting || !writeOffReason.trim()}>
+                            Confirm Write-Off
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
