@@ -158,7 +158,11 @@ tenants.get('/:id', async (c) => {
   `).bind(id).all();
   const { results: contracts } = await c.env.DB.prepare(
     `SELECT co.*, u.unit_no, b.name as building_name,
-       CASE WHEN date(co.end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status
+       CASE
+         WHEN co.terminated_at IS NOT NULL THEN 'terminated'
+         WHEN date(co.end_date) >= date('now') THEN 'valid'
+         ELSE 'expired'
+       END as status
      FROM contracts co
      LEFT JOIN units u ON co.unit_id = u.id
      LEFT JOIN buildings b ON u.building_id = b.id
