@@ -7,6 +7,10 @@ import { planOverpaymentSweep, applyExcessToCandidate, addMonthToYyyyMm, type Ou
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
+export const writeOffSchema = z.object({
+  reason: z.string().min(1).max(500),
+});
+
 function formatMonthLabel(month: string): string {
   const [year, m] = month.split('-').map(Number) as [number, number];
   const date = new Date(year, m - 1);
@@ -151,8 +155,14 @@ rentPayments.get('/', async (c) => {
        FROM rent_payments rp2
        JOIN contracts c2 ON rp2.contract_id = c2.id
        WHERE c2.tenant_id = t.id
-         AND rp2.status NOT IN ('collected')
+         AND rp2.status NOT IN ('collected', 'written_off')
          AND rp2.month < ?) as tenant_overdue,
+      (SELECT COALESCE(SUM(rp3.written_off_amount), 0)
+       FROM rent_payments rp3
+       JOIN contracts c3 ON rp3.contract_id = c3.id
+       WHERE c3.tenant_id = t.id
+         AND rp3.status = 'written_off'
+         AND rp3.month < ?) as tenant_written_off,
       MAX(0, (CASE
         WHEN c.payment_type = 'pdc' THEN
           COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2))
@@ -174,7 +184,7 @@ rentPayments.get('/', async (c) => {
     )
     WHERE rp.month = ?
   `;
-  const binds: unknown[] = [month, month];
+  const binds: unknown[] = [month, month, month];
   if (buildingId) { query += ' AND b.id = ?'; binds.push(Number(buildingId)); }
   query += ' ORDER BY b.name, u.unit_no';
 
@@ -206,6 +216,70 @@ rentPayments.put('/:id', zv('json', updatePaymentSchema), async (c) => {
   return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
 });
 
+rentPayments.post('/:id/write-off', zv('json', writeOffSchema), async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  const { reason } = c.req.valid('json');
+
+  const row = await c.env.DB.prepare(`
+    SELECT rp.status, rp.amount_paid,
+      COALESCE(
+        CASE WHEN c.payment_type IN ('pdc', 'cash') THEN pc.amount ELSE NULL END,
+        CASE
+          WHEN c.payment_frequency = 'custom' THEN
+            ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2)
+          ELSE ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2)
+        END
+      ) as expected_rent
+    FROM rent_payments rp
+    JOIN contracts c ON rp.contract_id = c.id
+    LEFT JOIN pdc_cheques pc ON pc.id = (
+      SELECT id FROM pdc_cheques
+      WHERE contract_id = c.id AND strftime('%Y-%m', cheque_date) = rp.month
+      LIMIT 1
+    )
+    WHERE rp.id = ?
+  `).bind(id).first<{ status: string; amount_paid: number; expected_rent: number }>();
+
+  if (!row) return c.json({ error: 'Payment not found' }, 404);
+  if (row.status === 'collected' || row.status === 'written_off') {
+    return c.json({ error: `Cannot write off a payment with status '${row.status}'` }, 400);
+  }
+
+  const writtenOffAmount = Math.round((row.expected_rent - row.amount_paid) * 100) / 100;
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(`
+    UPDATE rent_payments
+    SET status = 'written_off', written_off_amount = ?, written_off_reason = ?, written_off_by = ?, written_off_at = ?
+    WHERE id = ?
+  `).bind(writtenOffAmount, reason, user.sub, now, id).run();
+
+  await auditLog(c.env.DB, user, 'payment.written_off', 'payment', id, `Wrote off ${writtenOffAmount}: ${reason}`);
+  return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
+});
+
+rentPayments.post('/:id/undo-write-off', async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+
+  const row = await c.env.DB.prepare('SELECT status FROM rent_payments WHERE id = ?').bind(id).first<{ status: string }>();
+  if (!row) return c.json({ error: 'Payment not found' }, 404);
+  if (row.status !== 'written_off') {
+    // Idempotent no-op — matches the low-friction correction pattern already
+    // used elsewhere (e.g. deleting a non-existent payment entry returns ok).
+    return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
+  }
+
+  await c.env.DB.prepare(`
+    UPDATE rent_payments
+    SET written_off_amount = NULL, written_off_reason = NULL, written_off_by = NULL, written_off_at = NULL
+    WHERE id = ?
+  `).bind(id).run();
+  await recomputePaymentStatus(c.env.DB, id);
+  await auditLog(c.env.DB, user, 'payment.write_off_undone', 'payment', id);
+  return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
+});
+
 const addEntrySchema = z.object({
   amount: z.number().positive(),
   paid_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -221,7 +295,7 @@ export async function recomputePaymentStatus(db: D1Database, rentPaymentId: numb
   // with two cheque rows (e.g. one placeholder with a NULL amount) can't make
   // this computation diverge from the others and cause status flapping.
   const row = await db.prepare(`
-    SELECT rp.month,
+    SELECT rp.month, rp.status,
       COALESCE(
         CASE WHEN c.payment_type IN ('pdc', 'cash') THEN pc.amount ELSE NULL END,
         CASE
@@ -241,8 +315,13 @@ export async function recomputePaymentStatus(db: D1Database, rentPaymentId: numb
       LIMIT 1
     )
     WHERE rp.id = ?
-  `).bind(rentPaymentId).first<{ month: string; expected_rent: number; new_sum: number }>();
+  `).bind(rentPaymentId).first<{ month: string; status: string; expected_rent: number; new_sum: number }>();
   if (!row) return;
+  // A written-off row is a deliberate terminal state — only the explicit
+  // undo-write-off endpoint may move it back to a normal status. Otherwise
+  // deleting/adding an old payment_entry against an already-written-off
+  // month would silently resurrect it while leaving written_off_* stale.
+  if (row.status === 'written_off') return;
   const currentMonth = new Date().toISOString().slice(0, 7);
   let status: string;
   if (row.new_sum >= row.expected_rent - 1) status = 'collected';
