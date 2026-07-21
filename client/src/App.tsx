@@ -11,6 +11,7 @@ import Customers from '@/pages/Customers';
 import RentalsPayments from './pages/RentalsPayments';
 import RentalsUnits from './pages/RentalsUnits';
 import Partners from '@/pages/Partners';
+import Commissions from '@/pages/Commissions';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import AuditLogs from '@/pages/AuditLogs';
@@ -72,6 +73,7 @@ export default function App() {
                     <Route path="/rentals/units" element={<RentalsUnits />} />
                     <Route path="/rentals/buildings" element={<LegacyBuildingsRedirect />} />
                     <Route path="/partners" element={<Partners />} />
+                    <Route path="/commissions" element={<Commissions />} />
                     <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
                     <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
                     <Route path="/logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />

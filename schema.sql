@@ -167,3 +167,17 @@ CREATE INDEX IF NOT EXISTS idx_leases_unit          ON leases(unit_id);
 CREATE INDEX IF NOT EXISTS idx_leases_status        ON leases(status);
 CREATE INDEX IF NOT EXISTS idx_rent_payments_month  ON rent_payments(month);
 CREATE INDEX IF NOT EXISTS idx_rental_docs_entity   ON rental_documents(entity_type, entity_id);
+
+-- Commissions: standalone payment-commission records (free-text name, no FK)
+CREATE TABLE IF NOT EXISTS commissions (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  name           TEXT NOT NULL,
+  amount         REAL NOT NULL,
+  paid_date      TEXT NOT NULL,
+  payment_method TEXT NOT NULL CHECK(payment_method IN ('cash','cheque')),
+  cheque_number  TEXT,
+  notes          TEXT,
+  created_by     TEXT,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_commissions_paid_date ON commissions(paid_date);

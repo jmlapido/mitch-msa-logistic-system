@@ -20,6 +20,7 @@ import usersRoutes from './routes/users';
 import auditLogsRoutes from './routes/audit-logs';
 import partnersRoutes from './routes/partners';
 import partnerPaymentsRoutes from './routes/partner-payments';
+import commissionsRoutes from './routes/commissions';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -48,6 +49,7 @@ app.route('/api/users', usersRoutes);
 app.route('/api/audit-logs', auditLogsRoutes);
 app.route('/api/partners', partnersRoutes);
 app.route('/api/partner-payments', partnerPaymentsRoutes);
+app.route('/api/commissions', commissionsRoutes);
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
