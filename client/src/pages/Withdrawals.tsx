@@ -37,7 +37,9 @@ export default function Withdrawals() {
         </div>
         <div className="border rounded-lg px-4 py-3 bg-card max-w-xs">
           <p className="text-xs text-muted-foreground mb-1">Cash on Hand</p>
-          <p className="text-base font-semibold text-green-600"><AedAmount amount={data?.cash_on_hand ?? 0} /></p>
+          <p className={`text-base font-semibold ${(data?.cash_on_hand ?? 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+            <AedAmount amount={data?.cash_on_hand ?? 0} />
+          </p>
         </div>
       </div>
 
