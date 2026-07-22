@@ -24,13 +24,21 @@ const contractSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const terminateSchema = z.object({
+  reason: z.string().min(1).max(500),
+});
+
 contracts.get('/', async (c) => {
   const tenantId = c.req.query('tenant_id');
   if (!tenantId) return c.json({ error: 'tenant_id required' }, 400);
   const { results } = await c.env.DB.prepare(`
     SELECT co.*,
       u.unit_no, b.name as building_name,
-      CASE WHEN date(co.end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status,
+      CASE
+        WHEN co.terminated_at IS NOT NULL THEN 'terminated'
+        WHEN date(co.end_date) >= date('now') THEN 'valid'
+        ELSE 'expired'
+      END as status,
       (SELECT SUM(amount) FROM pdc_cheques WHERE contract_id = co.id AND amount IS NOT NULL) as pdc_total
     FROM contracts co
     LEFT JOIN units u ON co.unit_id = u.id
@@ -96,15 +104,81 @@ contracts.put('/:id', requireAdmin, zv('json', contractSchema.partial()), async 
   await c.env.DB.prepare(`UPDATE contracts SET ${fields} WHERE id = ?`)
     .bind(...entries.map(([, v]) => v ?? null), id).run();
   const row = await c.env.DB.prepare(
-    `SELECT *, CASE WHEN date(end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status FROM contracts WHERE id = ?`
+    `SELECT *,
+       CASE
+         WHEN terminated_at IS NOT NULL THEN 'terminated'
+         WHEN date(end_date) >= date('now') THEN 'valid'
+         ELSE 'expired'
+       END as status
+     FROM contracts WHERE id = ?`
   ).bind(id).first();
   await auditLog(c.env.DB, user, 'contract.edited', 'contract', id, `Updated: ${entries.map(([k]) => k).join(', ')}`);
+  return c.json(row);
+});
+
+contracts.post('/:id/terminate', requireAdmin, zv('json', terminateSchema), async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+  const { reason } = c.req.valid('json');
+
+  const existing = await c.env.DB.prepare('SELECT terminated_at FROM contracts WHERE id = ?').bind(id).first<{ terminated_at: string | null }>();
+  if (!existing) return c.json({ error: 'Not found' }, 404);
+  if (existing.terminated_at) return c.json({ error: 'Contract is already terminated' }, 400);
+
+  const terminatedAt = new Date().toISOString().slice(0, 10);
+  await c.env.DB.prepare('UPDATE contracts SET terminated_at = ?, termination_reason = ? WHERE id = ?')
+    .bind(terminatedAt, reason, id).run();
+  await auditLog(c.env.DB, user, 'contract.terminated', 'contract', id, `Terminated: ${reason}`);
+
+  const row = await c.env.DB.prepare(`
+    SELECT *,
+      CASE
+        WHEN terminated_at IS NOT NULL THEN 'terminated'
+        WHEN date(end_date) >= date('now') THEN 'valid'
+        ELSE 'expired'
+      END as status
+    FROM contracts WHERE id = ?
+  `).bind(id).first();
+  return c.json(row);
+});
+
+contracts.post('/:id/undo-terminate', requireAdmin, async (c) => {
+  const user = c.get('user');
+  const id = Number(c.req.param('id'));
+
+  const existing = await c.env.DB.prepare('SELECT terminated_at FROM contracts WHERE id = ?').bind(id).first<{ terminated_at: string | null }>();
+  if (!existing) return c.json({ error: 'Not found' }, 404);
+  if (!existing.terminated_at) {
+    // Idempotent no-op — matches the low-friction correction pattern already
+    // used elsewhere (e.g. deleting a non-existent payment entry returns ok).
+    const row = await c.env.DB.prepare(`
+      SELECT *, CASE WHEN date(end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status
+      FROM contracts WHERE id = ?
+    `).bind(id).first();
+    return c.json(row);
+  }
+
+  await c.env.DB.prepare('UPDATE contracts SET terminated_at = NULL, termination_reason = NULL WHERE id = ?').bind(id).run();
+  await auditLog(c.env.DB, user, 'contract.termination_undone', 'contract', id);
+
+  const row = await c.env.DB.prepare(`
+    SELECT *, CASE WHEN date(end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status
+    FROM contracts WHERE id = ?
+  `).bind(id).first();
   return c.json(row);
 });
 
 contracts.delete('/:id', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
+  // Neither rent_payments.contract_id nor payment_entries.rent_payment_id
+  // has a DB-level foreign key anymore (migrations/0017 dropped both — see
+  // that file's comment for why), so cleanup here is explicit rather than
+  // an ON DELETE CASCADE.
+  await c.env.DB.prepare(
+    'DELETE FROM payment_entries WHERE rent_payment_id IN (SELECT id FROM rent_payments WHERE contract_id = ?)'
+  ).bind(id).run();
+  await c.env.DB.prepare('DELETE FROM rent_payments WHERE contract_id = ?').bind(id).run();
   await c.env.DB.prepare('DELETE FROM contracts WHERE id = ?').bind(id).run();
   await auditLog(c.env.DB, user, 'contract.deleted', 'contract', id);
   return c.json({ ok: true });

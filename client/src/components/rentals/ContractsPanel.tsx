@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Ban, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,7 +52,7 @@ function LastEditedBy({ entityType, entityId }: { entityType: string; entityId: 
 
 export function ContractsPanel({ tenantId, readonly = false }: { tenantId: number; readonly?: boolean }) {
   const { data: contracts = [], isLoading } = useContracts(tenantId);
-  const { createContract, updateContract, deleteContract } = useRentalMutations();
+  const { createContract, updateContract, deleteContract, terminateContract, undoTerminateContract } = useRentalMutations();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Contract | null>(null);
@@ -157,6 +157,24 @@ export function ContractsPanel({ tenantId, readonly = false }: { tenantId: numbe
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed'); }
   }
 
+  async function handleTerminate(c: Contract) {
+    const reason = window.prompt('Reason for early termination (e.g. non-payment):', 'Non-payment');
+    if (reason === null) return;
+    if (!reason.trim()) { toast.error('A reason is required'); return; }
+    try {
+      await terminateContract.mutateAsync({ id: c.id, reason: reason.trim() });
+      toast.success('Contract terminated');
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed'); }
+  }
+
+  async function handleUndoTerminate(c: Contract) {
+    if (!confirm('Undo termination and restore this contract to active?')) return;
+    try {
+      await undoTerminateContract.mutateAsync(c.id);
+      toast.success('Termination undone');
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed'); }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -182,16 +200,23 @@ export function ContractsPanel({ tenantId, readonly = false }: { tenantId: numbe
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-semibold truncate">#{c.contract_no}</span>
                       <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                        c.status === 'valid'
+                        c.status === 'terminated'
+                          ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                          : c.status === 'valid'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                           : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                       }`}>
-                        {c.status === 'valid' ? 'Valid' : 'Expired'}
+                        {c.status === 'terminated' ? 'Terminated' : c.status === 'valid' ? 'Valid' : 'Expired'}
                       </span>
                     </div>
                     <div className="text-muted-foreground space-y-0.5">
                       <p>{c.unit_no ? `${c.building_name} — ${c.unit_no}` : <span className="italic">Unit not recorded</span>}</p>
                       <p>{formatDate(c.start_date)} → {formatDate(c.end_date)}</p>
+                      {c.status === 'terminated' && c.terminated_at && (
+                        <p className="text-slate-600 dark:text-slate-400">
+                          Terminated {formatDate(c.terminated_at)}{c.termination_reason ? ` — ${c.termination_reason}` : ''}
+                        </p>
+                      )}
                       <p>Annual Rent: <span className="font-medium text-foreground"><AedAmount amount={c.annual_rent} /></span></p>
                       <p>
                         {(c.payment_type ?? 'pdc') === 'pdc' ? (
@@ -219,6 +244,11 @@ export function ContractsPanel({ tenantId, readonly = false }: { tenantId: numbe
                   {!readonly && (user?.role === 'admin' || user?.role === 'superadmin') && (
                     <div className="flex gap-1 shrink-0">
                       <button onClick={() => openEdit(c)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={11} /></button>
+                      {c.status === 'terminated' ? (
+                        <button onClick={() => handleUndoTerminate(c)} className="p-1 text-muted-foreground hover:text-foreground" title="Undo termination"><Undo2 size={11} /></button>
+                      ) : (
+                        <button onClick={() => handleTerminate(c)} className="p-1 text-muted-foreground hover:text-destructive" title="Terminate contract"><Ban size={11} /></button>
+                      )}
                       <button onClick={() => handleDelete(c)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={11} /></button>
                     </div>
                   )}

@@ -21,6 +21,7 @@ import auditLogsRoutes from './routes/audit-logs';
 import partnersRoutes from './routes/partners';
 import partnerPaymentsRoutes from './routes/partner-payments';
 import commissionsRoutes from './routes/commissions';
+import withdrawalsRoutes from './routes/withdrawals';
 import type { Env } from './types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -50,6 +51,7 @@ app.route('/api/audit-logs', auditLogsRoutes);
 app.route('/api/partners', partnersRoutes);
 app.route('/api/partner-payments', partnerPaymentsRoutes);
 app.route('/api/commissions', commissionsRoutes);
+app.route('/api/withdrawals', withdrawalsRoutes);
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
@@ -71,6 +73,17 @@ export default {
 
     for (const { id } of expiredTenants) {
       try {
+        // payment_entries.rent_payment_id has no DB-level foreign key
+        // anymore (migrations/0017 dropped it — see that file's comment for
+        // why), so it needs explicit cleanup before the rent_payments rows
+        // it references are deleted below.
+        await env.DB.prepare(`
+          DELETE FROM payment_entries WHERE rent_payment_id IN (
+            SELECT id FROM rent_payments WHERE contract_id IN (
+              SELECT id FROM contracts WHERE tenant_id = ?
+            )
+          )
+        `).bind(id).run();
         await env.DB.prepare(
           'DELETE FROM rent_payments WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
         ).bind(id).run();

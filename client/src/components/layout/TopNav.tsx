@@ -13,6 +13,7 @@ const BASE_NAV = [
   { to: '/bills', label: 'Bills' },
   { to: '/partners', label: 'Sponsorships' },
   { to: '/commissions', label: 'Commissions' },
+  { to: '/withdrawals', label: 'Withdrawals' },
   { to: '/reports', label: 'Reports' },
 ];
 

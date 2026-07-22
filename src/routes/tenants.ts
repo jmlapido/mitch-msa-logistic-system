@@ -47,7 +47,7 @@ tenants.get('/', async (c) => {
          FROM contracts cc
        JOIN units uu ON cc.unit_id = uu.id
        JOIN buildings bb ON uu.building_id = bb.id
-       WHERE cc.tenant_id = t.id AND date(cc.end_date) >= date('now'))) as units_summary,
+       WHERE cc.tenant_id = t.id AND date(cc.end_date) >= date('now') AND cc.terminated_at IS NULL)) as units_summary,
       (SELECT COALESCE(SUM(
          CASE WHEN rp.status = 'partial'
            THEN (CASE
@@ -92,7 +92,7 @@ tenants.get('/', async (c) => {
     FROM tenants t
     LEFT JOIN contracts c ON c.id = (
       SELECT id FROM contracts
-      WHERE tenant_id = t.id AND date(end_date) >= date('now')
+      WHERE tenant_id = t.id AND date(end_date) >= date('now') AND terminated_at IS NULL
       ORDER BY end_date DESC LIMIT 1
     )
     LEFT JOIN units u ON c.unit_id = u.id
@@ -158,7 +158,11 @@ tenants.get('/:id', async (c) => {
   `).bind(id).all();
   const { results: contracts } = await c.env.DB.prepare(
     `SELECT co.*, u.unit_no, b.name as building_name,
-       CASE WHEN date(co.end_date) >= date('now') THEN 'valid' ELSE 'expired' END as status
+       CASE
+         WHEN co.terminated_at IS NOT NULL THEN 'terminated'
+         WHEN date(co.end_date) >= date('now') THEN 'valid'
+         ELSE 'expired'
+       END as status
      FROM contracts co
      LEFT JOIN units u ON co.unit_id = u.id
      LEFT JOIN buildings b ON u.building_id = b.id
@@ -237,6 +241,21 @@ tenants.post('/:id/restore', requireAdmin, async (c) => {
 tenants.delete('/:id', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
+  // contracts.tenant_id still cascades automatically on tenant delete, but
+  // neither rent_payments.contract_id nor payment_entries.rent_payment_id
+  // has a DB-level foreign key anymore (migrations/0017 dropped both — see
+  // that file's comment for why), so both need explicit cleanup here,
+  // before the contracts they belong to disappear via cascade.
+  await c.env.DB.prepare(`
+    DELETE FROM payment_entries WHERE rent_payment_id IN (
+      SELECT id FROM rent_payments WHERE contract_id IN (
+        SELECT id FROM contracts WHERE tenant_id = ?
+      )
+    )
+  `).bind(id).run();
+  await c.env.DB.prepare(
+    'DELETE FROM rent_payments WHERE contract_id IN (SELECT id FROM contracts WHERE tenant_id = ?)'
+  ).bind(id).run();
   await c.env.DB.prepare('DELETE FROM tenants WHERE id = ?').bind(id).run();
   await auditLog(c.env.DB, user, 'tenant.deleted', 'tenant', id);
   return c.json({ ok: true });
