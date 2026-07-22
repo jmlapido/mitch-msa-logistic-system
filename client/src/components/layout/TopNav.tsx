@@ -22,8 +22,8 @@ const RENTALS_MENU = [
 ];
 
 const OFFICE_MENU = [
-  { to: '/withdrawals', label: 'Withdrawals' },
   { to: '/bills', label: 'Bills' },
+  { to: '/withdrawals', label: 'Withdrawals' },
 ];
 
 export function TopNav() {

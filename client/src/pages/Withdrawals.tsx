@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MonthYearSelector } from '@/components/ui/MonthYearSelector';
@@ -14,6 +14,16 @@ export default function Withdrawals() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Withdrawal | null>(null);
   const { data, isLoading } = useWithdrawals(month);
+
+  const byPerson = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of data?.rows ?? []) {
+      totals.set(row.withdrawn_by, (totals.get(row.withdrawn_by) ?? 0) + row.amount);
+    }
+    return [...totals.entries()]
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total);
+  }, [data?.rows]);
 
   function openAdd() { setEditing(null); setModalOpen(true); }
   function openEdit(row: Withdrawal) { setEditing(row); setModalOpen(true); }
@@ -46,7 +56,27 @@ export default function Withdrawals() {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading withdrawals…</div>
       ) : (
-        <WithdrawalsTable rows={data?.rows ?? []} onEdit={openEdit} />
+        <div className="flex flex-col-reverse gap-6 md:flex-row">
+          <div className="flex-1 min-w-0">
+            <WithdrawalsTable rows={data?.rows ?? []} onEdit={openEdit} />
+          </div>
+
+          <div className="md:w-56 md:shrink-0 md:border-l md:pl-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">By Person</h3>
+            {byPerson.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No withdrawals yet</p>
+            ) : (
+              <div className="space-y-2">
+                {byPerson.map(p => (
+                  <div key={p.name} className="border rounded-lg px-3 py-2 bg-card">
+                    <p className="text-xs text-muted-foreground mb-0.5">{p.name}</p>
+                    <p className="text-sm font-semibold"><AedAmount amount={p.total} /></p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       <WithdrawalFormModal
