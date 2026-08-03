@@ -60,6 +60,7 @@ function SortHeader({ label, k, sortKey, sortDir, onSort, className = 'text-left
 }
 
 export function PaymentsTab() {
+  const canEdit = useCanEdit();
   const [month, setMonth] = useState(currentMonth());
   const [buildingFilter, setBuildingFilter] = useState<number | undefined>();
   const [sortKey, setSortKey] = useState<SortKey>('status');
@@ -117,7 +118,7 @@ export function PaymentsTab() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <MonthYearSelector month={month} onChange={setMonth} />
+        <MonthYearSelector month={month} onChange={setMonth} maxMonth={canEdit ? undefined : currentMonth()} />
         <select value={buildingFilter ?? ''} onChange={e => setBuildingFilter(e.target.value ? Number(e.target.value) : undefined)}
           className="text-xs px-2 py-1 rounded border bg-background border-border">
           <option value="">All buildings</option>
