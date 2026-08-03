@@ -26,10 +26,10 @@ export function CommissionsReportView({ rows, monthSummary, from, to }: Props) {
 
   return (
     <div>
-      <PrintHeader title="Commissions Report" subtitle={subtitle} />
+      <PrintHeader title="Others Report" subtitle={subtitle} />
 
       <div className="no-print mb-4">
-        <h2 className="text-lg font-semibold">Commissions Report</h2>
+        <h2 className="text-lg font-semibold">Others Report</h2>
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
 

@@ -11,7 +11,7 @@ import {
 const BASE_NAV = [
   { to: '/', label: 'Dashboard' },
   { to: '/partners', label: 'Sponsorships' },
-  { to: '/commissions', label: 'Commissions' },
+  { to: '/commissions', label: 'Others' },
   { to: '/reports', label: 'Reports' },
 ];
 

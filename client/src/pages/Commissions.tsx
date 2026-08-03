@@ -22,12 +22,12 @@ export default function Commissions() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold">Commissions</h1>
+          <h1 className="text-2xl font-bold">Others</h1>
           <div className="mt-1">
             <MonthYearSelector month={month} onChange={setMonth} />
           </div>
         </div>
-        <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Commission</Button>
+        <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Entry</Button>
       </div>
 
       <div className="border rounded-lg px-4 py-3 bg-card mb-5 max-w-xs">
@@ -36,7 +36,7 @@ export default function Commissions() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading commissions…</div>
+        <div className="text-center py-12 text-muted-foreground">Loading entries…</div>
       ) : (
         <CommissionsTable rows={data?.rows ?? []} onEdit={openEdit} />
       )}

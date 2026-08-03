@@ -13,17 +13,17 @@ export function CommissionsTable({ rows, onEdit }: Props) {
   const { deleteCommission } = useCommissionMutations();
 
   async function handleDelete(row: Commission) {
-    if (!confirm(`Delete this commission of AED ${row.amount.toLocaleString()} from ${row.name}?`)) return;
+    if (!confirm(`Delete this entry of AED ${row.amount.toLocaleString()} from ${row.name}?`)) return;
     try {
       await deleteCommission.mutateAsync(row.id);
-      toast.success('Commission deleted');
+      toast.success('Entry deleted');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed');
     }
   }
 
   if (rows.length === 0) {
-    return <p className="text-center py-12 text-muted-foreground">No commissions recorded for this month.</p>;
+    return <p className="text-center py-12 text-muted-foreground">No entries recorded for this month.</p>;
   }
 
   return (

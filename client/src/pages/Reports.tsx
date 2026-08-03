@@ -19,7 +19,7 @@ const TABS = [
   { value: 'rental',      label: 'Rent Collection' },
   { value: 'outstanding', label: 'Outstanding'      },
   { value: 'bills',       label: 'Bills'            },
-  { value: 'commissions', label: 'Commissions'      },
+  { value: 'commissions', label: 'Others'           },
   { value: 'expiring',    label: 'Expiring Leases'  },
   { value: 'combined',    label: 'P&L Summary'      },
   { value: 'partners',    label: 'Sponsorships'     },
