@@ -8,6 +8,7 @@ import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBillMutations } from '@/lib/hooks/useBills';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 import type { BillEntry } from '@/lib/hooks/useBills';
 
 type Props = { entry: BillEntry; month: string };
@@ -28,6 +29,7 @@ export function MarkPaidPopover({ entry, month }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const { updateEntry } = useBillMutations(month);
   const qc = useQueryClient();
+  const canEdit = useCanEdit();
 
   async function markPaid() {
     try {
@@ -73,6 +75,14 @@ export function MarkPaidPopover({ entry, month }: Props) {
     : entry.computed_status === 'due_soon' ? 'Due Soon'
     : entry.computed_status === 'paid' ? 'Paid'
     : 'Unpaid';
+
+  if (!canEdit) {
+    return (
+      <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_STYLES[entry.computed_status] ?? ''}`}>
+        {label}
+      </span>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

@@ -135,9 +135,7 @@ export function TopNav() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem disabled className="text-xs text-muted-foreground">{user?.role}</DropdownMenuItem>
-              {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                <DropdownMenuItem asChild><Link to="/settings">Settings</Link></DropdownMenuItem>
-              )}
+              <DropdownMenuItem asChild><Link to="/settings">Settings</Link></DropdownMenuItem>
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 <LogOut size={14} className="mr-2" /> Sign out
               </DropdownMenuItem>
@@ -193,9 +191,7 @@ export function TopNav() {
           <div className="border-t border-white/20 pt-2 mt-2 flex items-center justify-between">
             <span className="text-sm text-white/80">{user?.name} · {user?.role}</span>
             <div className="flex gap-1">
-              {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                <Link to="/settings" className="text-xs px-2 py-1 rounded hover:bg-white/10">Settings</Link>
-              )}
+              <Link to="/settings" className="text-xs px-2 py-1 rounded hover:bg-white/10">Settings</Link>
               <button onClick={logout} className="text-xs px-2 py-1 rounded hover:bg-white/10 text-red-300">Sign out</button>
             </div>
           </div>

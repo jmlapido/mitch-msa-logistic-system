@@ -27,7 +27,7 @@ rentalDocs.get('/', async (c) => {
   return c.json(results);
 });
 
-rentalDocs.post('/', async (c) => {
+rentalDocs.post('/', requireAdmin, async (c) => {
   const user = c.get('user');
   const fd = await c.req.formData();
   const file = fd.get('file') as File | null;

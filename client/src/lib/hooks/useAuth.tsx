@@ -44,3 +44,8 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be inside AuthProvider');
   return ctx;
 }
+
+export function useCanEdit() {
+  const { user } = useAuth();
+  return user?.role === 'admin' || user?.role === 'superadmin';
+}

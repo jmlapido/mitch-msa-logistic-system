@@ -6,7 +6,7 @@ import { MarkPaidPopover } from './MarkPaidPopover';
 import { AttachmentCell } from './AttachmentCell';
 import { AedAmount } from '@/components/ui/AedAmount';
 import { useBillMutations, type BillEntry, type BillTemplate } from '@/lib/hooks/useBills';
-import { useAuth } from '@/lib/hooks/useAuth';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 
 type Props = {
   entries: BillEntry[];
@@ -66,7 +66,7 @@ export function BillsTable({ entries, month, onEdit, initialStatusFilter, highli
     }
   }, [highlightEntryId, entries]);
   const { deleteTemplate } = useBillMutations(month);
-  const { user } = useAuth();
+  const canEdit = useCanEdit();
 
   const categories = useMemo(() => {
     const seen = new Set<string>();
@@ -171,15 +171,17 @@ export function BillsTable({ entries, month, onEdit, initialStatusFilter, highli
         </td>
         <td className="px-3 py-2">
           <div className="flex gap-1">
-            <button onClick={() => onEdit(toTemplate(entry))}
-              className="text-muted-foreground hover:text-foreground p-1">
-              <Pencil size={13} />
-            </button>
-            {(user?.role === 'admin' || user?.role === 'superadmin') && (
-              <button onClick={() => handleDelete(entry.bill_id)}
-                className="text-muted-foreground hover:text-destructive p-1">
-                <Trash2 size={13} />
-              </button>
+            {canEdit && (
+              <>
+                <button onClick={() => onEdit(toTemplate(entry))}
+                  className="text-muted-foreground hover:text-foreground p-1">
+                  <Pencil size={13} />
+                </button>
+                <button onClick={() => handleDelete(entry.bill_id)}
+                  className="text-muted-foreground hover:text-destructive p-1">
+                  <Trash2 size={13} />
+                </button>
+              </>
             )}
           </div>
         </td>

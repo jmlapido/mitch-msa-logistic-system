@@ -6,6 +6,7 @@ import { AedAmount } from '@/components/ui/AedAmount';
 import { CommissionsTable } from '@/components/commissions/CommissionsTable';
 import { CommissionFormModal } from '@/components/commissions/CommissionFormModal';
 import { useCommissions } from '@/lib/hooks/useCommissions';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 import { currentMonth } from '@/lib/utils';
 import type { Commission } from '@/lib/hooks/useCommissions';
 
@@ -14,6 +15,7 @@ export default function Commissions() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Commission | null>(null);
   const { data, isLoading } = useCommissions(month);
+  const canEdit = useCanEdit();
 
   function openAdd() { setEditing(null); setModalOpen(true); }
   function openEdit(row: Commission) { setEditing(row); setModalOpen(true); }
@@ -27,7 +29,7 @@ export default function Commissions() {
             <MonthYearSelector month={month} onChange={setMonth} />
           </div>
         </div>
-        <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Entry</Button>
+        {canEdit && <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Entry</Button>}
       </div>
 
       <div className="border rounded-lg px-4 py-3 bg-card mb-5 max-w-xs">
@@ -38,7 +40,7 @@ export default function Commissions() {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Loading entries…</div>
       ) : (
-        <CommissionsTable rows={data?.rows ?? []} onEdit={openEdit} />
+        <CommissionsTable rows={data?.rows ?? []} onEdit={openEdit} canEdit={canEdit} />
       )}
 
       <CommissionFormModal

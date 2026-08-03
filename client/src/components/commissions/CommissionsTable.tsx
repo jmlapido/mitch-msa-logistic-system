@@ -7,9 +7,10 @@ import { useCommissionMutations, type Commission } from '@/lib/hooks/useCommissi
 type Props = {
   rows: Commission[];
   onEdit: (row: Commission) => void;
+  canEdit: boolean;
 };
 
-export function CommissionsTable({ rows, onEdit }: Props) {
+export function CommissionsTable({ rows, onEdit, canEdit }: Props) {
   const { deleteCommission } = useCommissionMutations();
 
   async function handleDelete(row: Commission) {
@@ -35,7 +36,7 @@ export function CommissionsTable({ rows, onEdit }: Props) {
           <th className="py-2 pr-3">Date</th>
           <th className="py-2 pr-3">Method</th>
           <th className="py-2 pr-3">Notes</th>
-          <th className="py-2 pr-3 text-right">Actions</th>
+          {canEdit && <th className="py-2 pr-3 text-right">Actions</th>}
         </tr>
       </thead>
       <tbody>
@@ -51,16 +52,18 @@ export function CommissionsTable({ rows, onEdit }: Props) {
               )}
             </td>
             <td className="py-2 pr-3 text-muted-foreground">{row.notes ?? '—'}</td>
-            <td className="py-2 pr-3 text-right">
-              <div className="inline-flex gap-1">
-                <button onClick={() => onEdit(row)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
-                  <Pencil size={14} />
-                </button>
-                <button onClick={() => handleDelete(row)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </td>
+            {canEdit && (
+              <td className="py-2 pr-3 text-right">
+                <div className="inline-flex gap-1">
+                  <button onClick={() => onEdit(row)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => handleDelete(row)} className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </td>
+            )}
           </tr>
         ))}
       </tbody>

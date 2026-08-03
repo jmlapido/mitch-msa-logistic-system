@@ -6,6 +6,7 @@ import { AedAmount } from '@/components/ui/AedAmount';
 import { WithdrawalsTable } from '@/components/withdrawals/WithdrawalsTable';
 import { WithdrawalFormModal } from '@/components/withdrawals/WithdrawalFormModal';
 import { useWithdrawals } from '@/lib/hooks/useWithdrawals';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 import { currentMonth } from '@/lib/utils';
 import type { Withdrawal } from '@/lib/hooks/useWithdrawals';
 
@@ -14,6 +15,7 @@ export default function Withdrawals() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Withdrawal | null>(null);
   const { data, isLoading } = useWithdrawals(month);
+  const canEdit = useCanEdit();
 
   const byPerson = useMemo(() => {
     const totals = new Map<string, number>();
@@ -37,7 +39,7 @@ export default function Withdrawals() {
             <MonthYearSelector month={month} onChange={setMonth} />
           </div>
         </div>
-        <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Withdrawal</Button>
+        {canEdit && <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Withdrawal</Button>}
       </div>
 
       <div className="flex flex-wrap gap-3 mb-5">
@@ -58,7 +60,7 @@ export default function Withdrawals() {
       ) : (
         <div className="flex flex-col-reverse gap-6 md:flex-row">
           <div className="flex-1 min-w-0">
-            <WithdrawalsTable rows={data?.rows ?? []} onEdit={openEdit} />
+            <WithdrawalsTable rows={data?.rows ?? []} onEdit={openEdit} canEdit={canEdit} />
           </div>
 
           <div className="md:w-56 md:shrink-0 md:border-l md:pl-4">

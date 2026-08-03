@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Paperclip, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 import type { BillEntry } from '@/lib/hooks/useBills';
 
 type Props = { entry: BillEntry; month: string };
@@ -9,6 +10,7 @@ type Props = { entry: BillEntry; month: string };
 export function AttachmentCell({ entry, month }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
+  const canEdit = useCanEdit();
 
   async function upload(file: File) {
     const fd = new FormData();
@@ -32,18 +34,22 @@ export function AttachmentCell({ entry, month }: Props) {
       ) : (
         <span className="text-xs text-muted-foreground">No invoice</span>
       )}
-      <button
-        onClick={() => fileRef.current?.click()}
-        className="text-muted-foreground hover:text-primary transition-colors"
-        title="Upload invoice"
-      >
-        <Paperclip size={13} />
-      </button>
-      <input
-        ref={fileRef} type="file" className="hidden"
-        accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx"
-        onChange={e => { if (e.target.files?.[0]) upload(e.target.files[0]); e.target.value = ''; }}
-      />
+      {canEdit && (
+        <>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="text-muted-foreground hover:text-primary transition-colors"
+            title="Upload invoice"
+          >
+            <Paperclip size={13} />
+          </button>
+          <input
+            ref={fileRef} type="file" className="hidden"
+            accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx"
+            onChange={e => { if (e.target.files?.[0]) upload(e.target.files[0]); e.target.value = ''; }}
+          />
+        </>
+      )}
     </div>
   );
 }

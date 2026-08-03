@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
+import { requireAdmin } from '../middleware/requireAdmin';
 import { auditLog } from '../lib/auditLog';
 import { planOverpaymentSweep, applyExcessToCandidate, addMonthToYyyyMm, type OutstandingRow } from '../lib/paymentSweep';
 import type { AuthVariables } from '../middleware/requireAuth';
@@ -199,7 +200,7 @@ const updatePaymentSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-rentPayments.put('/:id', zv('json', updatePaymentSchema), async (c) => {
+rentPayments.put('/:id', requireAdmin, zv('json', updatePaymentSchema), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const d = c.req.valid('json');
@@ -218,7 +219,7 @@ rentPayments.put('/:id', zv('json', updatePaymentSchema), async (c) => {
   return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
 });
 
-rentPayments.post('/:id/write-off', zv('json', writeOffSchema), async (c) => {
+rentPayments.post('/:id/write-off', requireAdmin, zv('json', writeOffSchema), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const { reason } = c.req.valid('json');
@@ -260,7 +261,7 @@ rentPayments.post('/:id/write-off', zv('json', writeOffSchema), async (c) => {
   return c.json(await c.env.DB.prepare('SELECT * FROM rent_payments WHERE id = ?').bind(id).first());
 });
 
-rentPayments.post('/:id/undo-write-off', async (c) => {
+rentPayments.post('/:id/undo-write-off', requireAdmin, async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
 
@@ -351,7 +352,7 @@ rentPayments.get('/:id/entries', async (c) => {
 // single-admin internal app where truly simultaneous duplicate submissions
 // are very unlikely. Revisit with a D1 batch() transaction if this ever
 // becomes a real multi-admin/concurrent-write app.
-rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
+rentPayments.post('/:id/entries', requireAdmin, zv('json', addEntrySchema), async (c) => {
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
   const d = c.req.valid('json');
@@ -505,7 +506,7 @@ rentPayments.post('/:id/entries', zv('json', addEntrySchema), async (c) => {
   return c.json(entry, 201);
 });
 
-rentPayments.delete('/:id/entries/:entryId', async (c) => {
+rentPayments.delete('/:id/entries/:entryId', requireAdmin, async (c) => {
   const user = c.get('user');
   const rentPaymentId = Number(c.req.param('id'));
   const entryId = Number(c.req.param('entryId'));

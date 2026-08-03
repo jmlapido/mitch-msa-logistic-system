@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { DateInput } from '@/components/ui/DateInput';
 import { Label } from '@/components/ui/label';
 import { useRentPayments, useBuildings, useRentalMutations, usePaymentEntries, type RentPayment, type PaymentEntry } from '@/lib/hooks/useRentals';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 import { isExpiring } from '@/lib/expiry';
 import { ExpiringBadge } from '@/components/customers/badges';
 import { ContractsPanel } from '../ContractsPanel';
@@ -352,6 +353,7 @@ function PaymentPopover({
   onWriteOff: (d: { id: number; reason: string }) => Promise<unknown>;
   onUndoWriteOff: (id: number) => Promise<unknown>;
 }) {
+  const canEdit = useCanEdit();
   const [open, setOpen] = useState(false);
   const { data: entries = [], isLoading: loadingEntries } = usePaymentEntries(payment.id, open);
   const defaultMethod: 'cash' | 'cheque' = payment.payment_type === 'cash' ? 'cash' : 'cheque';
@@ -462,7 +464,9 @@ function PaymentPopover({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium"><AedAmount amount={e.amount} /></span>
-                      <button onClick={() => handleDelete(e)} className="text-red-400 hover:text-red-600 leading-none">✕</button>
+                      {canEdit && (
+                        <button onClick={() => handleDelete(e)} className="text-red-400 hover:text-red-600 leading-none">✕</button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -482,11 +486,13 @@ function PaymentPopover({
                   <AedAmount amount={payment.written_off_amount ?? 0} /> written off{payment.written_off_at ? ` on ${formatDate(payment.written_off_at.slice(0, 10))}` : ''}
                 </p>
                 {payment.written_off_reason && <p className="text-xs text-muted-foreground italic">{payment.written_off_reason}</p>}
-                <Button variant="outline" className="w-full" onClick={handleUndoWriteOff} disabled={submitting}>
-                  Undo Write-Off
-                </Button>
+                {canEdit && (
+                  <Button variant="outline" className="w-full" onClick={handleUndoWriteOff} disabled={submitting}>
+                    Undo Write-Off
+                  </Button>
+                )}
               </div>
-            ) : (
+            ) : canEdit ? (
               <>
                 <div className="border-t pt-3 space-y-3">
                   <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Add Payment</p>
@@ -543,7 +549,7 @@ function PaymentPopover({
                   </div>
                 )}
               </>
-            )}
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
