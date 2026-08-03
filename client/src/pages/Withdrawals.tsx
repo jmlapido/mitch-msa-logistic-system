@@ -36,7 +36,7 @@ export default function Withdrawals() {
         <div>
           <h1 className="text-2xl font-bold">Withdrawals</h1>
           <div className="mt-1">
-            <MonthYearSelector month={month} onChange={setMonth} />
+            <MonthYearSelector month={month} onChange={setMonth} maxMonth={canEdit ? undefined : currentMonth()} />
           </div>
         </div>
         {canEdit && <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Withdrawal</Button>}
