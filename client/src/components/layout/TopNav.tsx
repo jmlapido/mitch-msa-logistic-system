@@ -10,10 +10,8 @@ import {
 
 const BASE_NAV = [
   { to: '/', label: 'Dashboard' },
-  { to: '/bills', label: 'Bills' },
   { to: '/partners', label: 'Sponsorships' },
-  { to: '/commissions', label: 'Commissions' },
-  { to: '/withdrawals', label: 'Withdrawals' },
+  { to: '/commissions', label: 'Others' },
   { to: '/reports', label: 'Reports' },
 ];
 
@@ -21,6 +19,11 @@ const RENTALS_MENU = [
   { to: '/rentals/payments', label: 'Payments' },
   { to: '/customers', label: 'Customers' },
   { to: '/rentals/units', label: 'Buildings & Units' },
+];
+
+const OFFICE_MENU = [
+  { to: '/bills', label: 'Bills' },
+  { to: '/withdrawals', label: 'Withdrawals' },
 ];
 
 export function TopNav() {
@@ -42,6 +45,7 @@ export function TopNav() {
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   const rentalsActive = location.pathname.startsWith('/rentals') || location.pathname.startsWith('/customers');
+  const officeActive = location.pathname.startsWith('/withdrawals') || location.pathname.startsWith('/bills');
 
   return (
     <nav className="bg-gradient-to-r from-[#3dd4ce] to-[#1a9994] dark:from-[#1e9e98] dark:to-[#0f6b67] text-white shadow-md no-print sticky top-0 z-50">
@@ -54,7 +58,7 @@ export function TopNav() {
         </Link>
 
         <div className="hidden md:flex items-center gap-1 flex-1">
-          {navLinks.slice(0, 2).map(({ to, label }) => {
+          {navLinks.slice(0, 1).map(({ to, label }) => {
             const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
               <Link
@@ -67,6 +71,24 @@ export function TopNav() {
               </Link>
             );
           })}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={`px-3 py-1.5 rounded text-sm transition-colors inline-flex items-center gap-1 ${
+                  officeActive ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'
+                }`}
+              >
+                Office <ChevronDown size={13} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {OFFICE_MENU.map(({ to, label }) => (
+                <DropdownMenuItem key={to} asChild>
+                  <Link to={to} className={location.pathname.startsWith(to) ? 'font-semibold' : ''}>{label}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -85,7 +107,7 @@ export function TopNav() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          {navLinks.slice(2).map(({ to, label }) => {
+          {navLinks.slice(1).map(({ to, label }) => {
             const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
               <Link
@@ -113,9 +135,7 @@ export function TopNav() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem disabled className="text-xs text-muted-foreground">{user?.role}</DropdownMenuItem>
-              {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                <DropdownMenuItem asChild><Link to="/settings">Settings</Link></DropdownMenuItem>
-              )}
+              <DropdownMenuItem asChild><Link to="/settings">Settings</Link></DropdownMenuItem>
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 <LogOut size={14} className="mr-2" /> Sign out
               </DropdownMenuItem>
@@ -134,10 +154,19 @@ export function TopNav() {
 
       {mobileOpen && (
         <div className="md:hidden border-t border-white/20 px-4 py-2 space-y-1">
-          {navLinks.slice(0, 2).map(({ to, label }) => {
+          {navLinks.slice(0, 1).map(({ to, label }) => {
             const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
               <Link key={to} to={to} className={`block px-3 py-2 rounded text-sm transition-colors ${active ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'}`}>
+                {label}
+              </Link>
+            );
+          })}
+          <div className="px-3 py-1 text-xs uppercase tracking-wide text-white/60">Office</div>
+          {OFFICE_MENU.map(({ to, label }) => {
+            const active = location.pathname.startsWith(to);
+            return (
+              <Link key={to} to={to} className={`block pl-6 pr-3 py-2 rounded text-sm transition-colors ${active ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'}`}>
                 {label}
               </Link>
             );
@@ -151,7 +180,7 @@ export function TopNav() {
               </Link>
             );
           })}
-          {navLinks.slice(2).map(({ to, label }) => {
+          {navLinks.slice(1).map(({ to, label }) => {
             const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
               <Link key={to} to={to} className={`block px-3 py-2 rounded text-sm transition-colors ${active ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'}`}>
@@ -162,9 +191,7 @@ export function TopNav() {
           <div className="border-t border-white/20 pt-2 mt-2 flex items-center justify-between">
             <span className="text-sm text-white/80">{user?.name} · {user?.role}</span>
             <div className="flex gap-1">
-              {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                <Link to="/settings" className="text-xs px-2 py-1 rounded hover:bg-white/10">Settings</Link>
-              )}
+              <Link to="/settings" className="text-xs px-2 py-1 rounded hover:bg-white/10">Settings</Link>
               <button onClick={logout} className="text-xs px-2 py-1 rounded hover:bg-white/10 text-red-300">Sign out</button>
             </div>
           </div>

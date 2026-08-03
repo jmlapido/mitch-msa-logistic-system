@@ -11,7 +11,7 @@ export function CommissionStatCards({ commissions }: Props) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-0.5">Commissions</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-0.5">Others</p>
       <div className="grid grid-cols-2 gap-3">
         <StatCard
           label="Total This Month"

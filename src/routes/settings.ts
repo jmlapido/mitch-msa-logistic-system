@@ -24,7 +24,7 @@ settings.get('/unit_types', requireAuth, async (c) => {
   return c.json(types);
 });
 
-settings.get('/', requireAuth, requireAdmin, async (c) => {
+settings.get('/', requireAuth, async (c) => {
   const { results } = await c.env.DB.prepare('SELECT key, value FROM settings').all<{ key: string; value: string }>();
   const out: Record<string, string> = {};
   for (const row of results) out[row.key] = row.value;

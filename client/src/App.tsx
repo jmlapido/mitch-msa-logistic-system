@@ -77,7 +77,7 @@ export default function App() {
                     <Route path="/commissions" element={<Commissions />} />
                     <Route path="/withdrawals" element={<Withdrawals />} />
                     <Route path="/reports" element={<AdminRoute><Reports /></AdminRoute>} />
-                    <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+                    <Route path="/settings" element={<Settings />} />
                     <Route path="/logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
                   </Routes>
                 </AppLayout>

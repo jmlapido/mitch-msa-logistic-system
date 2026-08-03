@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/requireAuth';
+import { requireAdmin } from '../middleware/requireAdmin';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -85,7 +86,7 @@ const updateEntrySchema = z.object({
 });
 
 // PUT /api/bill-entries/:id
-billEntries.put('/:id', zv('json', updateEntrySchema), async (c) => {
+billEntries.put('/:id', requireAdmin, zv('json', updateEntrySchema), async (c) => {
   const user = c.get('user');
   const id = Number(c.req.param('id'));
   const data = c.req.valid('json');
@@ -97,7 +98,7 @@ billEntries.put('/:id', zv('json', updateEntrySchema), async (c) => {
 });
 
 // POST /api/bill-entries — one-off entry
-billEntries.post('/', zv('json', z.object({
+billEntries.post('/', requireAdmin, zv('json', z.object({
   bill_id: z.number().int().positive(),
   month: z.string().regex(/^\d{4}-\d{2}$/),
   amount: z.number().min(0).default(0),

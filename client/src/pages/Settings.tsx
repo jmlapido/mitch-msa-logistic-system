@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
+import { useAuth, useCanEdit } from '@/lib/hooks/useAuth';
 import { useCategories, useCategoryMutations } from '@/lib/hooks/useCategories';
 import { BuildingsTab } from '@/components/rentals/tabs/BuildingsTab';
 import { UnitsTab } from '@/components/rentals/tabs/UnitsTab';
@@ -19,6 +20,7 @@ import { UnitsTab } from '@/components/rentals/tabs/UnitsTab';
 // ── Branding ──────────────────────────────────────────────────────────────────
 function BrandingTab() {
   const qc = useQueryClient();
+  const canEdit = useCanEdit();
   const { data: settings } = useQuery<Record<string, string>>({
     queryKey: ['settings-all'],
     queryFn: () => api.get('/api/settings'),
@@ -51,8 +53,9 @@ function BrandingTab() {
             defaultValue={settings?.['company_name'] ?? ''}
             onChange={e => setName(e.target.value)}
             placeholder="Your company name"
+            readOnly={!canEdit}
           />
-          <Button onClick={saveName} size="sm">Save</Button>
+          {canEdit && <Button onClick={saveName} size="sm">Save</Button>}
         </div>
       </div>
       <div>
@@ -61,11 +64,15 @@ function BrandingTab() {
           {settings?.['company_logo_url'] && (
             <img src={settings['company_logo_url']} alt="Logo" className="h-12 w-12 rounded object-contain border" />
           )}
-          <Button variant="outline" size="sm" onClick={() => logoRef.current?.click()}>
-            <Upload size={13} className="mr-2" /> Upload Logo
-          </Button>
-          <input ref={logoRef} type="file" className="hidden" accept="image/*"
-            onChange={e => e.target.files?.[0] && uploadLogo(e.target.files[0])} />
+          {canEdit && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => logoRef.current?.click()}>
+                <Upload size={13} className="mr-2" /> Upload Logo
+              </Button>
+              <input ref={logoRef} type="file" className="hidden" accept="image/*"
+                onChange={e => e.target.files?.[0] && uploadLogo(e.target.files[0])} />
+            </>
+          )}
         </div>
         <p className="text-xs text-muted-foreground mt-1">PNG, JPG, SVG — max 2MB. Appears in nav and PDF reports.</p>
       </div>
@@ -204,6 +211,7 @@ type CatForm = z.infer<typeof catSchema>;
 function CategoriesTab() {
   const { data: categories = [] } = useCategories();
   const { create, update, remove } = useCategoryMutations();
+  const canEdit = useCanEdit();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<{ id: number } | null>(null);
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<CatForm>({ resolver: zodResolver(catSchema) });
@@ -228,7 +236,7 @@ function CategoriesTab() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold">Bill Categories</h3>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Category</Button>
+        {canEdit && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Category</Button>}
       </div>
       <div className="space-y-1">
         {categories.map(c => (
@@ -241,10 +249,12 @@ function CategoriesTab() {
                 <span className="text-xs text-muted-foreground border rounded px-1.5 py-0.5">🏢 building</span>
               )}
             </div>
-            <div className="flex gap-1">
-              <button onClick={() => openEdit(c)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={13} /></button>
-              <button onClick={() => handleDelete(c.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={13} /></button>
-            </div>
+            {canEdit && (
+              <div className="flex gap-1">
+                <button onClick={() => openEdit(c)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={13} /></button>
+                <button onClick={() => handleDelete(c.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={13} /></button>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -282,6 +292,7 @@ function CategoriesTab() {
 // ── Unit Types ────────────────────────────────────────────────────────────────
 function UnitTypesTab() {
   const qc = useQueryClient();
+  const canEdit = useCanEdit();
   const { data: types = [] } = useQuery<string[]>({
     queryKey: ['unit-types'],
     queryFn: () => api.get('/api/settings/unit_types'),
@@ -316,41 +327,48 @@ function UnitTypesTab() {
         {types.map(t => (
           <div key={t} className="flex items-center justify-between border rounded px-3 py-2">
             <span className="text-sm capitalize">{t}</span>
-            <button onClick={() => removeType(t)} className="p-1 text-muted-foreground hover:text-destructive">
-              <Trash2 size={13} />
-            </button>
+            {canEdit && (
+              <button onClick={() => removeType(t)} className="p-1 text-muted-foreground hover:text-destructive">
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
         ))}
       </div>
-      <div className="flex gap-2">
-        <Input
-          value={newType}
-          onChange={e => setNewType(e.target.value)}
-          placeholder="e.g. studio, bed space"
-          onKeyDown={e => e.key === 'Enter' && addType()}
-          className="flex-1"
-        />
-        <Button size="sm" onClick={addType}><Plus size={14} className="mr-1" />Add</Button>
-      </div>
+      {canEdit && (
+        <div className="flex gap-2">
+          <Input
+            value={newType}
+            onChange={e => setNewType(e.target.value)}
+            placeholder="e.g. studio, bed space"
+            onKeyDown={e => e.key === 'Enter' && addType()}
+            className="flex-1"
+          />
+          <Button size="sm" onClick={addType}><Plus size={14} className="mr-1" />Add</Button>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function Settings() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'superadmin';
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
       <Tabs defaultValue="branding">
         <TabsList className="mb-4">
           <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
+          {isSuperAdmin && <TabsTrigger value="users">Users</TabsTrigger>}
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="unit-types">Unit Types</TabsTrigger>
           <TabsTrigger value="properties">Properties</TabsTrigger>
         </TabsList>
         <TabsContent value="branding"><BrandingTab /></TabsContent>
-        <TabsContent value="users"><UsersTab /></TabsContent>
+        {isSuperAdmin && <TabsContent value="users"><UsersTab /></TabsContent>}
         <TabsContent value="categories"><CategoriesTab /></TabsContent>
         <TabsContent value="unit-types"><UnitTypesTab /></TabsContent>
         <TabsContent value="properties">

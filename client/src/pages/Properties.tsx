@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useProperties, usePropertyMutations, type Property } from '@/lib/hooks/useProperties';
-import { useAuth } from '@/lib/hooks/useAuth';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 
 const TYPE_LABELS: Record<string, string> = {
   villa: 'Villa',
@@ -30,7 +30,7 @@ type F = z.infer<typeof schema>;
 export default function Properties() {
   const { data: properties = [], isLoading } = useProperties();
   const { create, update, remove } = usePropertyMutations();
-  const { user } = useAuth();
+  const canEdit = useCanEdit();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const { register, handleSubmit, setValue, watch, reset, formState: { isSubmitting } } = useForm<F>({ resolver: zodResolver(schema) });
@@ -62,7 +62,7 @@ export default function Properties() {
           <h1 className="text-2xl font-bold">Properties</h1>
           <p className="text-sm text-muted-foreground mt-1">Bill-related properties (villas, offices, shops)</p>
         </div>
-        <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Property</Button>
+        {canEdit && <Button size="sm" onClick={openAdd}><Plus size={14} className="mr-1" /> Add Property</Button>}
       </div>
 
       {isLoading ? <p className="text-muted-foreground">Loading…</p> : (
@@ -74,7 +74,7 @@ export default function Properties() {
                 <div className="text-xs text-muted-foreground mt-0.5 capitalize">{TYPE_LABELS[p.type] ?? p.type}</div>
                 {p.address && <div className="text-xs text-muted-foreground mt-1">{p.address}</div>}
               </div>
-              {(user?.role === 'admin' || user?.role === 'superadmin') && (
+              {canEdit && (
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => openEdit(p)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil size={13} /></button>
                   <button onClick={() => handleDelete(p.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 size={13} /></button>

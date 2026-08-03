@@ -36,7 +36,7 @@ export function CombinedReportView({ monthSummary, rentMonthly, commissionsMonth
       month: month.slice(5),
       Bills: bills?.total ?? 0,
       'Rent In': rent?.collected ?? 0,
-      'Commissions In': commissions?.total ?? 0,
+      'Others In': commissions?.total ?? 0,
       'Lost Revenue': writtenOff?.total ?? 0,
     };
   });
@@ -59,7 +59,7 @@ export function CombinedReportView({ monthSummary, rentMonthly, commissionsMonth
         {[
           { label: 'Total Bills', value: totalOut, color: 'text-red-600 dark:text-red-400' },
           { label: 'Rent Collected', value: totalRentIn, color: 'text-green-600 dark:text-green-400' },
-          { label: 'Commissions In', value: totalCommissionsIn, color: 'text-green-600 dark:text-green-400' },
+          { label: 'Others In', value: totalCommissionsIn, color: 'text-green-600 dark:text-green-400' },
           { label: 'Lost Revenue', value: totalWrittenOff, color: 'text-red-600 dark:text-red-400' },
           { label: 'Net Position', value: netPosition, color: netPosition >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' },
         ].map(c => (
@@ -81,7 +81,7 @@ export function CombinedReportView({ monthSummary, rentMonthly, commissionsMonth
               <Legend />
               <Bar dataKey="Bills" fill="#f87171" />
               <Bar dataKey="Rent In" fill="#4ade80" />
-              <Bar dataKey="Commissions In" fill="#38bdf8" />
+              <Bar dataKey="Others In" fill="#38bdf8" />
               <Bar dataKey="Lost Revenue" fill="#94a3b8" />
             </BarChart>
           </ResponsiveContainer>
@@ -94,7 +94,7 @@ export function CombinedReportView({ monthSummary, rentMonthly, commissionsMonth
             <th className="text-left px-3 py-2">Month</th>
             <th className="text-right px-3 py-2">Bills Out</th>
             <th className="text-right px-3 py-2">Rent In</th>
-            <th className="text-right px-3 py-2">Commissions In</th>
+            <th className="text-right px-3 py-2">Others In</th>
             <th className="text-right px-3 py-2">Lost Revenue</th>
             <th className="text-right px-3 py-2">Net</th>
           </tr>

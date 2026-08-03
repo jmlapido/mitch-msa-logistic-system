@@ -97,7 +97,7 @@ export default function Dashboard() {
           {/* Sponsorship stat cards */}
           <SponsorshipStatCards sponsorships={data.sponsorships} />
 
-          {/* Commission stat cards */}
+          {/* Others stat cards */}
           <CommissionStatCards commissions={data.commissions} />
 
           {/* Charts row */}

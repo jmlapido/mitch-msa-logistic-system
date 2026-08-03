@@ -36,11 +36,12 @@ withdrawals.use('*', requireAuth);
 
 const CASH_ON_HAND_SQL = `
   SELECT
-    (SELECT COALESCE(SUM(amount_paid), 0) FROM rent_payments) +
-    (SELECT COALESCE(SUM(amount), 0) FROM commissions) +
-    (SELECT COALESCE(SUM(amount), 0) FROM partner_payments) -
-    (SELECT COALESCE(SUM(amount), 0) FROM bill_entries WHERE status = 'paid') -
-    (SELECT COALESCE(SUM(amount), 0) FROM withdrawals) AS cash_on_hand
+    (SELECT COALESCE(SUM(rp.amount_paid), 0) FROM rent_payments rp
+       WHERE EXISTS (SELECT 1 FROM contracts c WHERE c.id = rp.contract_id)) +
+    (SELECT COALESCE(SUM(amount), 0) FROM commissions WHERE paid_date <= date('now')) +
+    (SELECT COALESCE(SUM(amount), 0) FROM partner_payments WHERE paid_date <= date('now')) -
+    (SELECT COALESCE(SUM(amount), 0) FROM bill_entries WHERE status = 'paid' AND paid_date <= date('now')) -
+    (SELECT COALESCE(SUM(amount), 0) FROM withdrawals WHERE withdrawn_date <= date('now')) AS cash_on_hand
 `;
 
 withdrawals.get('/', async (c) => {

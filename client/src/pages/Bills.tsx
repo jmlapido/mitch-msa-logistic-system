@@ -7,6 +7,7 @@ import { TotalsSidebar } from '@/components/bills/TotalsSidebar';
 import { BillFormModal } from '@/components/bills/BillFormModal';
 import { MonthYearSelector } from '@/components/ui/MonthYearSelector';
 import { useBillEntries } from '@/lib/hooks/useBills';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 import { currentMonth } from '@/lib/utils';
 import { AedAmount } from '@/components/ui/AedAmount';
 import type { BillTemplate } from '@/lib/hooks/useBills';
@@ -29,6 +30,7 @@ export default function Bills() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<BillTemplate | null>(null);
   const { data: entries = [], isLoading } = useBillEntries(month);
+  const canEdit = useCanEdit();
 
   const grand = useMemo(() => {
     let total = 0, paid = 0, unpaid = 0;
@@ -51,7 +53,7 @@ export default function Bills() {
             <MonthYearSelector month={month} onChange={setMonth} />
           </div>
         </div>
-        <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Bill</Button>
+        {canEdit && <Button onClick={openAdd} size="sm"><Plus size={14} className="mr-1" /> Add Bill</Button>}
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-5">

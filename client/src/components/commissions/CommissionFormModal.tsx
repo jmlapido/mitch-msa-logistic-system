@@ -72,10 +72,10 @@ export function CommissionFormModal({ open, onClose, editing }: Props) {
     try {
       if (editing) {
         await updateCommission.mutateAsync({ id: editing.id, ...payload });
-        toast.success('Commission updated');
+        toast.success('Entry updated');
       } else {
         await createCommission.mutateAsync(payload);
-        toast.success('Commission recorded');
+        toast.success('Entry recorded');
       }
       onClose();
     } catch (e) {
@@ -87,12 +87,12 @@ export function CommissionFormModal({ open, onClose, editing }: Props) {
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit Commission' : 'Add Commission'}</DialogTitle>
+          <DialogTitle>{editing ? 'Edit Entry' : 'Add Entry'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div>
             <Label>Name *</Label>
-            <Input {...register('name')} placeholder="Who submitted this commission" />
+            <Input {...register('name')} placeholder="Who submitted this entry" />
             {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">

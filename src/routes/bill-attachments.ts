@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { requireAuth, type AuthVariables } from '../middleware/requireAuth';
+import { requireAdmin } from '../middleware/requireAdmin';
 import type { Env } from '../types';
 
 const ALLOWED_TYPES = [
@@ -15,7 +16,7 @@ const billAttachments = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 billAttachments.use('*', requireAuth);
 
 // POST /api/bill-attachments — multipart upload
-billAttachments.post('/', async (c) => {
+billAttachments.post('/', requireAdmin, async (c) => {
   const user = c.get('user');
   const formData = await c.req.formData();
   const file = formData.get('file') as File | null;
@@ -74,7 +75,7 @@ billAttachments.get('/', async (c) => {
 });
 
 // DELETE /api/bill-attachments/:id
-billAttachments.delete('/:id', async (c) => {
+billAttachments.delete('/:id', requireAdmin, async (c) => {
   const id = Number(c.req.param('id'));
   const att = await c.env.DB.prepare(
     'SELECT file_key FROM bill_attachments WHERE id = ?'
