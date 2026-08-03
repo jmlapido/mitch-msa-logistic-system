@@ -17,6 +17,7 @@ import { ExpiringSponsorsWidget } from '@/components/dashboard/ExpiringSponsorsW
 import { BuildingOccupancyWidget } from '@/components/dashboard/BuildingOccupancyWidget';
 import { currentMonth, monthLabel } from '@/lib/utils';
 import { AedAmount } from '@/components/ui/AedAmount';
+import { useCanEdit } from '@/lib/hooks/useAuth';
 
 function pctDelta(current: number, prev: number): string {
   if (prev === 0) return '—';
@@ -29,14 +30,17 @@ function pctDir(current: number, prev: number): 'up' | 'down' | 'neutral' {
 }
 
 export default function Dashboard() {
+  const canEdit = useCanEdit();
   const [month, setMonth] = useState(currentMonth());
   const { data, isLoading } = useDashboard(month);
   const navigate = useNavigate();
+  const atMax = !canEdit && month >= currentMonth();
 
   function changeMonth(delta: number) {
     const [y, m] = month.split('-').map(Number) as [number, number];
     const d = new Date(y, m - 1 + delta);
-    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    setMonth(canEdit || next <= currentMonth() ? next : currentMonth());
   }
 
   return (
@@ -46,7 +50,13 @@ export default function Dashboard() {
         <div className="flex items-center gap-1">
           <button onClick={() => changeMonth(-1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronLeft size={20} /></button>
           <span className="text-base font-semibold w-36 text-center">{monthLabel(month)}</span>
-          <button onClick={() => changeMonth(1)} className="p-1.5 rounded-md hover:bg-muted transition-colors"><ChevronRight size={20} /></button>
+          <button
+            onClick={() => changeMonth(1)}
+            disabled={atMax}
+            className={`p-1.5 rounded-md transition-colors ${atMax ? 'opacity-30 cursor-not-allowed' : 'hover:bg-muted'}`}
+          >
+            <ChevronRight size={20} />
+          </button>
         </div>
       </div>
 
