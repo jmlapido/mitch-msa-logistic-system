@@ -219,6 +219,12 @@ export function ContractsPanel({ tenantId, readonly = false }: { tenantId: numbe
                       )}
                       <p>Annual Rent: <span className="font-medium text-foreground"><AedAmount amount={c.annual_rent} /></span></p>
                       <p>
+                        Balance:{' '}
+                        <span className={(c.balance ?? 0) > 0 ? 'font-medium text-red-600 dark:text-red-400' : 'font-medium text-green-600'}>
+                          <AedAmount amount={c.balance ?? 0} />
+                        </span>
+                      </p>
+                      <p>
                         {(c.payment_type ?? 'pdc') === 'pdc' ? (
                           <>Cheques: <span className="font-medium text-foreground">{c.no_of_pdc}</span></>
                         ) : (

@@ -39,7 +39,13 @@ contracts.get('/', async (c) => {
         WHEN date(co.end_date) >= date('now') THEN 'valid'
         ELSE 'expired'
       END as status,
-      (SELECT SUM(amount) FROM pdc_cheques WHERE contract_id = co.id AND amount IS NOT NULL) as pdc_total
+      (SELECT SUM(amount) FROM pdc_cheques WHERE contract_id = co.id AND amount IS NOT NULL) as pdc_total,
+      (SELECT COALESCE(SUM(
+         CASE WHEN rp.status = 'partial' THEN (rp.amount - rp.amount_paid) ELSE rp.amount END
+       ), 0)
+       FROM rent_payments rp
+       WHERE rp.contract_id = co.id
+         AND rp.status NOT IN ('collected', 'written_off')) as balance
     FROM contracts co
     LEFT JOIN units u ON co.unit_id = u.id
     LEFT JOIN buildings b ON u.building_id = b.id

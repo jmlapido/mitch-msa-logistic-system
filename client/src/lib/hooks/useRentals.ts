@@ -52,6 +52,7 @@ export type Contract = {
   termination_reason?: string | null;
   created_at: string;
   pdc_total?: number | null;
+  balance?: number;
 };
 
 export function useBuildings() {
