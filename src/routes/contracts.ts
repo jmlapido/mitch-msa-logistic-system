@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/requireAuth';
 import { requireAdmin } from '../middleware/requireAdmin';
 import { auditLog } from '../lib/auditLog';
 import { findOverlappingContract } from '../lib/contractOverlap';
+import { buildPaymentHistory, type PaymentHistoryEntry, type PaymentHistoryMonthRow } from '../lib/paymentHistory';
 import type { AuthVariables } from '../middleware/requireAuth';
 import type { Env } from '../types';
 
@@ -47,6 +48,50 @@ contracts.get('/', async (c) => {
     ORDER BY co.start_date DESC
   `).bind(Number(tenantId)).all();
   return c.json(results);
+});
+
+contracts.get('/:id/payment-history', async (c) => {
+  const id = Number(c.req.param('id'));
+  const contract = await c.env.DB.prepare('SELECT id FROM contracts WHERE id = ?').bind(id).first();
+  if (!contract) return c.json({ error: 'Not found' }, 404);
+
+  const { results: rows } = await c.env.DB.prepare(`
+    SELECT rp.id as rent_payment_id, rp.month, rp.amount_paid, rp.status,
+      rp.written_off_amount, rp.written_off_reason,
+      CASE
+        WHEN c.payment_type = 'pdc' THEN
+          COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, (SELECT COUNT(*) FROM pdc_cheques WHERE contract_id = c.id AND cheque_date IS NOT NULL)), 2))
+        ELSE
+          COALESCE(pc.amount, ROUND(c.annual_rent / MAX(1, c.no_of_pdc), 2))
+      END as expected_rent
+    FROM rent_payments rp
+    JOIN contracts c ON rp.contract_id = c.id
+    LEFT JOIN pdc_cheques pc ON pc.id = (
+      SELECT id FROM pdc_cheques
+      WHERE contract_id = c.id
+        AND strftime('%Y-%m', cheque_date) = rp.month
+      LIMIT 1
+    )
+    WHERE rp.contract_id = ?
+    ORDER BY rp.month ASC
+  `).bind(id).all<PaymentHistoryMonthRow>();
+
+  const entriesByRentPaymentId = new Map<number, PaymentHistoryEntry[]>();
+  if (rows.length > 0) {
+    const placeholders = rows.map(() => '?').join(',');
+    const { results: entries } = await c.env.DB.prepare(
+      `SELECT id, rent_payment_id, amount, paid_date, payment_method, receipt_no, notes
+       FROM payment_entries WHERE rent_payment_id IN (${placeholders})
+       ORDER BY paid_date ASC, id ASC`
+    ).bind(...rows.map(r => r.rent_payment_id)).all<PaymentHistoryEntry & { rent_payment_id: number }>();
+    for (const entry of entries) {
+      const list = entriesByRentPaymentId.get(entry.rent_payment_id) ?? [];
+      list.push(entry);
+      entriesByRentPaymentId.set(entry.rent_payment_id, list);
+    }
+  }
+
+  return c.json(buildPaymentHistory(rows, entriesByRentPaymentId));
 });
 
 contracts.post('/', requireAdmin, zv('json', contractSchema), async (c) => {
