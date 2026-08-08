@@ -13,7 +13,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export function defaultMonthExpanded(status: string, balance: number): boolean {
-  return status === 'overdue' || status === 'partial' || balance > 0;
+  return status === 'overdue' || status === 'partial' || (status !== 'written_off' && balance > 0);
 }
 
 function MonthRow({ month }: { month: PaymentHistoryMonth }) {

@@ -21,4 +21,8 @@ describe('defaultMonthExpanded', () => {
   it('collapses a written-off month with no remaining balance', () => {
     expect(defaultMonthExpanded('written_off', 0)).toBe(false);
   });
+
+  it('collapses a written-off month even when it still has an outstanding balance', () => {
+    expect(defaultMonthExpanded('written_off', 500)).toBe(false);
+  });
 });
