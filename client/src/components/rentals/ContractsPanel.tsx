@@ -16,6 +16,7 @@ import { useLastAuditEntry } from '@/lib/hooks/useAuditLogs';
 import { formatDate, monthsBetweenRounded } from '@/lib/utils';
 import { AedAmount } from '@/components/ui/AedAmount';
 import { PaymentSchedulePanel } from './PaymentSchedulePanel';
+import { PaymentHistoryPanel } from './PaymentHistoryPanel';
 
 const schema = z.object({
   contract_no: z.string().min(1, 'Required'),
@@ -261,6 +262,7 @@ export function ContractsPanel({ tenantId, readonly = false }: { tenantId: numbe
                   annualRent={c.annual_rent}
                   readonly={readonly}
                 />
+                <PaymentHistoryPanel contractId={c.id} />
               </div>
             );
           })}
