@@ -46,7 +46,8 @@ contracts.get('/', async (c) => {
        ), 0)
        FROM rent_payments rp
        WHERE rp.contract_id = co.id
-         AND rp.status NOT IN ('collected', 'written_off')) as balance
+         AND rp.status NOT IN ('collected', 'written_off')) as balance,
+      (SELECT COALESCE(SUM(amount_paid), 0) FROM rent_payments WHERE contract_id = co.id) as total_paid
     FROM contracts co
     LEFT JOIN units u ON co.unit_id = u.id
     LEFT JOIN buildings b ON u.building_id = b.id
