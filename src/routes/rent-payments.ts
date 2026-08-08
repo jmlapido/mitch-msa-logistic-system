@@ -116,9 +116,14 @@ rentPayments.get('/', async (c) => {
       AND c.terminated_at IS NULL
   `).bind(month).run();
 
+  // Bind against the true current month, not the viewed `month` — otherwise
+  // previewing a future month (e.g. an admin checking upcoming dues) would
+  // retroactively mark every not-yet-due month between today and the viewed
+  // month as overdue.
+  const currentMonth = new Date().toISOString().slice(0, 7);
   await c.env.DB.prepare(
     `UPDATE rent_payments SET status = 'overdue' WHERE month < ? AND status = 'pending'`
-  ).bind(month).run();
+  ).bind(currentMonth).run();
 
   let query = `
     SELECT rp.*,
