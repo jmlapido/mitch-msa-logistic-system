@@ -53,6 +53,7 @@ export type Contract = {
   created_at: string;
   pdc_total?: number | null;
   balance?: number;
+  total_paid?: number;
 };
 export type PaymentHistoryEntry = {
   id: number;
