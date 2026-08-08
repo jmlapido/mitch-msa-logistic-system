@@ -54,6 +54,26 @@ export type Contract = {
   pdc_total?: number | null;
   balance?: number;
 };
+export type PaymentHistoryEntry = {
+  id: number;
+  amount: number;
+  paid_date: string;
+  payment_method: 'cash' | 'cheque' | null;
+  receipt_no: string | null;
+  notes: string | null;
+};
+export type PaymentHistoryMonth = {
+  rent_payment_id: number;
+  month: string;
+  month_label: string;
+  expected_rent: number;
+  amount_paid: number;
+  balance: number;
+  status: 'collected' | 'pending' | 'overdue' | 'partial' | 'written_off';
+  written_off_amount: number | null;
+  written_off_reason: string | null;
+  entries: PaymentHistoryEntry[];
+};
 
 export function useBuildings() {
   return useQuery<Building[]>({ queryKey: ['buildings'], queryFn: () => api.get('/api/buildings') });
@@ -122,6 +142,14 @@ export function useContracts(tenantId: number) {
   });
 }
 
+export function usePaymentHistory(contractId: number) {
+  return useQuery<PaymentHistoryMonth[]>({
+    queryKey: ['payment-history', contractId],
+    queryFn: () => api.get(`/api/contracts/${contractId}/payment-history`),
+    enabled: !!contractId,
+  });
+}
+
 export function useExpiringLeases(days = 60) {
   return useQuery<Lease[]>({ queryKey: ['leases', 'expiring', days], queryFn: () => api.get(`/api/leases/expiring?days=${days}`) });
 }
@@ -172,6 +200,7 @@ export function useRentalMutations() {
         api.post(`/api/rent-payments/${rentPaymentId}/entries`, d),
       onSuccess: (_: unknown, v: { rentPaymentId: number }) => {
         qc.invalidateQueries({ queryKey: ['rent-payments'] });
+        qc.invalidateQueries({ queryKey: ['payment-history'] });
         qc.invalidateQueries({ queryKey: ['payment-entries', v.rentPaymentId] });
         qc.invalidateQueries({ queryKey: ['tenants'] });
       },
@@ -181,6 +210,7 @@ export function useRentalMutations() {
         api.del(`/api/rent-payments/${rentPaymentId}/entries/${entryId}`),
       onSuccess: (_: unknown, v: { rentPaymentId: number; entryId: number }) => {
         qc.invalidateQueries({ queryKey: ['rent-payments'] });
+        qc.invalidateQueries({ queryKey: ['payment-history'] });
         qc.invalidateQueries({ queryKey: ['payment-entries', v.rentPaymentId] });
         qc.invalidateQueries({ queryKey: ['tenants'] });
       },
@@ -189,6 +219,7 @@ export function useRentalMutations() {
       mutationFn: ({ id, reason }: { id: number; reason: string }) => api.post(`/api/rent-payments/${id}/write-off`, { reason }),
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: ['rent-payments'] });
+        qc.invalidateQueries({ queryKey: ['payment-history'] });
         qc.invalidateQueries({ queryKey: ['tenants'] });
       },
     }),
@@ -196,6 +227,7 @@ export function useRentalMutations() {
       mutationFn: (id: number) => api.post(`/api/rent-payments/${id}/undo-write-off`, {}),
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: ['rent-payments'] });
+        qc.invalidateQueries({ queryKey: ['payment-history'] });
         qc.invalidateQueries({ queryKey: ['tenants'] });
       },
     }),
