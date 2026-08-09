@@ -96,7 +96,7 @@ export function CategoryBillsDialog({ open, onOpenChange, category }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl print:static print:translate-x-0 print:translate-y-0 print:max-w-full print:shadow-none print:border-none">
+      <DialogContent className="max-w-2xl print:static print:block print:translate-x-0 print:translate-y-0 print:max-w-full print:shadow-none print:border-none">
         <DialogHeader className="no-print flex-row items-center justify-between space-y-0 pr-6 text-left">
           <DialogTitle>{category.icon} {category.name}</DialogTitle>
           <Button onClick={handlePrint} variant="outline" size="sm">
