@@ -95,7 +95,7 @@ export function PartnerContractPaymentsPanel({ contract, payments, partnerId, ca
                       />
                     </label>
                   )}
-                  <span className="font-medium"><AedAmount amount={p.amount} /></span>
+                  <span className="text-green-600 font-medium"><AedAmount amount={p.amount} /></span>
                   {canEdit && (
                     <button
                       onClick={() => {
