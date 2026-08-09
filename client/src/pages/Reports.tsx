@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { BillsReportView } from '@/components/reports/BillsReportView';
+import { CategoryBillsDialog } from '@/components/reports/CategoryBillsDialog';
 import { RentalReportView } from '@/components/reports/RentalReportView';
 import { CombinedReportView } from '@/components/reports/CombinedReportView';
 import { OutstandingReportView } from '@/components/reports/OutstandingReportView';
@@ -31,6 +32,7 @@ export default function Reports() {
   const [to, setTo] = useState(now);
   const [activeTab, setActiveTab] = useState('rental');
   const [buildingId, setBuildingId] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<{ id: number; name: string; icon: string; color: string } | null>(null);
   const { data: buildings = [] } = useBuildings();
 
   const buildingParam = buildingId && activeTab === 'bills' ? `&building_id=${buildingId}` : '';
@@ -117,6 +119,7 @@ export default function Reports() {
                 catSummary={arr('catSummary')}
                 from={from} to={to}
                 buildingName={selectedBuilding?.name}
+                onCategoryClick={setSelectedCategory}
               />
             </TabsContent>
 
@@ -155,6 +158,12 @@ export default function Reports() {
           </>
         ) : null}
       </Tabs>
+
+      <CategoryBillsDialog
+        open={selectedCategory !== null}
+        onOpenChange={open => !open && setSelectedCategory(null)}
+        category={selectedCategory}
+      />
     </div>
   );
 }

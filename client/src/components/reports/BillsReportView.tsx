@@ -8,7 +8,7 @@ type Row = {
   paid_date: string | null; building_name: string | null;
 };
 type MonthSummary = { month: string; total: number; paid: number; unpaid: number };
-type CatSummary = { name: string; color: string; icon: string; total: number; paid: number };
+type CatSummary = { id: number; name: string; color: string; icon: string; total: number; paid: number };
 
 type Props = {
   rows: Row[];
@@ -17,9 +17,10 @@ type Props = {
   from: string;
   to: string;
   buildingName?: string;
+  onCategoryClick: (category: { id: number; name: string; icon: string; color: string }) => void;
 };
 
-export function BillsReportView({ rows, monthSummary, catSummary, from, to, buildingName }: Props) {
+export function BillsReportView({ rows, monthSummary, catSummary, from, to, buildingName, onCategoryClick }: Props) {
   const dateRange = from === to ? monthLabel(from) : `${monthLabel(from)} – ${monthLabel(to)}`;
   const subtitle = buildingName ? `${buildingName} · ${dateRange}` : dateRange;
   const grandTotal = monthSummary.reduce((s, r) => s + r.total, 0);
@@ -77,7 +78,11 @@ export function BillsReportView({ rows, monthSummary, catSummary, from, to, buil
           </thead>
           <tbody className="divide-y divide-border">
             {catSummary.map(r => (
-              <tr key={r.name}>
+              <tr
+                key={r.id}
+                onClick={() => onCategoryClick({ id: r.id, name: r.name, icon: r.icon, color: r.color })}
+                className="cursor-pointer hover:bg-muted/40"
+              >
                 <td className="px-3 py-1.5 text-xs">{r.icon} {r.name}</td>
                 <td className="px-3 py-1.5 text-right">{<AedAmount amount={r.total} />}</td>
                 <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={r.paid} />}</td>
