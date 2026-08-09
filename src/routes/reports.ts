@@ -55,7 +55,7 @@ reports.get('/', async (c) => {
     const { results: monthSummary } = await db.prepare(monthQuery).bind(...monthBinds).all();
 
     let catQuery = `
-      SELECT c.name, c.color, c.icon,
+      SELECT c.id, c.name, c.color, c.icon,
         SUM(be.amount) as total,
         SUM(CASE WHEN be.status = 'paid' THEN be.amount ELSE 0 END) as paid
       FROM bill_entries be JOIN bills b ON be.bill_id = b.id JOIN categories c ON b.category_id = c.id
