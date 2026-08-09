@@ -58,4 +58,5 @@
   .no-print { display: none !important; }
   .print-only { display: block !important; }
   body { background: white; color: black; }
+  body.printing-dialog #root { display: none !important; }
 }

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { MonthYearSelector } from '@/components/ui/MonthYearSelector';
 import { AedAmount } from '@/components/ui/AedAmount';
+import { PrintHeader } from './PrintHeader';
 import { monthLabel, currentMonth } from '@/lib/utils';
 import { api } from '@/lib/api';
 
@@ -59,6 +61,17 @@ export function CategoryBillsDialog({ open, onOpenChange, category }: Props) {
     }
   }, [open, category?.id]);
 
+  useEffect(() => {
+    function cleanup() { document.body.classList.remove('printing-dialog'); }
+    window.addEventListener('afterprint', cleanup);
+    return () => window.removeEventListener('afterprint', cleanup);
+  }, []);
+
+  function handlePrint() {
+    document.body.classList.add('printing-dialog');
+    window.print();
+  }
+
   const { data: monthData } = useQuery<{ rows: BillRow[] }>({
     queryKey: ['reports', 'bills', 'category-month', category?.id, month],
     queryFn: () => api.get(`/api/reports?type=bills&from=${month}&to=${month}&category_id=${category!.id}`),
@@ -83,20 +96,26 @@ export function CategoryBillsDialog({ open, onOpenChange, category }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl print:static print:block print:translate-x-0 print:translate-y-0 print:max-w-full print:shadow-none print:border-none">
+        <DialogHeader className="no-print flex-row items-center justify-between space-y-0 pr-6 text-left">
           <DialogTitle>{category.icon} {category.name}</DialogTitle>
+          <Button onClick={handlePrint} variant="outline" size="sm">
+            <Printer size={14} className="mr-2" /> Print
+          </Button>
         </DialogHeader>
 
         <Tabs defaultValue="month">
-          <TabsList className="mb-3">
+          <TabsList className="mb-3 no-print">
             <TabsTrigger value="month">Month</TabsTrigger>
             <TabsTrigger value="year">Year</TabsTrigger>
           </TabsList>
 
           <TabsContent value="month">
+            <PrintHeader title="Bills Report" subtitle={`${category.icon} ${category.name} · ${monthLabel(month)}`} />
             <div className="flex items-center justify-between mb-3">
-              <MonthYearSelector month={month} onChange={setMonth} />
+              <div className="no-print">
+                <MonthYearSelector month={month} onChange={setMonth} />
+              </div>
               <div className="text-xs text-muted-foreground">
                 Total <AedAmount amount={monthTotal} /> · Paid <AedAmount amount={monthPaid} /> · Unpaid <AedAmount amount={monthTotal - monthPaid} />
               </div>
@@ -133,8 +152,9 @@ export function CategoryBillsDialog({ open, onOpenChange, category }: Props) {
           </TabsContent>
 
           <TabsContent value="year">
+            <PrintHeader title="Bills Report" subtitle={`${category.icon} ${category.name} · ${year}`} />
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 no-print">
                 <button onClick={() => setYear(y => y - 1)} className="p-1.5 rounded-md hover:bg-muted transition-colors">
                   <ChevronLeft size={20} />
                 </button>
