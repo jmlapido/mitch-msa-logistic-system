@@ -74,7 +74,9 @@ reports.get('/', async (c) => {
     const { results: rentMonthly } = await db.prepare(`
       SELECT rp.month,
         SUM(${EXPECTED_RENT}) as expected,
-        SUM(rp.amount_paid) as collected
+        SUM(rp.amount_paid) as collected,
+        SUM(COALESCE((SELECT SUM(pe.amount) FROM payment_entries pe WHERE pe.rent_payment_id = rp.id AND pe.payment_method = 'cash'), 0)) as collected_cash,
+        SUM(COALESCE((SELECT SUM(pe.amount) FROM payment_entries pe WHERE pe.rent_payment_id = rp.id AND pe.payment_method = 'cheque'), 0)) as collected_cheque
       FROM rent_payments rp JOIN contracts c ON rp.contract_id = c.id
       WHERE rp.month BETWEEN ? AND ?
       GROUP BY rp.month ORDER BY rp.month

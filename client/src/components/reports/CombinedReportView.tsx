@@ -4,7 +4,7 @@ import { AedAmount } from '@/components/ui/AedAmount';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 type MonthSummary = { month: string; total: number; paid: number; unpaid: number };
-type RentMonthly = { month: string; expected: number; collected: number };
+type RentMonthly = { month: string; expected: number; collected: number; collected_cash: number; collected_cheque: number };
 type CommissionsMonthly = { month: string; total: number };
 type WrittenOffMonthly = { month: string; total: number };
 
@@ -43,6 +43,8 @@ export function CombinedReportView({ monthSummary, rentMonthly, commissionsMonth
 
   const totalOut = monthSummary.reduce((s, r) => s + r.total, 0);
   const totalRentIn = rentMonthly.reduce((s, r) => s + r.collected, 0);
+  const totalRentInCash = rentMonthly.reduce((s, r) => s + (r.collected_cash ?? 0), 0);
+  const totalRentInCheque = rentMonthly.reduce((s, r) => s + (r.collected_cheque ?? 0), 0);
   const totalCommissionsIn = commissionsMonthly.reduce((s, r) => s + r.total, 0);
   const totalWrittenOff = writtenOffMonthly.reduce((s, r) => s + r.total, 0);
   const netPosition = totalRentIn + totalCommissionsIn - totalOut - totalWrittenOff;
@@ -66,6 +68,12 @@ export function CombinedReportView({ monthSummary, rentMonthly, commissionsMonth
           <div key={c.label} className="bg-card border rounded-lg p-3 text-center">
             <p className="text-xs text-muted-foreground">{c.label}</p>
             <p className={`text-base font-bold ${c.color}`}>{<AedAmount amount={c.value} />}</p>
+            {c.label === 'Rent Collected' && (
+              <div className="mt-1.5 pt-1.5 border-t text-[11px] text-muted-foreground flex justify-center gap-3">
+                <span>Cash: <AedAmount amount={totalRentInCash} /></span>
+                <span>Cheque: <AedAmount amount={totalRentInCheque} /></span>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -94,6 +102,8 @@ export function CombinedReportView({ monthSummary, rentMonthly, commissionsMonth
             <th className="text-left px-3 py-2">Month</th>
             <th className="text-right px-3 py-2">Bills Out</th>
             <th className="text-right px-3 py-2">Rent In</th>
+            <th className="text-right px-3 py-2">Rent In (Cash)</th>
+            <th className="text-right px-3 py-2">Rent In (Cheque)</th>
             <th className="text-right px-3 py-2">Others In</th>
             <th className="text-right px-3 py-2">Lost Revenue</th>
             <th className="text-right px-3 py-2">Net</th>
@@ -111,6 +121,8 @@ export function CombinedReportView({ monthSummary, rentMonthly, commissionsMonth
                 <td className="px-3 py-1.5">{monthLabel(month)}</td>
                 <td className="px-3 py-1.5 text-right text-red-600">{<AedAmount amount={bills?.total ?? 0} />}</td>
                 <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={rent?.collected ?? 0} />}</td>
+                <td className="px-3 py-1.5 text-right text-muted-foreground">{<AedAmount amount={rent?.collected_cash ?? 0} />}</td>
+                <td className="px-3 py-1.5 text-right text-muted-foreground">{<AedAmount amount={rent?.collected_cheque ?? 0} />}</td>
                 <td className="px-3 py-1.5 text-right text-green-600">{<AedAmount amount={commissions?.total ?? 0} />}</td>
                 <td className="px-3 py-1.5 text-right text-red-600">{<AedAmount amount={writtenOff?.total ?? 0} />}</td>
                 <td className={`px-3 py-1.5 text-right font-semibold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{<AedAmount amount={net} />}</td>
