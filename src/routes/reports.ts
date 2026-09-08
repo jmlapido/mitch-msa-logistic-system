@@ -268,6 +268,28 @@ reports.get('/', async (c) => {
     return c.json({ type, from, to, rows, monthSummary });
   }
 
+  // ── Withdrawals ──────────────────────────────────────────────────────────
+  if (type === 'withdrawals') {
+    const fromDate = from + '-01';
+    const toDate = to + '-31';
+
+    const { results: rows } = await db.prepare(`
+      SELECT withdrawn_by, amount, withdrawn_date, payment_method, cheque_number, notes
+      FROM withdrawals
+      WHERE withdrawn_date BETWEEN ? AND ?
+      ORDER BY withdrawn_date DESC
+    `).bind(fromDate, toDate).all();
+
+    const { results: monthSummary } = await db.prepare(`
+      SELECT strftime('%Y-%m', withdrawn_date) as month, SUM(amount) as total, COUNT(*) as count
+      FROM withdrawals
+      WHERE withdrawn_date BETWEEN ? AND ?
+      GROUP BY month ORDER BY month
+    `).bind(fromDate, toDate).all();
+
+    return c.json({ type, from, to, rows, monthSummary });
+  }
+
   return c.json({ error: 'Invalid report type' }, 400);
 });
 

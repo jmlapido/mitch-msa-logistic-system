@@ -12,6 +12,7 @@ import { OutstandingReportView } from '@/components/reports/OutstandingReportVie
 import { ExpiringLeasesReportView } from '@/components/reports/ExpiringLeasesReportView';
 import { PartnersReportView } from '@/components/reports/PartnersReportView';
 import { CommissionsReportView } from '@/components/reports/CommissionsReportView';
+import { WithdrawalsReportView } from '@/components/reports/WithdrawalsReportView';
 import { useBuildings } from '@/lib/hooks/useRentals';
 import { api } from '@/lib/api';
 import { currentMonth } from '@/lib/utils';
@@ -21,6 +22,7 @@ const TABS = [
   { value: 'outstanding', label: 'Outstanding'      },
   { value: 'bills',       label: 'Bills'            },
   { value: 'commissions', label: 'Others'           },
+  { value: 'withdrawals', label: 'Withdrawals'      },
   { value: 'expiring',    label: 'Expiring Leases'  },
   { value: 'combined',    label: 'P&L Summary'      },
   { value: 'partners',    label: 'Sponsorships'     },
@@ -125,6 +127,14 @@ export default function Reports() {
 
             <TabsContent value="commissions">
               <CommissionsReportView
+                rows={arr('rows')}
+                monthSummary={arr('monthSummary')}
+                from={from} to={to}
+              />
+            </TabsContent>
+
+            <TabsContent value="withdrawals">
+              <WithdrawalsReportView
                 rows={arr('rows')}
                 monthSummary={arr('monthSummary')}
                 from={from} to={to}
