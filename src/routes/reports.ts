@@ -281,7 +281,10 @@ reports.get('/', async (c) => {
     `).bind(fromDate, toDate).all();
 
     const { results: monthSummary } = await db.prepare(`
-      SELECT strftime('%Y-%m', withdrawn_date) as month, SUM(amount) as total, COUNT(*) as count
+      SELECT strftime('%Y-%m', withdrawn_date) as month,
+        SUM(amount) as total, COUNT(*) as count,
+        SUM(CASE WHEN payment_method = 'cash' THEN amount ELSE 0 END) as cash,
+        SUM(CASE WHEN payment_method = 'cheque' THEN amount ELSE 0 END) as cheque
       FROM withdrawals
       WHERE withdrawn_date BETWEEN ? AND ?
       GROUP BY month ORDER BY month
