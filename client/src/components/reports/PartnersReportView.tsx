@@ -37,6 +37,8 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
   const totalExpected = rows.reduce((s, r) => s + r.expected_amount, 0);
   const totalCollected = rows.reduce((s, r) => s + r.total_paid, 0);
   const totalBalance = rows.reduce((s, r) => s + Math.max(0, r.balance), 0);
+  const totalCash = payments.filter(p => p.payment_method === 'cash').reduce((s, p) => s + p.amount, 0);
+  const totalCheque = payments.filter(p => p.payment_method === 'cheque').reduce((s, p) => s + p.amount, 0);
 
   return (
     <div>
@@ -55,6 +57,10 @@ export function PartnersReportView({ rows, payments, from, to }: Props) {
         <div className="border rounded-lg px-4 py-3 bg-card">
           <p className="text-xs text-muted-foreground mb-1">Total Collected</p>
           <p className="text-base font-semibold text-green-600">{<AedAmount amount={totalCollected} />}</p>
+          <div className="mt-1.5 pt-1.5 border-t text-[11px] text-muted-foreground flex gap-3">
+            <span>Cash: <AedAmount amount={totalCash} /></span>
+            <span>Cheque: <AedAmount amount={totalCheque} /></span>
+          </div>
         </div>
         <div className="border rounded-lg px-4 py-3 bg-card">
           <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
