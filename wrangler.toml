@@ -16,6 +16,7 @@ bucket_name = "mitch-app-files"
 
 [vars]
 ENVIRONMENT = "development"
+TURNSTILE_HOSTNAMES = "mitch-app.jmlapido.workers.dev,accounts.msalogistic.ae"
 
 [triggers]
 crons = ["0 2 * * *"]

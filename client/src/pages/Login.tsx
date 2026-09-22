@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSettings } from '@/lib/hooks/useSettings';
@@ -6,6 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
+const TURNSTILE_SITEKEY = '0x4AAAAAAFAOt0LVAuahJ73K';
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: HTMLElement, options: {
+        sitekey: string;
+        action?: string;
+        callback: (token: string) => void;
+        'expired-callback'?: () => void;
+        'error-callback'?: () => void;
+      }) => string;
+      reset: (widgetId?: string) => void;
+    };
+  }
+}
 
 export default function Login() {
   const { login } = useAuth();
@@ -15,18 +32,59 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const widgetContainerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let pollId: ReturnType<typeof setInterval> | undefined;
+
+    function renderWidget() {
+      if (cancelled || !widgetContainerRef.current || !window.turnstile || widgetIdRef.current) return;
+      widgetIdRef.current = window.turnstile.render(widgetContainerRef.current, {
+        sitekey: TURNSTILE_SITEKEY,
+        action: 'login',
+        callback: (token) => setTurnstileToken(token),
+        'expired-callback': () => setTurnstileToken(''),
+        'error-callback': () => setTurnstileToken(''),
+      });
+    }
+
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      pollId = setInterval(() => {
+        if (window.turnstile) {
+          clearInterval(pollId);
+          renderWidget();
+        }
+      }, 100);
+    }
+
+    return () => {
+      cancelled = true;
+      if (pollId) clearInterval(pollId);
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (!turnstileToken) {
+      setError('Please complete the verification');
+      return;
+    }
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, turnstileToken);
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
+      setTurnstileToken('');
+      if (widgetIdRef.current) window.turnstile?.reset(widgetIdRef.current);
     }
   }
 
@@ -57,8 +115,9 @@ export default function Login() {
                 value={password} onChange={e => setPassword(e.target.value)}
               />
             </div>
+            <div ref={widgetContainerRef} />
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !turnstileToken}>
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>

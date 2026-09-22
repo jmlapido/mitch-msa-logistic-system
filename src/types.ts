@@ -5,6 +5,8 @@ export type Env = {
   R2: R2Bucket;
   ASSETS: Fetcher;
   JWT_SECRET: string;
+  TURNSTILE_SECRET: string;
+  TURNSTILE_HOSTNAMES: string;
 };
 
 export type JWTPayload = {

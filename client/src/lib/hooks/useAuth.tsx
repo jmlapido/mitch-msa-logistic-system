@@ -5,7 +5,7 @@ type User = { id: number; name: string; email: string; role: 'superadmin' | 'adm
 type AuthCtx = {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, turnstileToken: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -22,8 +22,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
-    const { user } = await api.post<{ user: User }>('/api/auth/login', { email, password });
+  async function login(email: string, password: string, turnstileToken: string) {
+    const { user } = await api.post<{ user: User }>('/api/auth/login', { email, password, turnstileToken });
     setUser(user);
   }
 

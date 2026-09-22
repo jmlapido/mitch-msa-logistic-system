@@ -3,6 +3,7 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { zv } from '../lib/zv';
 import { z } from 'zod';
 import { verifyPassword, signJWT, verifyJWT } from '../lib/auth';
+import { verifyTurnstileToken } from '../lib/turnstile';
 import type { Env } from '../types';
 
 const auth = new Hono<{ Bindings: Env }>();
@@ -10,10 +11,21 @@ const auth = new Hono<{ Bindings: Env }>();
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  turnstileToken: z.string().min(1),
 });
 
 auth.post('/login', zv('json', loginSchema), async (c) => {
-  const { email, password } = c.req.valid('json');
+  const { email, password, turnstileToken } = c.req.valid('json');
+
+  const expectedHostnames = new Set(
+    c.env.TURNSTILE_HOSTNAMES.split(',').map(h => h.trim()).filter(Boolean),
+  );
+  const remoteIp = c.req.header('CF-Connecting-IP') ?? undefined;
+  const humanVerified = await verifyTurnstileToken(turnstileToken, c.env.TURNSTILE_SECRET, 'login', expectedHostnames, remoteIp);
+  if (!humanVerified) {
+    return c.json({ error: 'Verification failed, please try again' }, 403);
+  }
+
   const user = await c.env.DB.prepare(
     'SELECT id, name, email, password_hash, role FROM users WHERE email = ? AND active = 1'
   ).bind(email).first<{
