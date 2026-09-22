@@ -423,7 +423,7 @@ rentPayments.post('/:id/entries', requireAdmin, zv('json', addEntrySchema), asyn
     const { results: cashContracts } = await c.env.DB.prepare(`
       SELECT id, annual_rent, no_of_pdc, start_date, end_date
       FROM contracts
-      WHERE tenant_id = ? AND payment_type = 'cash' AND date(end_date) >= date('now')
+      WHERE tenant_id = ? AND payment_type = 'cash' AND date(end_date) >= date('now') AND terminated_at IS NULL
     `).bind(target.tenant_id).all<{ id: number; annual_rent: number; no_of_pdc: number; start_date: string; end_date: string }>();
 
     const nextMonthByContract = new Map<number, string>();

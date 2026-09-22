@@ -193,6 +193,7 @@ reports.get('/', async (c) => {
       LEFT JOIN buildings b ON u.building_id = b.id
       WHERE date(c.end_date) BETWEEN ? AND ?
         AND t.status = 'active'
+        AND c.terminated_at IS NULL
       ORDER BY c.end_date ASC
     `).bind(fromDate, toDate).all();
 

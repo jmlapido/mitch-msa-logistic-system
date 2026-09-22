@@ -107,6 +107,7 @@ dashboard.get('/', async (c) => {
     LEFT JOIN units u ON c.unit_id = u.id
     LEFT JOIN buildings b ON u.building_id = b.id
     WHERE date(c.end_date) BETWEEN date('now') AND date('now', '+60 days')
+      AND c.terminated_at IS NULL
     ORDER BY c.end_date
     LIMIT 8
   `).all();
@@ -124,7 +125,7 @@ dashboard.get('/', async (c) => {
            WHERE rp.contract_id = oc.id AND rp.month = ? AND rp.status = 'collected'
          )
          AND date(? || '-05') < date('now')) as overdue_rent,
-      (SELECT COUNT(*) FROM contracts c WHERE date(c.end_date) BETWEEN date('now') AND date('now', '+60 days')) as expiring_contracts,
+      (SELECT COUNT(*) FROM contracts c WHERE date(c.end_date) BETWEEN date('now') AND date('now', '+60 days') AND c.terminated_at IS NULL) as expiring_contracts,
       (SELECT COUNT(*) FROM (
         SELECT t.id FROM tenants t
         LEFT JOIN contracts c ON c.tenant_id = t.id

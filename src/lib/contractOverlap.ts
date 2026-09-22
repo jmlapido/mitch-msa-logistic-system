@@ -21,6 +21,7 @@ export async function findOverlappingContract(
     JOIN tenants t ON c.tenant_id = t.id
     WHERE c.unit_id = ?
       AND c.id != ?
+      AND c.terminated_at IS NULL
       AND date(c.start_date) <= date(?)
       AND date(c.end_date) >= date(?)
     LIMIT 1
